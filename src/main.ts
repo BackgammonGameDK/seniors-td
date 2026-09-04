@@ -165,7 +165,7 @@ function frame(now: number): void {
     // be dropped rather than left pointing at something off the board.
     if (inspected && !world.towers.includes(inspected)) inspected = null;
   }
-  renderer.draw(world, { selected, hover, inspected });
+  renderer.draw(world, { selected, hover, inspected, previewRange: ui.previewRange });
   ui.sync(world, { selected, inspected, paused, speed });
   requestAnimationFrame(frame);
 }

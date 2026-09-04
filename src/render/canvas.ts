@@ -144,6 +144,7 @@ export class Renderer {
       selected: TowerId | null;
       hover: { col: number; row: number } | null;
       inspected: Tower | null;
+      previewRange: number | null;
     },
   ): void {
     if (!this.floor) this.floor = this.paintFloor();
@@ -153,6 +154,9 @@ export class Renderer {
 
     if (opts.selected && opts.hover) this.drawPlacementPreview(world, opts.hover, opts.selected);
     if (opts.inspected) this.drawRange(opts.inspected);
+    if (opts.inspected && opts.previewRange !== null) {
+      this.drawPreviewRange(opts.inspected, opts.previewRange);
+    }
 
     this.drawAuras(world);
     for (const t of world.towers) this.drawTower(t, opts.inspected?.id === t.id);
@@ -173,6 +177,23 @@ export class Renderer {
     g.strokeStyle = PALETTE.rangeLine;
     g.lineWidth = 2;
     g.setLineDash([6, 6]);
+    g.stroke();
+    g.setLineDash([]);
+  }
+
+  /**
+   * What the range would become if the hovered upgrade were bought --
+   * unfilled and in the same gold used for a bought capstone's ring, so it
+   * reads as "not real yet" next to the solid current-range circle.
+   */
+  private drawPreviewRange(t: Tower, range: number): void {
+    if (range <= 0) return;
+    const g = this.g;
+    g.beginPath();
+    g.arc(t.x, t.y, range, 0, Math.PI * 2);
+    g.strokeStyle = '#ffd54f';
+    g.lineWidth = 2;
+    g.setLineDash([3, 3]);
     g.stroke();
     g.setLineDash([]);
   }
