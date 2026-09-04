@@ -12,9 +12,9 @@ Not yet scheduled. Notes to self so these aren't lost.
 2. ~~**Tapping an illegal cell should drop the armed tower.**~~ Done --
    `boardAction` now returns `'unarm'` for this case, matching the existing
    "tap the card again to change your mind" behaviour.
-3. **Upgrades should be visible immediately on selecting a tower**, without
-   scrolling past "The neighbours" build list first. Consider swapping "The
-   neighbours" out for the upgrade panel while a placed tower is selected,
-   rather than showing both build cards and upgrades at once.
+3. ~~**Upgrades should be visible immediately on selecting a tower.**~~
+   Done -- build cards are compact by default and expand on arming, and
+   "The neighbours" is now hidden and replaced by the upgrade panel while a
+   placed tower is being inspected.
 4. **Start/pause/speed controls need a home that doesn't require
    scrolling.** They currently sit below the fold on a normal viewport.
