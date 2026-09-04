@@ -72,10 +72,16 @@ describe('what a tap on the board means', () => {
     ).toBe('place');
   });
 
-  it('does nothing on an illegal cell rather than half-placing', () => {
+  it('does nothing on an illegal cell with no tower armed', () => {
+    expect(
+      boardAction({ selected: null, occupied: false, legal: false, inspectingSame: false }),
+    ).toBe('nothing');
+  });
+
+  it('an illegal tap drops the armed tower, matching tapping the card again', () => {
     expect(
       boardAction({ selected: 'norah', occupied: false, legal: false, inspectingSame: false }),
-    ).toBe('nothing');
+    ).toBe('unarm');
   });
 
   it('inspects an occupied cell even while a tower is armed', () => {

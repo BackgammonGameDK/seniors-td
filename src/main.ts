@@ -127,6 +127,8 @@ canvas.addEventListener('pointerdown', (ev) => {
     inspected = existing ?? null;
   } else if (action === 'close') {
     inspected = null;
+  } else if (action === 'unarm') {
+    selected = null;
   }
 });
 
