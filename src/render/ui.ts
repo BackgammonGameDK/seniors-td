@@ -70,6 +70,13 @@ export class Ui {
   private lastPanel = '';
   private lastPreview = -1;
   private inspected: Tower | null = null;
+  private hoverRange: number | null = null;
+
+  /** What the range would become if the tier currently under the pointer
+   *  were bought, for the board to draw as a preview -- `null` otherwise. */
+  get previewRange(): number | null {
+    return this.hoverRange;
+  }
 
   constructor(private handlers: UiHandlers) {
     this.buildTowerMenu();
@@ -88,6 +95,16 @@ export class Ui {
       if (btn && !btn.disabled && this.inspected) {
         handlers.onBuyUpgrade(this.inspected, btn.dataset.choice!);
       }
+    });
+    // Same delegation for hover: only a card whose tier actually changes
+    // range carries data-range, so anything else leaves the preview alone.
+    this.upgrades.addEventListener('pointerover', (ev) => {
+      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-range]');
+      if (btn) this.hoverRange = Number(btn.dataset.range);
+    });
+    this.upgrades.addEventListener('pointerout', (ev) => {
+      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-range]');
+      if (btn && !btn.contains(ev.relatedTarget as Node | null)) this.hoverRange = null;
     });
   }
 
@@ -203,7 +220,7 @@ export class Ui {
             locked: pathTierLocked(tierIndex, bought),
           });
           const tierLook = pathLook.tiers[tierIndex];
-          return this.upgradeButton(key, tierLook.name, tierLook.blurb, tier.cost, state);
+          return this.upgradeButton(key, tierLook.name, tierLook.blurb, tier.cost, state, tier.stat.range);
         })
         .join('');
       return `<div class="upath"><h4>${pathLook.name}</h4>${cards}</div>`;
@@ -222,7 +239,7 @@ export class Ui {
             locked: capstoneLocked(t.upgradeA, t.upgradeB),
             otherCapstoneChosen: t.capstone !== null && t.capstone !== cap.id,
           });
-          return this.upgradeButton(cap.id, capLook.name, capLook.blurb, cap.cost, state);
+          return this.upgradeButton(cap.id, capLook.name, capLook.blurb, cap.cost, state, cap.stat.range);
         })
         .join('');
       html += `<div class="upath"><h4>Capstone</h4>${capCards}</div>`;
@@ -236,6 +253,7 @@ export class Ui {
     blurb: string,
     cost: number,
     state: { action: string; className: string },
+    range?: number,
   ): string {
     const tag =
       state.action === 'bought'
@@ -244,8 +262,9 @@ export class Ui {
           ? 'locked'
           : `${cost}`;
     const disabled = state.action !== 'buy' ? 'disabled' : '';
+    const rangeAttr = range !== undefined ? ` data-range="${range}"` : '';
     return (
-      `<button class="${state.className}" data-choice="${choice}" data-cost="${cost}" ${disabled}>` +
+      `<button class="${state.className}" data-choice="${choice}" data-cost="${cost}"${rangeAttr} ${disabled}>` +
       `<span><span class="n">${name}</span><br><span class="b">${blurb}</span></span>` +
       `<span class="c">${tag}</span></button>`
     );
