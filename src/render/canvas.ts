@@ -327,7 +327,11 @@ export class Renderer {
     }
     // A ring for anything bought on the upgrade tree, gold once a capstone
     // is chosen -- a glance should tell a built tower from a fresh one.
-    if (t.upgradeA > 0 || t.upgradeB > 0 || t.capstone) {
+    //
+    // Only on the plain disc. At radius 19 the ring sits exactly on top of a
+    // 42px picture, so on a drawn character it stopped reading as a badge and
+    // started reading as a plate the senior was standing in.
+    if (sprite === null && (t.upgradeA > 0 || t.upgradeB > 0 || t.capstone)) {
       g.beginPath();
       g.arc(0, 0, 19, 0, Math.PI * 2);
       g.strokeStyle = t.capstone ? '#ffd54f' : 'rgba(255,255,255,.8)';
