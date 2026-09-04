@@ -157,6 +157,26 @@ export class Renderer {
 
     paintGrass(g);
 
+    /*
+     * The cell grid goes down before the street, so the road paints over it.
+     * The lines mark where a neighbour can stand, and nobody can stand on the
+     * road -- drawn on top they were only a barely visible smudge across it.
+     */
+    g.strokeStyle = PALETTE.grid;
+    g.lineWidth = 1;
+    for (let col = 1; col < BOARD.cols; col++) {
+      g.beginPath();
+      g.moveTo(col * BOARD.cell + 0.5, 0);
+      g.lineTo(col * BOARD.cell + 0.5, BOARD.height);
+      g.stroke();
+    }
+    for (let row = 1; row < BOARD.rows; row++) {
+      g.beginPath();
+      g.moveTo(0, row * BOARD.cell + 0.5);
+      g.lineTo(BOARD.width, row * BOARD.cell + 0.5);
+      g.stroke();
+    }
+
     g.lineCap = 'round';
     g.lineJoin = 'round';
     this.tracePathOn(g);
@@ -175,20 +195,6 @@ export class Renderer {
     g.stroke();
     g.setLineDash([]);
 
-    g.strokeStyle = PALETTE.grid;
-    g.lineWidth = 1;
-    for (let col = 1; col < BOARD.cols; col++) {
-      g.beginPath();
-      g.moveTo(col * BOARD.cell + 0.5, 0);
-      g.lineTo(col * BOARD.cell + 0.5, BOARD.height);
-      g.stroke();
-    }
-    for (let row = 1; row < BOARD.rows; row++) {
-      g.beginPath();
-      g.moveTo(0, row * BOARD.cell + 0.5);
-      g.lineTo(BOARD.width, row * BOARD.cell + 0.5);
-      g.stroke();
-    }
     return c;
   }
 
