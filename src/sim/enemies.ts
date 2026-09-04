@@ -6,13 +6,15 @@ import type { EnemyDef, EnemyId } from './types.ts';
  * Each one puts a different kind of pressure on a board, but none of them is
  * the answer to a particular tower or has a particular tower as its answer.
  * Sam arrives in numbers, Mike arrives armoured, the Gang arrives twice, Ben
- * makes his neighbours harder to chip down and Tina makes towers stop. A board
- * that only does one thing well will find one of them expensive; a board that
- * does two or three things will not.
+ * makes his neighbours harder to chip down, Tina makes towers stop and Skye
+ * arrives too fast for a slow to hold. A board that only does one thing well
+ * will find one of them expensive; a board that does two or three things will
+ * not.
  *
  * Armour subtracts from every hit, which is the honest way to make a slow
  * heavy hit and a fast light one genuinely different without any lookup table
- * existing. Ben's shield does the same job from the other side.
+ * existing. Ben's shield does the same job from the other side, and Skye's
+ * slow resistance does it for the effect rather than the damage.
  */
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
   sam: {
@@ -23,6 +25,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 5,
     leakCost: 1,
     stunImmune: false,
+    slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
     auraRange: 0,
@@ -39,6 +42,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     leakCost: 2,
     // The reason Pete cannot be the whole answer to a round.
     stunImmune: true,
+    slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
     auraRange: 0,
@@ -54,6 +58,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 12,
     leakCost: 2,
     stunImmune: false,
+    slowResist: 0,
     shieldAura: 2,
     disablesTowers: false,
     auraRange: 90,
@@ -69,6 +74,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 12,
     leakCost: 2,
     stunImmune: false,
+    slowResist: 0,
     shieldAura: 0,
     disablesTowers: true,
     auraRange: 80,
@@ -84,12 +90,31 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 10,
     leakCost: 2,
     stunImmune: false,
+    slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
     auraRange: 0,
     splitsInto: 'walker',
     splitCount: 2,
     blockerDps: 20,
+  },
+  skye: {
+    id: 'skye',
+    hp: 70,
+    speed: 2.6,
+    armour: 0,
+    bounty: 11,
+    leakCost: 2,
+    // Stun and a blockade both still stop her, so the speed is a cost to a
+    // board that leans on slows rather than a tower she is immune to.
+    stunImmune: false,
+    slowResist: 0.75,
+    shieldAura: 0,
+    disablesTowers: false,
+    auraRange: 0,
+    splitsInto: null,
+    splitCount: 0,
+    blockerDps: 16,
   },
   walker: {
     id: 'walker',
@@ -99,6 +124,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 3,
     leakCost: 1,
     stunImmune: false,
+    slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
     auraRange: 0,

@@ -26,7 +26,7 @@ import type { Stats, Tower } from '../src/sim/types.ts';
 const noStats: Stats = {
   kills: 3,
   leaks: 2,
-  leaksByEnemy: { sam: 0, mike: 0, ben: 0, tina: 0, gang: 0, walker: 0 },
+  leaksByEnemy: { sam: 0, mike: 0, ben: 0, tina: 0, gang: 0, skye: 0, walker: 0 },
   livesLost: 2,
   goldEarned: 40,
   blockersLost: 0,
@@ -354,6 +354,12 @@ describe('the troublemaker read-out teaches the mechanic', () => {
 
   it('warns that the Gang comes back', () => {
     expect(enemyReadout({ def: 'gang', hp: 70, scale: 1 }).lines.join(' ')).toMatch(/Breaks into/);
+  });
+
+  it('says in words that slowing barely works on Skye', () => {
+    const line = enemyReadout({ def: 'skye', hp: 70, scale: 1 }).lines.join(' ');
+    expect(line).toMatch(/slowing works 75% less/);
+    expect(line).not.toMatch(/slowResist/);
   });
 
   it('has nothing special to say about the plain ones', () => {

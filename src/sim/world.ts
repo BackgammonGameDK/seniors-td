@@ -510,8 +510,11 @@ export function applyHit(
   // Status lands even when the damage does not, so Pete works at zero damage
   // and Barbara's glaze still slows something armoured.
   if (effect.slowTicks > 0) {
-    e.slowTicks = Math.max(e.slowTicks, effect.slowTicks);
-    e.slowFactor = Math.max(e.slowFactor, effect.slowFactor);
+    const factor = effect.slowFactor * (1 - d.slowResist);
+    if (factor > 0) {
+      e.slowTicks = Math.max(e.slowTicks, effect.slowTicks);
+      e.slowFactor = Math.max(e.slowFactor, factor);
+    }
   }
   if (effect.stunTicks > 0 && !d.stunImmune) {
     e.stunTicks = Math.max(e.stunTicks, effect.stunTicks);

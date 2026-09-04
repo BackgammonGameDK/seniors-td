@@ -10,10 +10,10 @@
 
 export type TowerId = 'norah' | 'barbara' | 'pete' | 'bill' | 'walter' | 'clara';
 
-export type EnemyId = 'sam' | 'mike' | 'ben' | 'tina' | 'gang' | 'walker';
+export type EnemyId = 'sam' | 'mike' | 'ben' | 'tina' | 'gang' | 'skye' | 'walker';
 
 export const TOWER_IDS: TowerId[] = ['norah', 'barbara', 'pete', 'bill', 'walter', 'clara'];
-export const ENEMY_IDS: EnemyId[] = ['sam', 'mike', 'ben', 'tina', 'gang', 'walker'];
+export const ENEMY_IDS: EnemyId[] = ['sam', 'mike', 'ben', 'tina', 'gang', 'skye', 'walker'];
 
 /**
  * How a tower acts on its turn.
@@ -86,6 +86,15 @@ export interface EnemyDef {
   /** Lives lost if it reaches the end. */
   leakCost: number;
   stunImmune: boolean;
+  /**
+   * Fraction of an incoming slow ignored. 0 takes a slow in full, 1 shrugs it
+   * off entirely.
+   *
+   * A stat rather than an immunity flag, for the same reason armour is not a
+   * table: it scales what a slow is worth instead of switching it off, so a
+   * heavy slow is still worth something against a resistant target.
+   */
+  slowResist: number;
   /**
    * Flat absorption granted to *other* enemies within `auraRange`.
    *
