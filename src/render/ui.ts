@@ -20,7 +20,6 @@ import {
   endOverlay,
   enemyReadout,
   panelKey,
-  pathTierLocked,
   roundPreview,
   towerCard,
   upgradeCardState,
@@ -205,25 +204,27 @@ export class Ui {
     const tree = UPGRADES[t.def];
     const look = UPGRADE_LOOK[t.def];
 
+    // Only the next tier on a path is ever shown -- a bought tier drops off
+    // and the one after it takes its place, so there is never more than one
+    // card open on a path at a time. Once both tiers are bought the path has
+    // nothing left to show.
     const pathHtml = (
       key: 'pathA' | 'pathB',
       bought: 0 | 1 | 2,
     ): string => {
+      if (bought === 2) return '';
       const pathLook = look[key];
-      const cards = tree[key]
-        .map((tier, i) => {
-          const tierIndex = i as 0 | 1;
-          const state = upgradeCardState({
-            gold,
-            cost: tier.cost,
-            alreadyBought: bought > tierIndex,
-            locked: pathTierLocked(tierIndex, bought),
-          });
-          const tierLook = pathLook.tiers[tierIndex];
-          return this.upgradeButton(key, tierLook.name, tierLook.blurb, tier.cost, state, tier.stat.range);
-        })
-        .join('');
-      return `<div class="upath"><h4>${pathLook.name}</h4>${cards}</div>`;
+      const tierIndex = bought;
+      const tier = tree[key][tierIndex];
+      const state = upgradeCardState({
+        gold,
+        cost: tier.cost,
+        alreadyBought: false,
+        locked: false,
+      });
+      const tierLook = pathLook.tiers[tierIndex];
+      const card = this.upgradeButton(key, tierLook.name, tierLook.blurb, tier.cost, state, tier.stat.range);
+      return `<div class="upath"><h4>${pathLook.name}</h4>${card}</div>`;
     };
 
     let html = pathHtml('pathA', t.upgradeA) + pathHtml('pathB', t.upgradeB);
