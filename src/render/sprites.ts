@@ -15,6 +15,7 @@
 import type { EnemyId, TowerId } from '../sim/types.ts';
 
 import barbaraPng from '../assets/barbara.png';
+import coinPng from '../assets/coin.png';
 import norahPng from '../assets/norah.png';
 import petePng from '../assets/pete.png';
 import samPng from '../assets/sam.png';
@@ -37,15 +38,9 @@ const ENEMY_ART: Partial<Record<EnemyId, string>> = {
 /** Small pictures that belong to the readouts rather than to a character. */
 export type IconId = 'coin';
 
-/**
- * Empty on purpose.
- *
- * A coin picture is coming. When it lands, import it above and add
- * `coin: coinPng` here -- nothing else has to change, because the readout
- * already asks for the icon and already knows to draw an emoji instead when
- * the answer is `null`.
- */
-const ICON_ART: Partial<Record<IconId, string>> = {};
+const ICON_ART: Partial<Record<IconId, string>> = {
+  coin: coinPng,
+};
 
 const images = new Map<string, HTMLImageElement>();
 
