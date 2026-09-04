@@ -70,6 +70,62 @@ const EVENT_COLOR: Record<SimEvent['type'], string> = {
   stun: '#7986cb',
 };
 
+/** The side of one grass pixel. Five of them to a 40px board cell. */
+const GRASS_PIXEL = 8;
+
+/**
+ * A fixed hash for the grass, so the field looks the same in every session.
+ *
+ * The floor is painted once and blitted, so an unseeded `Math.random` would
+ * technically work -- but a screenshot of round 7 should show the same lawn
+ * tomorrow as it does today, which makes a visual change reviewable.
+ */
+function grassNoise(x: number, y: number): number {
+  let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * The lawn, drawn as blocks of flat colour with no blending anywhere.
+ *
+ * Three passes stacked: broad patches that pick the base tone, per-pixel
+ * speckle that breaks the patch edges up, and sparse tufts and flowers so the
+ * eye has something to land on.
+ */
+function paintGrass(g: CanvasRenderingContext2D): void {
+  const tones = PALETTE.grass;
+  const cols = Math.ceil(BOARD.width / GRASS_PIXEL);
+  const rows = Math.ceil(BOARD.height / GRASS_PIXEL);
+
+  for (let py = 0; py < rows; py++) {
+    for (let px = 0; px < cols; px++) {
+      const patch = grassNoise(px >> 2, py >> 2);
+      const speckle = grassNoise(px, py);
+      let tone = patch < 0.35 ? 1 : patch < 0.8 ? 2 : 3;
+      if (speckle < 0.18) tone -= 1;
+      else if (speckle > 0.88) tone += 1;
+      g.fillStyle = tones[Math.max(0, Math.min(tones.length - 1, tone))]!;
+      g.fillRect(px * GRASS_PIXEL, py * GRASS_PIXEL, GRASS_PIXEL, GRASS_PIXEL);
+    }
+  }
+
+  for (let py = 1; py < rows - 1; py++) {
+    for (let px = 1; px < cols - 1; px++) {
+      const seed = grassNoise(px + 911, py + 733);
+      if (seed > 0.986) {
+        // A tuft: a single pixel above a three-pixel base, on the same grid.
+        g.fillStyle = PALETTE.grassDeep;
+        g.fillRect(px * GRASS_PIXEL, (py - 1) * GRASS_PIXEL, GRASS_PIXEL, GRASS_PIXEL);
+        g.fillRect((px - 1) * GRASS_PIXEL, py * GRASS_PIXEL, GRASS_PIXEL * 3, GRASS_PIXEL);
+      } else if (seed > 0.981) {
+        g.fillStyle = PALETTE.grassBloom;
+        g.fillRect(px * GRASS_PIXEL, py * GRASS_PIXEL, GRASS_PIXEL, GRASS_PIXEL);
+      }
+    }
+  }
+}
+
 export class Renderer {
   private g: CanvasRenderingContext2D;
   private floaters: Floater[] = [];
@@ -99,11 +155,26 @@ export class Renderer {
     c.height = BOARD.height;
     const g = c.getContext('2d')!;
 
-    for (let row = 0; row < BOARD.rows; row++) {
-      for (let col = 0; col < BOARD.cols; col++) {
-        g.fillStyle = (col + row) % 2 === 0 ? PALETTE.grass : PALETTE.grassAlt;
-        g.fillRect(col * BOARD.cell, row * BOARD.cell, BOARD.cell, BOARD.cell);
-      }
+    paintGrass(g);
+
+    /*
+     * The cell grid goes down before the street, so the road paints over it.
+     * The lines mark where a neighbour can stand, and nobody can stand on the
+     * road -- drawn on top they were only a barely visible smudge across it.
+     */
+    g.strokeStyle = PALETTE.grid;
+    g.lineWidth = 1;
+    for (let col = 1; col < BOARD.cols; col++) {
+      g.beginPath();
+      g.moveTo(col * BOARD.cell + 0.5, 0);
+      g.lineTo(col * BOARD.cell + 0.5, BOARD.height);
+      g.stroke();
+    }
+    for (let row = 1; row < BOARD.rows; row++) {
+      g.beginPath();
+      g.moveTo(0, row * BOARD.cell + 0.5);
+      g.lineTo(BOARD.width, row * BOARD.cell + 0.5);
+      g.stroke();
     }
 
     g.lineCap = 'round';
@@ -124,20 +195,6 @@ export class Renderer {
     g.stroke();
     g.setLineDash([]);
 
-    g.strokeStyle = PALETTE.grid;
-    g.lineWidth = 1;
-    for (let col = 1; col < BOARD.cols; col++) {
-      g.beginPath();
-      g.moveTo(col * BOARD.cell + 0.5, 0);
-      g.lineTo(col * BOARD.cell + 0.5, BOARD.height);
-      g.stroke();
-    }
-    for (let row = 1; row < BOARD.rows; row++) {
-      g.beginPath();
-      g.moveTo(0, row * BOARD.cell + 0.5);
-      g.lineTo(BOARD.width, row * BOARD.cell + 0.5);
-      g.stroke();
-    }
     return c;
   }
 
