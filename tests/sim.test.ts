@@ -11,12 +11,14 @@ import {
 } from '../src/sim/path.ts';
 import { TOWERS } from '../src/sim/towers.ts';
 import type { EnemyId, TowerId } from '../src/sim/types.ts';
+import { effectiveDef } from '../src/sim/upgrades.ts';
 import { WAVES } from '../src/sim/waves.ts';
 import {
   applyHit,
   canPlace,
   createWorld,
   placeTower,
+  purchaseUpgrade,
   spawnEnemy,
   startWave,
   step,
@@ -215,7 +217,7 @@ describe('splitting', () => {
 });
 
 describe('blockades', () => {
-  it('stops the street until it is knocked down, then lets it move again', () => {
+  it('stops the street until it is really knocked down (after Second Wind), then lets it move again', () => {
     const w = rich();
     const at = roadCellNear(300);
     const walter = put(w, 'walter', at);
@@ -226,13 +228,74 @@ describe('blockades', () => {
     expect(sam.dist).toBeLessThan(walter.laneDist);
     expect(walter.hp).toBeLessThan(TOWERS.walter.maxHp);
 
-    // Knock him down by hand and the queue moves off again.
+    // Second Wind is spent, so this only puts him down for good.
+    walter.revivesUsed = 1;
     walter.hp = 0.01;
     const held = sam.dist;
     for (let i = 0; i < 120; i++) step(w);
     expect(w.towers).toHaveLength(0);
     expect(w.stats.blockersLost).toBe(1);
     expect(sam.dist).toBeGreaterThan(held);
+  });
+});
+
+describe("Walker Walter's Second Wind", () => {
+  it('gets back up once per round instead of falling, at a fraction of max HP', () => {
+    const w = rich();
+    const walter = put(w, 'walter', roadCellNear(300));
+    spawnEnemy(w, 'sam', walter.laneDist - 60);
+
+    walter.hp = 0.01;
+    // A knockdown from a hand-set HP still has to pass through hitBlocker, so
+    // let Sam land the blow that actually zeroes it -- a handful of ticks to
+    // close the gap and land a hit, then the full revive delay to come back.
+    for (let i = 0; i < 60; i++) step(w);
+    expect(w.towers).toHaveLength(1);
+    expect(walter.hp).toBe(0);
+    expect(walter.reviveAt).not.toBeNull();
+
+    // Sam is still standing right beside him, so the same tick that revives
+    // Walter can also land the next hit -- assert a range rather than an
+    // exact figure, since the two can land on the same tick or not.
+    for (let i = 0; i < 400 && walter.revivesUsed === 0; i++) step(w);
+    expect(walter.revivesUsed).toBe(1);
+    expect(walter.reviveAt).toBeNull();
+    const revived = TOWERS.walter.maxHp * (TOWERS.walter.reviveHpFrac ?? 0);
+    expect(walter.hp).toBeGreaterThan(0);
+    expect(walter.hp).toBeLessThanOrEqual(revived);
+  });
+
+  it('stays down on the second knockdown of the round', () => {
+    const w = rich();
+    const walter = put(w, 'walter', roadCellNear(300));
+    walter.revivesUsed = 1;
+    walter.hp = 0.01;
+    spawnEnemy(w, 'sam', walter.laneDist - 60);
+    for (let i = 0; i < 60; i++) step(w);
+    expect(w.towers).toHaveLength(0);
+  });
+
+  it('resets Second Wind for the next round', () => {
+    const w = rich();
+    const walter = put(w, 'walter', roadCellNear(300));
+    walter.revivesUsed = 1;
+    expect(startWave(w)).toBe(true);
+    expect(walter.revivesUsed).toBe(0);
+  });
+
+  it('only regenerates while standing, and never past max HP', () => {
+    const w = rich();
+    const walter = put(w, 'walter', roadCellNear(300));
+    walter.upgradeB = 2; // Recovery II: regen 3.5/s
+    walter.hp = TOWERS.walter.maxHp - 0.01;
+    step(w);
+    expect(walter.hp).toBe(TOWERS.walter.maxHp);
+
+    walter.hp = 0;
+    walter.reviveAt = null;
+    walter.revivesUsed = 1; // stay down, no Second Wind to trigger
+    step(w);
+    expect(walter.hp).toBe(0);
   });
 });
 
@@ -371,5 +434,97 @@ describe('the authored rounds', () => {
     // Nothing new turns up for the first time in the last third of the run,
     // where a player has no quiet round left to learn it in.
     for (const [, round] of firstSeen) expect(round).toBeLessThan(WAVES.length * 0.7);
+  });
+});
+
+describe('upgrades', () => {
+  it("Triple Knit fires at up to three distinct targets in one shot", () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    // Both paths must be maxed before a capstone can be bought.
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(true);
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(true);
+    expect(purchaseUpgrade(w, norah.id, 'pathB')).toBe(true);
+    expect(purchaseUpgrade(w, norah.id, 'pathB')).toBe(true);
+    expect(purchaseUpgrade(w, norah.id, 'tripleKnit')).toBe(true);
+
+    for (let i = 0; i < 4; i++) spawnEnemy(w, 'sam', 100 + i * 5);
+    step(w);
+    const marks = new Set(w.projectiles.map((p) => p.targetId));
+    expect(marks.size).toBe(3);
+  });
+
+  it("Piercing Shot reaches a second troublemaker queued right behind the first", () => {
+    const w = rich();
+    const bill = put(w, 'bill', buildCellNear(300));
+    for (let i = 0; i < 4; i++) expect(purchaseUpgrade(w, bill.id, i < 2 ? 'pathA' : 'pathB')).toBe(true);
+    expect(purchaseUpgrade(w, bill.id, 'piercingShot')).toBe(true);
+
+    const front = spawnEnemy(w, 'mike', 300);
+    const behind = spawnEnemy(w, 'mike', 280);
+    const frontStart = front.hp;
+    const behindStart = behind.hp;
+
+    for (let i = 0; i < 60; i++) step(w);
+    expect(front.hp).toBeLessThan(frontStart);
+    expect(behind.hp).toBeLessThan(behindStart);
+  });
+
+  it("tier two is locked until tier one on the same path is bought", () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    // upgradeA still 0, so a second tier-A buy has nothing to advance from --
+    // exercised here through the sim function directly rather than requesting
+    // "tier 2" explicitly, since `purchaseUpgrade` always buys the next tier.
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(true);
+    expect(norah.upgradeA).toBe(1);
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(true);
+    expect(norah.upgradeA).toBe(2);
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(false);
+    expect(norah.upgradeA).toBe(2);
+  });
+
+  it("a capstone cannot be bought before both paths are maxed, and cannot be swapped once chosen", () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    expect(purchaseUpgrade(w, norah.id, 'tripleKnit')).toBe(false);
+
+    purchaseUpgrade(w, norah.id, 'pathA');
+    purchaseUpgrade(w, norah.id, 'pathA');
+    purchaseUpgrade(w, norah.id, 'pathB');
+    purchaseUpgrade(w, norah.id, 'pathB');
+    expect(purchaseUpgrade(w, norah.id, 'tripleKnit')).toBe(true);
+    expect(norah.capstone).toBe('tripleKnit');
+    expect(purchaseUpgrade(w, norah.id, 'longYarn')).toBe(false);
+    expect(norah.capstone).toBe('tripleKnit');
+  });
+
+  it("purchaseUpgrade refuses what the wallet cannot cover", () => {
+    const w = createWorld(1);
+    const at = buildCellNear(300);
+    expect(placeTower(w, 'norah', at.col, at.row)).toBe(true);
+    const norah = w.towers[0]!;
+    w.gold = 0;
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(false);
+    expect(norah.upgradeA).toBe(0);
+  });
+
+  it("Coffee Clara's range buff stacks multiplicatively, the same way her rate buff does", () => {
+    const w = rich();
+    const clara = put(w, 'clara', buildCellNear(300));
+    purchaseUpgrade(w, clara.id, 'pathA');
+    purchaseUpgrade(w, clara.id, 'pathA');
+    purchaseUpgrade(w, clara.id, 'pathB');
+    purchaseUpgrade(w, clara.id, 'pathB');
+    purchaseUpgrade(w, clara.id, 'secondRound');
+    expect(clara.capstone).toBe('secondRound');
+
+    const norah = put(w, 'norah', buildCellNear(360));
+    norah.x = clara.x + 10;
+    norah.y = clara.y;
+    step(w);
+    const d = effectiveDef(clara);
+    expect(norah.rangeMult).toBeCloseTo(1 + (d.rangeBuffBonus ?? 0));
+    expect(clara.rangeMult).toBe(1);
   });
 });

@@ -18,6 +18,7 @@ import {
   canPlace,
   createWorld,
   placeTower,
+  purchaseUpgrade,
   sellTower,
   startWave,
   step,
@@ -66,6 +67,9 @@ const ui = new Ui({
   onSell(t) {
     sellTower(world, t);
     inspected = null;
+  },
+  onBuyUpgrade(t, choice) {
+    purchaseUpgrade(world, t.id, choice);
   },
   onTogglePause() {
     paused = !paused;

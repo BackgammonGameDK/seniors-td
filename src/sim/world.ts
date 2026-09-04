@@ -18,6 +18,7 @@ import {
 } from './path.ts';
 import { Rng } from './rng.ts';
 import { TOWERS } from './towers.ts';
+import { effectiveDef, UPGRADES } from './upgrades.ts';
 import type {
   Enemy,
   EnemyId,
@@ -66,6 +67,20 @@ export interface World {
    * and theirs. Queue, then flush once nothing is iterating.
    */
   pendingSpawns: { enemy: EnemyId; dist: number; scale: number }[];
+  /**
+   * A pierce that connected, held until the tick's main loops are done.
+   *
+   * Same reason as `pendingSpawns`: a chained hit resolved immediately could
+   * land on an enemy something earlier in the same tick had already killed,
+   * or double-count a hit that hasn't actually happened yet from the shooter's
+   * point of view. It waits for the quiet moment at the end of the tick.
+   */
+  pendingHits: {
+    enemyId: number;
+    damage: number;
+    effect: Pick<TowerDef, 'slowTicks' | 'slowFactor' | 'stunTicks'>;
+    pierceRemaining: number;
+  }[];
   stats: Stats;
   /** Cleared at the top of every step. The renderer reads these for feedback. */
   events: SimEvent[];
@@ -91,6 +106,7 @@ export function createWorld(seed = 1): World {
     waveIndex: 0,
     spawnQueue: [],
     pendingSpawns: [],
+    pendingHits: [],
     stats: {
       kills: 0,
       leaks: 0,
@@ -143,7 +159,13 @@ export function placeTower(w: World, def: TowerId, col: number, row: number): bo
     // again for the life of the tower.
     laneDist: d.mode === 'blocker' ? distanceAlong(p) : -1,
     rateMult: 1,
+    rangeMult: 1,
     disabled: false,
+    upgradeA: 0,
+    upgradeB: 0,
+    capstone: null,
+    revivesUsed: 0,
+    reviveAt: null,
     targetId: null,
   });
   return true;
@@ -164,13 +186,52 @@ export function sellTower(w: World, t: Tower): boolean {
 }
 
 /**
+ * Buys the next tier on a path, or a capstone once both paths are maxed.
+ *
+ * `towerId` rather than a `Tower` reference, the same way `blockedBy` and
+ * `targetId` address a tower elsewhere in this file -- a UI panel can hold an
+ * id past the tick where the tower it names got knocked down, and this just
+ * fails closed rather than needing that panel to know it.
+ *
+ * A capstone choice cannot be undone: once `capstone` is set, neither
+ * capstone id is ever accepted again for that tower.
+ */
+export function purchaseUpgrade(
+  w: World,
+  towerId: number,
+  choice: 'pathA' | 'pathB' | string,
+): boolean {
+  const t = w.towers.find((x) => x.id === towerId);
+  if (!t) return false;
+  const tree = UPGRADES[t.def];
+
+  if (choice === 'pathA' || choice === 'pathB') {
+    const tier = choice === 'pathA' ? t.upgradeA : t.upgradeB;
+    if (tier >= 2) return false;
+    const next = tree[choice][tier as 0 | 1];
+    if (w.gold < next.cost) return false;
+    w.gold -= next.cost;
+    if (choice === 'pathA') t.upgradeA = (tier + 1) as 0 | 1 | 2;
+    else t.upgradeB = (tier + 1) as 0 | 1 | 2;
+    return true;
+  }
+
+  if (t.upgradeA < 2 || t.upgradeB < 2 || t.capstone !== null) return false;
+  const cap = tree.capstones.find((c) => c.id === choice);
+  if (!cap || w.gold < cap.cost) return false;
+  w.gold -= cap.cost;
+  t.capstone = cap.id;
+  return true;
+}
+
+/**
  * A tower's cooldown with its neighbours' encouragement folded in.
  *
  * Kept in one exported place so the upgrade panel can show a real number
  * rather than recomputing the fold and drifting from what the sim does.
  */
 export function effectiveCooldown(t: Tower): number {
-  return Math.max(1, Math.round(TOWERS[t.def].cooldown / t.rateMult));
+  return Math.max(1, Math.round(effectiveDef(t).cooldown / t.rateMult));
 }
 
 // --- rounds -----------------------------------------------------------------
@@ -179,6 +240,9 @@ export function startWave(w: World): boolean {
   if (w.status === 'running' || w.status === 'won' || w.status === 'lost') return false;
   const wave = WAVES[w.waveIndex];
   if (!wave) return false;
+  // Second Wind is spent once a round, so a Walter left standing from a round
+  // he never fell in gets it back for the next one.
+  for (const t of w.towers) t.revivesUsed = 0;
   w.spawnQueue = [];
   for (const group of wave.groups) {
     for (let i = 0; i < group.count; i++) {
@@ -254,15 +318,18 @@ function within(ax: number, ay: number, bx: number, by: number, r: number): bool
 function advanceAuras(w: World): void {
   for (const t of w.towers) {
     t.rateMult = 1;
+    t.rangeMult = 1;
     t.disabled = false;
   }
   for (const e of w.enemies) e.shield = 0;
 
   for (const src of w.towers) {
-    const d = TOWERS[src.def];
+    const d = effectiveDef(src);
     if (d.mode !== 'support') continue;
     for (const t of w.towers) {
-      if (t !== src && within(t.x, t.y, src.x, src.y, d.range)) t.rateMult *= d.buffRate;
+      if (t === src || !within(t.x, t.y, src.x, src.y, d.range)) continue;
+      t.rateMult *= d.buffRate;
+      t.rangeMult *= 1 + (d.rangeBuffBonus ?? 0);
     }
   }
 
@@ -325,14 +392,49 @@ function releaseBlocked(w: World, towerId: number): void {
 }
 
 function hitBlocker(w: World, e: Enemy, t: Tower): void {
-  t.hp -= (ENEMIES[e.def].blockerDps * ATTACK_COOLDOWN) / 60;
   e.attackCd = ATTACK_COOLDOWN;
+  // Already down and waiting on Second Wind -- nothing left to hit until it
+  // is back up, and landing another blow here would only push its revive
+  // time further out every 30 ticks for as long as something stood over it.
+  if (t.hp <= 0 && t.reviveAt !== null) return;
+  t.hp -= (ENEMIES[e.def].blockerDps * ATTACK_COOLDOWN) / 60;
   if (t.hp <= 0) {
+    if (t.revivesUsed === 0) {
+      // Second Wind, once a round: stays at zero HP (blockerStopAhead
+      // already skips hp <= 0, so the road is still held) until it comes
+      // back up in advanceBlockers.
+      t.hp = 0;
+      t.reviveAt = w.tick + (effectiveDef(t).reviveDelayTicks ?? 0);
+      return;
+    }
     w.stats.blockersLost++;
     emit(w, 'blockerDown', t.x, t.y);
     const i = w.towers.indexOf(t);
     if (i >= 0) w.towers.splice(i, 1);
     releaseBlocked(w, t.id);
+  }
+}
+
+/**
+ * A blocker's own upkeep: Second Wind coming back up, and regen while
+ * standing. Kept apart from `advanceEffects`, which is enemies-only and
+ * never writes a tower's hp.
+ */
+function advanceBlockers(w: World): void {
+  for (const t of w.towers) {
+    if (TOWERS[t.def].mode !== 'blocker') continue;
+    const d = effectiveDef(t);
+    if (t.reviveAt !== null) {
+      if (w.tick >= t.reviveAt) {
+        t.hp = d.maxHp * (d.reviveHpFrac ?? 0);
+        t.reviveAt = null;
+        t.revivesUsed++;
+      }
+      continue;
+    }
+    if (t.hp > 0 && t.hp < d.maxHp && (d.regen ?? 0) > 0) {
+      t.hp = Math.min(d.maxHp, t.hp + (d.regen ?? 0) / 60);
+    }
   }
 }
 
@@ -460,9 +562,37 @@ function findTarget(w: World, t: Tower, range: number): Enemy | null {
   return best;
 }
 
+/**
+ * Up to `count` distinct enemies in range, furthest-along first -- the same
+ * ordering `findTarget` already uses, just not stopping at one. Norah's
+ * Triple Knit is the only thing that asks for more than one.
+ */
+function findTargets(w: World, t: Tower, range: number, count: number): Enemy[] {
+  const inRange = w.enemies.filter((e) => e.alive && within(e.x, e.y, t.x, t.y, range));
+  inRange.sort((a, b) => b.dist - a.dist);
+  return inRange.slice(0, count);
+}
+
+/** How far behind a pierced enemy a shot may still reach the next one. */
+// The lane is single file, so "behind" reads as a smaller `dist`. The window
+// is wide enough to catch the next body queued in a tight column (enemies
+// bunch up a few pixels apart behind a blockade or a corner) without also
+// reaching past it to a straggler that the shot never actually flew near.
+const PIERCE_WINDOW = 40;
+
+function findPierceTarget(w: World, hit: Enemy): Enemy | null {
+  let best: Enemy | null = null;
+  for (const e of w.enemies) {
+    if (!e.alive || e.id === hit.id) continue;
+    if (e.dist >= hit.dist || hit.dist - e.dist > PIERCE_WINDOW) continue;
+    if (best === null || e.dist > best.dist) best = e;
+  }
+  return best;
+}
+
 function fireTowers(w: World): void {
   for (const t of w.towers) {
-    const d = TOWERS[t.def];
+    const d = effectiveDef(t);
     if (d.mode === 'support' || d.mode === 'blocker') continue;
     // A disabled tower does nothing at all, cooldown included, so Tina costs
     // real shots rather than merely delaying them.
@@ -471,11 +601,12 @@ function fireTowers(w: World): void {
       t.cooldown--;
       continue;
     }
+    const range = d.range * t.rangeMult;
 
     if (d.mode === 'pulse') {
       let shouted = false;
       for (const e of w.enemies) {
-        if (!e.alive || !within(e.x, e.y, t.x, t.y, d.range)) continue;
+        if (!e.alive || !within(e.x, e.y, t.x, t.y, range)) continue;
         shouted = true;
         applyHit(w, e, d.damage, d);
       }
@@ -485,21 +616,26 @@ function fireTowers(w: World): void {
       continue;
     }
 
-    const target = findTarget(w, t, d.range);
-    if (!target) continue;
-    w.projectiles.push({
-      id: w.nextId++,
-      x: t.x,
-      y: t.y,
-      targetId: target.id,
-      damage: d.damage,
-      speed: PROJECTILE_SPEED,
-      splash: d.splash,
-      slowTicks: d.slowTicks,
-      slowFactor: d.slowFactor,
-      stunTicks: d.stunTicks,
-      from: t.def,
-    });
+    const multiShot = d.multiShot ?? 1;
+    const targets = multiShot > 1 ? findTargets(w, t, range, multiShot) : [findTarget(w, t, range)];
+    const live = targets.filter((e): e is Enemy => e !== null);
+    if (live.length === 0) continue;
+    for (const target of live) {
+      w.projectiles.push({
+        id: w.nextId++,
+        x: t.x,
+        y: t.y,
+        targetId: target.id,
+        damage: d.damage,
+        speed: PROJECTILE_SPEED,
+        splash: d.splash,
+        slowTicks: d.slowTicks,
+        slowFactor: d.slowFactor,
+        stunTicks: d.stunTicks,
+        pierceRemaining: d.pierce ?? 0,
+        from: t.def,
+      });
+    }
     t.cooldown = effectiveCooldown(t);
   }
 }
@@ -518,7 +654,42 @@ function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy |
     for (const e of caught) applyHit(w, e, p.damage, effect);
   } else if (direct) {
     applyHit(w, direct, p.damage, effect);
+    if (p.pierceRemaining > 0) {
+      const next = findPierceTarget(w, direct);
+      if (next) {
+        w.pendingHits.push({
+          enemyId: next.id,
+          damage: p.damage,
+          effect,
+          pierceRemaining: p.pierceRemaining - 1,
+        });
+      }
+    }
   }
+}
+
+/** Pierce hits queued by `detonate`, resolved once nothing is mid-tick. */
+function flushPierceHits(w: World): void {
+  if (w.pendingHits.length === 0) return;
+  const queued = w.pendingHits;
+  w.pendingHits = [];
+  for (const h of queued) {
+    const e = w.enemies.find((x) => x.id === h.enemyId && x.alive);
+    if (!e) continue;
+    applyHit(w, e, h.damage, h.effect);
+    if (h.pierceRemaining > 0) {
+      const next = findPierceTarget(w, e);
+      if (next) {
+        w.pendingHits.push({
+          enemyId: next.id,
+          damage: h.damage,
+          effect: h.effect,
+          pierceRemaining: h.pierceRemaining - 1,
+        });
+      }
+    }
+  }
+  flushPierceHits(w);
 }
 
 function advanceProjectiles(w: World): void {
@@ -558,9 +729,11 @@ export function step(w: World): void {
 
   advanceAuras(w);
   advanceEffects(w);
+  advanceBlockers(w);
   advanceEnemies(w);
   fireTowers(w);
   advanceProjectiles(w);
+  flushPierceHits(w);
   flushSpawns(w);
   w.enemies = w.enemies.filter((e) => e.alive);
 

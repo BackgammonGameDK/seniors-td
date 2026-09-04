@@ -62,6 +62,14 @@
       .card .c { font-weight: bold; font-size: 13px; white-space: nowrap; }
       .card.on { border-color: var(--accent); background: #fff3ee; }
       .card.poor { opacity: .45; cursor: not-allowed; }
+      .card.locked { opacity: .4; cursor: not-allowed; }
+      .card.bought { border-color: var(--good); background: #f1f8f3; cursor: default; }
+      #upgrades { display: flex; flex-direction: column; gap: 10px; margin: 8px 0; }
+      #upgrades .upath h4 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase;
+                             letter-spacing: .06em; opacity: .6; }
+      #upgrades .card { grid-template-columns: 1fr auto; padding: 6px 8px; margin-bottom: 4px; }
+      #upgrades .card .n { font-size: 12px; }
+      #upgrades .card .b { font-size: 10.5px; }
       #controls { display: flex; gap: 8px; flex-wrap: wrap; }
       button {
         font: inherit; padding: 8px 12px; border-radius: 9px; cursor: pointer;
@@ -124,6 +132,7 @@
               <button id="inspectClose" title="Close">✕</button>
             </div>
             <div id="inspectBody"></div>
+            <div id="upgrades"></div>
             <button id="sell">Send home</button>
           </section>
 

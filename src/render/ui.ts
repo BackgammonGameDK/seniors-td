@@ -8,16 +8,21 @@
 import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
 import type { Tower, TowerId } from '../sim/types.ts';
+import { UPGRADES } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { refundOf } from '../sim/world.ts';
 import { TOWER_LOOK } from '../shared/display.ts';
+import { UPGRADE_LOOK } from '../shared/upgrades.ts';
 import {
+  capstoneLocked,
   cardState,
   endOverlay,
   enemyReadout,
   panelKey,
+  pathTierLocked,
   roundPreview,
   towerCard,
+  upgradeCardState,
   waveLabel,
 } from './decisions.ts';
 import type { Speed } from './clock.ts';
@@ -36,6 +41,8 @@ export interface UiHandlers {
   onSell(t: Tower): void;
   onTogglePause(): void;
   onCycleSpeed(): void;
+  /** `choice` is `'pathA'`, `'pathB'`, or a capstone id -- see `purchaseUpgrade`. */
+  onBuyUpgrade(t: Tower, choice: string): void;
 }
 
 export class Ui {
@@ -48,6 +55,7 @@ export class Ui {
   private inspect = el<HTMLElement>('inspect');
   private inspectTitle = el<HTMLElement>('inspectTitle');
   private inspectBody = el<HTMLElement>('inspectBody');
+  private upgrades = el<HTMLElement>('upgrades');
   private sell = el<HTMLButtonElement>('sell');
   private startBtn = el<HTMLButtonElement>('startWave');
   private pauseBtn = el<HTMLButtonElement>('pause');
@@ -70,6 +78,14 @@ export class Ui {
     el('restart').addEventListener('click', () => handlers.onRestart());
     this.sell.addEventListener('click', () => {
       if (this.inspected) handlers.onSell(this.inspected);
+    });
+    // One delegated listener rather than one per card, since the cards are
+    // rebuilt whenever `panelKey` changes.
+    this.upgrades.addEventListener('click', (ev) => {
+      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-choice]');
+      if (btn && !btn.disabled && this.inspected) {
+        handlers.onBuyUpgrade(this.inspected, btn.dataset.choice!);
+      }
     });
   }
 
@@ -126,11 +142,11 @@ export class Ui {
         ? 'Place a neighbour, then start the round.'
         : 'Tap anyone on the board to see what they are.';
 
-    this.syncInspect(state.inspected);
+    this.syncInspect(state.inspected, world.gold);
     this.syncOverlay(world);
   }
 
-  private syncInspect(t: Tower | null): void {
+  private syncInspect(t: Tower | null, gold: number): void {
     this.inspected = t;
     const key = panelKey(t);
     if (key === this.lastPanel) return;
@@ -150,7 +166,76 @@ export class Ui {
     this.inspectBody.innerHTML = rows
       .map((r) => `<div class="statrow"><i>${r.label}</i><span>${r.value}</span></div>`)
       .join('');
+    this.upgrades.innerHTML = this.renderUpgrades(t, gold);
     this.sell.textContent = `Send home (+${refundOf(t.def)})`;
+  }
+
+  /** One card per path tier and per capstone, built once per `panelKey`. */
+  private renderUpgrades(t: Tower, gold: number): string {
+    const tree = UPGRADES[t.def];
+    const look = UPGRADE_LOOK[t.def];
+
+    const pathHtml = (
+      key: 'pathA' | 'pathB',
+      bought: 0 | 1 | 2,
+    ): string => {
+      const pathLook = look[key];
+      const cards = tree[key]
+        .map((tier, i) => {
+          const tierIndex = i as 0 | 1;
+          const state = upgradeCardState({
+            gold,
+            cost: tier.cost,
+            alreadyBought: bought > tierIndex,
+            locked: pathTierLocked(tierIndex, bought),
+          });
+          const tierLook = pathLook.tiers[tierIndex];
+          return this.upgradeButton(key, tierLook.name, tierLook.blurb, tier.cost, state);
+        })
+        .join('');
+      return `<div class="upath"><h4>${pathLook.name}</h4>${cards}</div>`;
+    };
+
+    let html = pathHtml('pathA', t.upgradeA) + pathHtml('pathB', t.upgradeB);
+
+    if (!capstoneLocked(t.upgradeA, t.upgradeB) || t.capstone) {
+      const capCards = tree.capstones
+        .map((cap) => {
+          const capLook = look.capstones[cap.id]!;
+          const state = upgradeCardState({
+            gold,
+            cost: cap.cost,
+            alreadyBought: t.capstone === cap.id,
+            locked: capstoneLocked(t.upgradeA, t.upgradeB),
+            otherCapstoneChosen: t.capstone !== null && t.capstone !== cap.id,
+          });
+          return this.upgradeButton(cap.id, capLook.name, capLook.blurb, cap.cost, state);
+        })
+        .join('');
+      html += `<div class="upath"><h4>Capstone</h4>${capCards}</div>`;
+    }
+    return html;
+  }
+
+  private upgradeButton(
+    choice: string,
+    name: string,
+    blurb: string,
+    cost: number,
+    state: { action: string; className: string },
+  ): string {
+    const tag =
+      state.action === 'bought'
+        ? 'owned'
+        : state.action === 'locked' || state.action === 'otherCapstoneChosen'
+          ? 'locked'
+          : `${cost}`;
+    const disabled = state.action !== 'buy' ? 'disabled' : '';
+    return (
+      `<button class="${state.className}" data-choice="${choice}" ${disabled}>` +
+      `<span><span class="n">${name}</span><br><span class="b">${blurb}</span></span>` +
+      `<span class="c">${tag}</span></button>`
+    );
   }
 
   /** The read-out for a tapped troublemaker, shown in the same panel. */
@@ -163,6 +248,7 @@ export class Ui {
     this.inspectBody.innerHTML = r.lines
       .map((line) => `<div class="statrow"><span>${line}</span></div>`)
       .join('');
+    this.upgrades.innerHTML = '';
     this.sell.textContent = 'Close';
   }
 

@@ -166,6 +166,38 @@ outlive the defender that granted it. Anything created during a tick is queued
 and flushed at the end, so an area hit can never reach the troublemakers it
 just created by splitting something.
 
+## Upgrades: two roads, then a fork
+
+Every defender gets two upgrade paths that stay true to what already tells
+defenders apart -- one path pushes the axis that makes it fast or precise
+(rate, or reach), the other pushes the axis that makes it strong or lasting
+(power, or control). Both paths are bought independently and neither locks out
+the other; a player who wants both halves of a defender can have them. Only at
+the very end, once every tier on both paths is bought, does a single expensive
+final upgrade fork the defender one more time between two mutually exclusive
+finishers. Taking one closes off the other for that defender.
+
+The fork exists so a fully invested defender still asks a question instead of
+just getting bigger. One finisher is always "more of what this defender
+already does" -- a stat push past what either path alone could reach. The
+other is a genuine change of shape: Norah's finisher choice is between hitting
+harder at range and hitting up to three targets at once, which is a different
+defender to build around, not a stronger version of the same one. That mirrors
+the rule the whole roster already follows -- no defender should become the
+designated answer to a specific troublemaker, and a finisher that only added
+raw power everywhere would start to smell like one.
+
+Two defenders needed a different reasoning path to get there. Protest Pete
+never deals damage today, and neither of his finishers changes that -- an
+upgrade is not licence to break a defender's founding rule, even a rule as
+central as "buys time, not kills." Walker Walter's finisher fork nearly became
+the ability to get back up after falling instead of just being tougher, but a
+comeback that a player has to choose between is not really part of his
+identity -- once decided, it changed his base kit instead: every Walter now
+gets back up once per round at a fraction of his health, no upgrade required,
+and his base toughness was lowered to pay for it. His two upgrade paths and
+his finisher fork are built on top of that, not instead of it.
+
 ## Names
 
 Ids are lowercase first names and display names are the full ones: `norah` is

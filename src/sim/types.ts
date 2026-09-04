@@ -54,6 +54,24 @@ export interface TowerDef {
   buffRate: number;
   /** Blocker only: how much it can absorb before it goes down. */
   maxHp: number;
+
+  /**
+   * The upgrade tree's own fields. Every one of these is a no-op at its
+   * default, so the towers that never touch them are unaffected -- the same
+   * "flat data, zero means absent" convention the fields above already use.
+   */
+  /** Blocker only: HP/sec regained while still standing. */
+  regen?: number;
+  /** Blocker only: ticks before Second Wind gets it back up, once a round. */
+  reviveDelayTicks?: number;
+  /** Blocker only: fraction of max HP it comes back with. */
+  reviveHpFrac?: number;
+  /** Simultaneous targets a projectile tower fires at. 1 is one shot, one mark. */
+  multiShot?: number;
+  /** Extra enemies a projectile hits in a line behind the first. 0 stops at one. */
+  pierce?: number;
+  /** Support only: extra range fraction granted to buffed neighbours. */
+  rangeBuffBonus?: number;
 }
 
 export interface EnemyDef {
@@ -145,8 +163,23 @@ export interface Tower {
   laneDist: number;
   /** Derived from nearby support towers every tick. Never written directly. */
   rateMult: number;
+  /**
+   * Derived from nearby support towers every tick, same as `rateMult` and by
+   * the same function -- Clara's Second Round is the only source of this, but
+   * it is reset and recomputed for everyone so no tower needs a special case.
+   */
+  rangeMult: number;
   /** Derived from nearby disruptors every tick. Never written directly. */
   disabled: boolean;
+  /** Tiers bought on each of the two upgrade paths, 0 to 2. */
+  upgradeA: 0 | 1 | 2;
+  upgradeB: 0 | 1 | 2;
+  /** Which capstone was chosen, or none yet. Cannot be changed once set. */
+  capstone: string | null;
+  /** Blocker only: how many times Second Wind has already brought it back. */
+  revivesUsed: number;
+  /** Blocker only: the tick Second Wind gets it back up, or none pending. */
+  reviveAt: number | null;
   /**
    * Id of the enemy this tower is currently aimed at, or null when it has
    * none in range. Unused for now -- `findTarget` picks a target fresh each
@@ -171,6 +204,8 @@ export interface Projectile {
   slowTicks: number;
   slowFactor: number;
   stunTicks: number;
+  /** Extra enemies still owed a hit behind whichever one this lands on. */
+  pierceRemaining: number;
   /** Only so the renderer can draw the right sprite. Not read by the sim. */
   from: TowerId;
 }

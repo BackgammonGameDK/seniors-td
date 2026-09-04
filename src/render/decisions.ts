@@ -80,7 +80,7 @@ export function cardState(opts: { gold: number; cost: number; isSelected: boolea
  */
 export function panelKey(t: Tower | null): string {
   if (!t) return 'none';
-  return `${t.id}:${t.def}:${Math.ceil(t.hp)}`;
+  return `${t.id}:${t.def}:${Math.ceil(t.hp)}:${t.upgradeA}:${t.upgradeB}:${t.capstone ?? ''}`;
 }
 
 export function waveLabel(waveIndex: number): string {
@@ -230,4 +230,69 @@ export function towerCard(id: TowerId): { name: string; blurb: string; rows: Sta
     blurb: TOWER_LOOK[id].blurb,
     rows: describeStats(TOWERS[id]),
   };
+}
+
+// --- upgrades -----------------------------------------------------------
+
+/**
+ * What tapping an upgrade card means, before any DOM is involved.
+ *
+ * `bought` beats everything else -- a card that is both bought and (say)
+ * unaffordable to re-buy should read as owned, not as poor. A capstone that
+ * lost to its sibling reads as its own case rather than plain `locked`, so
+ * the panel can say *why* it is closed rather than just that it is.
+ */
+export type UpgradeAction =
+  | 'buy'
+  | 'bought'
+  | 'locked'
+  | 'unaffordable'
+  | 'otherCapstoneChosen';
+
+export function upgradeAction(opts: {
+  gold: number;
+  cost: number;
+  alreadyBought: boolean;
+  /** True when a prerequisite is missing: the tier before this one, or (for
+   * a capstone) either path short of its last tier. */
+  locked: boolean;
+  /** Capstone only: a *different* capstone has already been chosen. */
+  otherCapstoneChosen?: boolean;
+}): UpgradeAction {
+  if (opts.alreadyBought) return 'bought';
+  if (opts.otherCapstoneChosen) return 'otherCapstoneChosen';
+  if (opts.locked) return 'locked';
+  if (opts.gold < opts.cost) return 'unaffordable';
+  return 'buy';
+}
+
+export interface UpgradeCardState {
+  action: UpgradeAction;
+  className: string;
+}
+
+/** A build-card-shaped read-out for one tier or capstone row. */
+export function upgradeCardState(opts: Parameters<typeof upgradeAction>[0]): UpgradeCardState {
+  const action = upgradeAction(opts);
+  const classes = ['card'];
+  if (action === 'bought') classes.push('bought');
+  if (action === 'locked' || action === 'otherCapstoneChosen') classes.push('locked');
+  if (action === 'unaffordable') classes.push('poor');
+  return { action, className: classes.join(' ') };
+}
+
+/**
+ * Whether the tier just past `tierIndex` on a path has already been bought.
+ *
+ * `boughtTier` is `tower.upgradeA`/`upgradeB`: how many of the path's two
+ * tiers are owned. Tier 0 (the first) is locked by nothing; tier 1 (the
+ * second) is locked until tier 0 is bought.
+ */
+export function pathTierLocked(tierIndex: 0 | 1, boughtTier: 0 | 1 | 2): boolean {
+  return tierIndex > boughtTier;
+}
+
+/** A capstone is reachable only once both paths are fully bought. */
+export function capstoneLocked(upgradeA: 0 | 1 | 2, upgradeB: 0 | 1 | 2): boolean {
+  return upgradeA < 2 || upgradeB < 2;
 }

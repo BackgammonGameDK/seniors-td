@@ -22,7 +22,7 @@ import { TOWERS } from './sim/towers.ts';
 import { ENEMY_IDS } from './sim/types.ts';
 import type { EnemyId } from './sim/types.ts';
 import { WAVES } from './sim/waves.ts';
-import { createWorld, placeTower, startWave, step } from './sim/world.ts';
+import { createWorld, placeTower, purchaseUpgrade, startWave, step } from './sim/world.ts';
 
 /** Rounds cannot run forever: a stalled sim must fail loudly, not hang. */
 const MAX_TICKS = 60 * 240;
@@ -49,13 +49,15 @@ function emptyLeaks(): Record<EnemyId, number> {
  * street, one of them with reach. A default that was a strong build would make
  * every round look easy.
  */
+const NO_UPGRADES = { upgradeA: 0, upgradeB: 0, capstone: null } as const;
+
 function defaultPlan(): Placement[] {
   const spots = [200, 700, 1200, 1700].map((d) => nearestBuildCell(d));
   return [
-    { def: 'norah', ...spots[0]! },
-    { def: 'bill', ...spots[1]! },
-    { def: 'barbara', ...spots[2]! },
-    { def: 'norah', ...spots[3]! },
+    { def: 'norah', ...spots[0]!, ...NO_UPGRADES },
+    { def: 'bill', ...spots[1]!, ...NO_UPGRADES },
+    { def: 'barbara', ...spots[2]!, ...NO_UPGRADES },
+    { def: 'norah', ...spots[3]!, ...NO_UPGRADES },
   ];
 }
 
@@ -86,6 +88,10 @@ function runWave(waveIndex: number, plan: Placement[], seed: number) {
       TOWERS[p.def].mode === 'blocker' ? isBlockerCell(p.col, p.row) : isBuildableCell(p.col, p.row);
     if (!ok) throw new Error(`illegal placement ${describePlacement(p)} for ${p.def}`);
     placeTower(w, p.def, p.col, p.row);
+    const t = w.towers[w.towers.length - 1]!;
+    for (let i = 0; i < p.upgradeA; i++) purchaseUpgrade(w, t.id, 'pathA');
+    for (let i = 0; i < p.upgradeB; i++) purchaseUpgrade(w, t.id, 'pathB');
+    if (p.capstone) purchaseUpgrade(w, t.id, p.capstone);
   }
   w.gold = 0;
   w.lives = ECONOMY.startLives;

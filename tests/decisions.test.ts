@@ -5,16 +5,20 @@ import { AUTHORED_ROUNDS } from '../src/sim/waves.ts';
 import {
   armTower,
   boardAction,
+  capstoneLocked,
   cardState,
   describeStats,
   endOverlay,
   enemyReadout,
   panelKey,
+  pathTierLocked,
   pickEnemy,
   rate,
   roundPreview,
   towerCard,
   towerForKey,
+  upgradeAction,
+  upgradeCardState,
   waveLabel,
 } from '../src/render/decisions.ts';
 import type { Stats, Tower } from '../src/sim/types.ts';
@@ -39,7 +43,13 @@ const tower = (over: Partial<Tower> = {}): Tower => ({
   hp: 0,
   laneDist: -1,
   rateMult: 1,
+  rangeMult: 1,
   disabled: false,
+  upgradeA: 0,
+  upgradeB: 0,
+  capstone: null,
+  revivesUsed: 0,
+  reviveAt: null,
   targetId: null,
   ...over,
 });
@@ -211,6 +221,79 @@ describe('tapping a troublemaker', () => {
 
   it('allows a few pixels of slack, because a fingertip is not a pixel', () => {
     expect(pickEnemy([{ id: 1, x: 100, y: 100, radius: 10 }], { x: 113, y: 100 })).toBe(1);
+  });
+});
+
+describe('tier two is locked until tier one is bought', () => {
+  it('leaves the first tier open regardless of what has been bought', () => {
+    expect(pathTierLocked(0, 0)).toBe(false);
+    expect(pathTierLocked(0, 1)).toBe(false);
+  });
+
+  it('locks the second tier until the first is owned', () => {
+    expect(pathTierLocked(1, 0)).toBe(true);
+    expect(pathTierLocked(1, 1)).toBe(false);
+    expect(pathTierLocked(1, 2)).toBe(false);
+  });
+});
+
+describe('a capstone waits for both paths to be maxed', () => {
+  it('stays locked until upgradeA and upgradeB both reach 2', () => {
+    expect(capstoneLocked(2, 1)).toBe(true);
+    expect(capstoneLocked(1, 2)).toBe(true);
+    expect(capstoneLocked(2, 2)).toBe(false);
+  });
+});
+
+describe('an upgrade card reads bought before it reads anything else', () => {
+  it('shows bought even when the wallet could no longer afford it again', () => {
+    expect(
+      upgradeAction({ gold: 0, cost: 999, alreadyBought: true, locked: false }),
+    ).toBe('bought');
+  });
+
+  it('is locked when its prerequisite is missing', () => {
+    expect(
+      upgradeAction({ gold: 999, cost: 10, alreadyBought: false, locked: true }),
+    ).toBe('locked');
+  });
+
+  it('greys out what the wallet cannot cover, once unlocked', () => {
+    expect(
+      upgradeAction({ gold: 5, cost: 10, alreadyBought: false, locked: false }),
+    ).toBe('unaffordable');
+  });
+
+  it('is buyable once affordable and unlocked', () => {
+    expect(
+      upgradeAction({ gold: 10, cost: 10, alreadyBought: false, locked: false }),
+    ).toBe('buy');
+  });
+});
+
+describe('a capstone choice cannot be undone', () => {
+  it('reads as its own case, not as plain "locked", once a sibling was chosen', () => {
+    expect(
+      upgradeAction({
+        gold: 999,
+        cost: 10,
+        alreadyBought: false,
+        locked: false,
+        otherCapstoneChosen: true,
+      }),
+    ).toBe('otherCapstoneChosen');
+  });
+
+  it('never offers to buy the sibling once one capstone is owned', () => {
+    const state = upgradeCardState({
+      gold: 999,
+      cost: 10,
+      alreadyBought: false,
+      locked: false,
+      otherCapstoneChosen: true,
+    });
+    expect(state.action).not.toBe('buy');
+    expect(state.className).toContain('locked');
   });
 });
 
