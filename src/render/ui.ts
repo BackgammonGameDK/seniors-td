@@ -154,7 +154,15 @@ export class Ui {
     // opposites -- there's nowhere on this layout for both at once.
     this.towerPanel.hidden = t !== null;
     const key = panelKey(t);
-    if (key === this.lastPanel) return;
+    if (key === this.lastPanel) {
+      // panelKey doesn't include gold, so an upgrade that was unaffordable
+      // when this panel was built can become affordable while it's still
+      // open (gold keeps arriving mid-round) without anything else here
+      // changing. Refresh just the affordability of what's already on
+      // screen instead of skipping the frame outright.
+      if (t) this.refreshUpgradeAffordability(gold);
+      return;
+    }
     this.lastPanel = key;
 
     if (!t) {
@@ -237,10 +245,27 @@ export class Ui {
           : `${cost}`;
     const disabled = state.action !== 'buy' ? 'disabled' : '';
     return (
-      `<button class="${state.className}" data-choice="${choice}" ${disabled}>` +
+      `<button class="${state.className}" data-choice="${choice}" data-cost="${cost}" ${disabled}>` +
       `<span><span class="n">${name}</span><br><span class="b">${blurb}</span></span>` +
       `<span class="c">${tag}</span></button>`
     );
+  }
+
+  /**
+   * `panelKey` doesn't track gold (see `syncInspect`), so a card's
+   * affordability can go stale while the panel stays open. `locked` and
+   * `bought` are never about gold, so only a card without either class has
+   * its poor/disabled state driven by the current wallet.
+   */
+  private refreshUpgradeAffordability(gold: number): void {
+    for (const btn of Array.from(
+      this.upgrades.querySelectorAll<HTMLButtonElement>('button[data-choice]'),
+    )) {
+      if (btn.classList.contains('locked') || btn.classList.contains('bought')) continue;
+      const affordable = gold >= Number(btn.dataset.cost);
+      btn.classList.toggle('poor', !affordable);
+      btn.disabled = !affordable;
+    }
   }
 
   /** The read-out for a tapped troublemaker, shown in the same panel. */
