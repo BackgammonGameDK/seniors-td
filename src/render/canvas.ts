@@ -281,15 +281,14 @@ export class Renderer {
     // A drawn character replaces the coloured disc and its emoji entirely.
     // The picture carries its own outline, so a disc behind it would only
     // read as a plate the senior is standing on.
+    //
+    // A drawn character gets no selection ring either. The range circle
+    // drawn under the board already says which tower is open, so a ring on
+    // top of the artwork was saying it twice and covering the picture to do
+    // it. The disc below still brightens its own outline, because there the
+    // outline is the only thing there is.
     const sprite = towerSprite(t.def);
     if (sprite !== null) {
-      if (isInspected) {
-        g.beginPath();
-        g.arc(0, 0, SPRITE_SIZE / 2 + 2, 0, Math.PI * 2);
-        g.strokeStyle = '#fff';
-        g.lineWidth = 3;
-        g.stroke();
-      }
       g.globalAlpha = t.disabled ? 0.45 : 1;
       g.drawImage(sprite, -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
       g.globalAlpha = 1;
