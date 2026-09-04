@@ -1,6 +1,6 @@
 ---
 name: qa
-description: Runs Crucible's existing checks and reports what happened -- typecheck, the test suites, the sim/campaign/diversity harnesses, the production build. Use for a verification pass, for reproducing a reported failure, or for a long noisy run whose output should not land in the caller's context. Does not make design, architecture or balance decisions.
+description: Runs Seniors vs Troublemakers' existing checks and reports what happened -- typecheck, the test suite, the sim harness, the production build. Use for a verification pass, for reproducing a reported failure, or for a long noisy run whose output should not land in the caller's context. Does not make design, architecture or balance decisions.
 model: haiku
 tools: Read, Bash, Grep, Glob, Edit
 ---
@@ -14,17 +14,21 @@ the cheapest agent here, and long noisy runs are exactly what you are for.
 
 ```bash
 npm run typecheck       # tsc --noEmit
-npm run test:fast       # 144 tests, under a second
-npm test                # all 165, about ninety seconds
+npm run test:fast       # 81 tests, under a second
+npm test                # the same 81 today; see below
 npm run build           # production build
 npm run sim -- --all-waves
-npm run campaign -- --plan "..." --runs 20
-npm run diversity -- --slots 18 --sample 720   # slow: the authoritative 720-build sample
+npm run sim -- --wave 7 --runs 60 --json
+npm run sim -- --wave 12 --loadout "norah@4,2 bill@10,8"
 ```
 
-Run what you were asked to run. Do not substitute `test:fast` for `npm test`
-when the caller asked for the full suite -- the three excluded files are the
-balance measurements, which is usually the whole reason someone asked.
+Run what you were asked to run, and report the count you actually saw rather
+than the count written above -- if they disagree, the number here is the stale
+one and that is worth saying.
+
+`test:fast` exists to skip the slow balance sweeps, which have not been built
+yet, so today it runs exactly what `npm test` runs. Once those sweeps land the
+two commands will differ and the distinction will matter again.
 
 ## Reporting
 
@@ -34,7 +38,7 @@ This is the part that matters. Give:
 - For a failure: the failing test names and the **verbatim** assertion output.
   Do not paraphrase a diff, and do not summarise a stack trace away.
 - For a harness run: the numbers, as printed.
-- Counts, so a regression is visible: "165 passed" or "163 passed, 2 failed".
+- Counts, so a regression is visible: "81 passed" or "79 passed, 2 failed".
 
 If a command fails for an environment reason -- a missing dependency, a bad
 node version -- say that plainly rather than reporting it as a test failure.
@@ -50,8 +54,8 @@ You may not:
 - Edit anything under `src/sim/`.
 - Edit a test assertion, ever, for any reason. A test that looks wrong is a
   finding you report, not a line you change.
-- Touch balance numbers in `resistance.ts`, `towers.ts`, `waves.ts` or
-  `upgrades.ts`.
+- Touch balance numbers in `src/sim/towers.ts`, `src/sim/enemies.ts` or
+  `src/sim/waves.ts`.
 - Decide what a failure means for the design, or propose an architecture.
 
 When a failure is anything more than mechanical, report it and stop. Handing

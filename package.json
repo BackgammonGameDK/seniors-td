@@ -8,11 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:fast": "vitest run --exclude '**/node_modules/**' --exclude 'tests/campaign.test.ts' --exclude 'tests/diversity.test.ts'",
+    "test:fast": "vitest run --exclude '**/node_modules/**'",
     "typecheck": "tsc --noEmit",
     "sim": "node src/headless.ts",
-    "campaign": "node src/campaign.ts",
-    "diversity": "node src/diversity.ts",
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {

@@ -56,7 +56,8 @@ hex colours, display names or blurbs in `src/sim/`.
 ```bash
 npm run dev        # play it at localhost:5173
 npm test           # vitest
-npm run test:fast  # everything but the slow balance sweeps
+npm run test:fast  # everything but the slow balance sweeps -- the same as
+                   # npm test until those sweeps exist
 npm run typecheck  # tsc --noEmit
 npm run sim -- --all-waves                   # difficulty for every round
 npm run sim -- --wave 7 --runs 60 --json     # machine-readable
