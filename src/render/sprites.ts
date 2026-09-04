@@ -16,6 +16,7 @@ import type { EnemyId, TowerId } from '../sim/types.ts';
 
 import barbaraPng from '../assets/barbara.png';
 import norahPng from '../assets/norah.png';
+import petePng from '../assets/pete.png';
 import samPng from '../assets/sam.png';
 import skyePng from '../assets/skye.png';
 import walterPng from '../assets/walter.png';
@@ -24,6 +25,7 @@ import walterPng from '../assets/walter.png';
 const TOWER_ART: Partial<Record<TowerId, string>> = {
   barbara: barbaraPng,
   norah: norahPng,
+  pete: petePng,
   walter: walterPng,
 };
 
