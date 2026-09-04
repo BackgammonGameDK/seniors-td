@@ -90,6 +90,15 @@ export const PALETTE = {
   grid: 'rgba(255,255,255,0.10)',
   buildable: 'rgba(255,255,255,0.16)',
   blocked: 'rgba(220,60,60,0.22)',
+  /**
+   * The readout panel that sits on the board itself. Dark and translucent
+   * rather than paper-coloured, because it has to stay legible over grass,
+   * over the road and over a senior who happens to stand under it.
+   */
+  hudFill: 'rgba(28, 24, 20, 0.62)',
+  hudLine: 'rgba(255,255,255,0.22)',
+  hudInk: '#ffffff',
+  hudLabel: 'rgba(255,255,255,0.70)',
   rangeFill: 'rgba(255,255,255,0.08)',
   rangeLine: 'rgba(255,255,255,0.45)',
 } as const;

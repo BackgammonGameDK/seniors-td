@@ -18,7 +18,8 @@ import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
-import { enemySprite, towerSprite } from './sprites.ts';
+import { hudReadouts } from './decisions.ts';
+import { enemySprite, iconSprite, towerSprite } from './sprites.ts';
 
 /**
  * How wide a drawn tower is on the board, in pixels.
@@ -27,6 +28,18 @@ import { enemySprite, towerSprite } from './sprites.ts';
  * person on the pavement rather than a tile that has been filled in.
  */
 const SPRITE_SIZE = 42;
+
+/** The readout panel on the board: where it sits and how it is spaced. */
+const HUD = {
+  x: 12,
+  y: 12,
+  height: 40,
+  pad: 14,
+  gap: 20,
+  icon: 18,
+  valueFont: 'bold 22px "Trebuchet MS", "Segoe UI", sans-serif',
+  labelFont: '10px "Trebuchet MS", "Segoe UI", sans-serif',
+} as const;
 
 interface Floater {
   x: number;
@@ -172,6 +185,81 @@ export class Renderer {
     for (const e of world.enemies) this.drawEnemy(e);
     this.drawProjectiles(world);
     this.drawEffects();
+    this.drawHud(world);
+  }
+
+  /**
+   * The coin, peace and round numbers, drawn on the board rather than above
+   * it.
+   *
+   * The panel is measured rather than fixed, so it grows with a three-digit
+   * coin count instead of leaving a gap after a one-digit one. It is drawn
+   * last, which is what keeps a senior standing in the top-left corner from
+   * covering the numbers.
+   */
+  private drawHud(world: World): void {
+    const g = this.g;
+    const rows = hudReadouts(world);
+    const label = (r: { label: string }): string => r.label.toUpperCase();
+
+    g.save();
+    g.textAlign = 'left';
+    g.textBaseline = 'middle';
+
+    // A number is given the room three digits would need even when it is
+    // showing one. Gold changes constantly during a round, and without this
+    // the two readouts to its right slid sideways every time it crossed 100.
+    g.font = HUD.valueFont;
+    const floor = g.measureText('000').width;
+    const valueWidth = (value: string): number =>
+      Math.max(g.measureText(value).width, floor);
+
+    const widths = rows.map((r) => {
+      g.font = HUD.valueFont;
+      let w = valueWidth(r.value) + 6;
+      g.font = HUD.labelFont;
+      w += g.measureText(label(r)).width;
+      return r.icon === null ? w : w + HUD.icon + 6;
+    });
+    const width =
+      HUD.pad * 2 + widths.reduce((a, b) => a + b, 0) + HUD.gap * (rows.length - 1);
+
+    g.beginPath();
+    g.roundRect(HUD.x, HUD.y, width, HUD.height, 10);
+    g.fillStyle = PALETTE.hudFill;
+    g.fill();
+    g.strokeStyle = PALETTE.hudLine;
+    g.lineWidth = 2;
+    g.stroke();
+
+    let x = HUD.x + HUD.pad;
+    const y = HUD.y + HUD.height / 2;
+    for (const r of rows) {
+      if (r.icon !== null) {
+        const picture = iconSprite(r.icon);
+        if (picture !== null) {
+          g.drawImage(picture, x, y - HUD.icon / 2, HUD.icon, HUD.icon);
+        } else {
+          // Stands in until the coin picture arrives, drawn at the size the
+          // picture will be, so nothing shifts along when it does.
+          g.font = `${HUD.icon}px serif`;
+          g.fillText('\u{1FA99}', x, y + 1);
+        }
+        x += HUD.icon + 6;
+      }
+
+      g.font = HUD.valueFont;
+      g.fillStyle = PALETTE.hudInk;
+      g.fillText(r.value, x, y);
+      x += valueWidth(r.value) + 6;
+
+      g.font = HUD.labelFont;
+      g.fillStyle = PALETTE.hudLabel;
+      g.fillText(label(r), x, y + 1);
+      x += g.measureText(label(r)).width + HUD.gap;
+    }
+
+    g.restore();
   }
 
   private drawRange(t: Tower): void {

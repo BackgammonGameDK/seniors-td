@@ -92,6 +92,40 @@ export function waveLabel(waveIndex: number): string {
   return `${Math.min(waveIndex + 1, AUTHORED_ROUNDS)}/${AUTHORED_ROUNDS}`;
 }
 
+export interface Readout {
+  /** The number, already formatted for reading. */
+  value: string;
+  /** What the number means, in words. */
+  label: string;
+  /**
+   * A picture that may stand in front of the number.
+   *
+   * `null` means the words carry it alone. A name here is a request, not a
+   * promise -- the renderer draws the picture if it has one and an emoji if
+   * it does not, so naming an icon before the artwork exists is safe.
+   */
+  icon: 'coin' | null;
+}
+
+/**
+ * The three numbers along the top of the board, in the order they are read.
+ *
+ * Here rather than in the drawing code because the phrasing is a decision:
+ * "peace & quiet" is what the game calls lives, and a coin count is floored
+ * so a tower's price never looks affordable by a fraction.
+ */
+export function hudReadouts(opts: {
+  gold: number;
+  lives: number;
+  waveIndex: number;
+}): Readout[] {
+  return [
+    { value: String(Math.floor(opts.gold)), label: 'pension coins', icon: 'coin' },
+    { value: String(opts.lives), label: 'peace & quiet', icon: null },
+    { value: waveLabel(opts.waveIndex), label: 'round', icon: null },
+  ];
+}
+
 export interface PreviewRow {
   enemy: EnemyId;
   name: string;
