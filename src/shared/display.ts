@@ -82,8 +82,15 @@ export const ENEMY_LOOK: Record<EnemyId, EnemyLook> = {
 
 /** Board furniture. Kept here so the renderer has one palette to read. */
 export const PALETTE = {
-  grass: '#8fbf7a',
-  grassAlt: '#86b672',
+  /**
+   * Grass, as an 8-bit pixel field rather than a flat colour: four close
+   * greens scattered over a fixed block grid, plus two accents for tufts and
+   * flowers. The renderer indexes into this list, so the order is the order
+   * from darkest to lightest.
+   */
+  grass: ['#7fae68', '#87b671', '#8fbf7a', '#97c884'],
+  grassDeep: '#71a05c',
+  grassBloom: '#d7e59b',
   road: '#6d6a63',
   roadEdge: '#5a5751',
   kerb: '#cfc9bd',
