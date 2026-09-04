@@ -126,8 +126,12 @@ canvas.addEventListener('pointerdown', (ev) => {
     }
   } else if (action === 'inspect') {
     inspected = existing ?? null;
+    // Tapping a placed tower means "look at this one", not "place my armed
+    // tower here" -- so the build-card selection it interrupted has to go too.
+    selected = null;
   } else if (action === 'close') {
     inspected = null;
+    selected = null;
   } else if (action === 'unarm') {
     selected = null;
   }
