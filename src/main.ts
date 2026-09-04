@@ -117,6 +117,7 @@ canvas.addEventListener('pointerdown', (ev) => {
     occupied: existing !== undefined,
     legal: selected ? legalFor(selected, cell.col, cell.row) : false,
     inspectingSame: existing !== undefined && inspected?.id === existing.id,
+    hasInspected: inspected !== null,
   });
 
   if (action === 'place' && selected) {
