@@ -52,6 +52,7 @@ export class Ui {
   private wave = el<HTMLElement>('wave');
   private hint = el<HTMLElement>('hint');
   private preview = el<HTMLElement>('preview');
+  private towerPanel = el<HTMLElement>('towerPanel');
   private towerList = el<HTMLElement>('towerList');
   private inspect = el<HTMLElement>('inspect');
   private inspectTitle = el<HTMLElement>('inspectTitle');
@@ -149,6 +150,9 @@ export class Ui {
 
   private syncInspect(t: Tower | null, gold: number): void {
     this.inspected = t;
+    // The neighbours list and the inspect/upgrade panel are always exact
+    // opposites -- there's nowhere on this layout for both at once.
+    this.towerPanel.hidden = t !== null;
     const key = panelKey(t);
     if (key === this.lastPanel) return;
     this.lastPanel = key;
