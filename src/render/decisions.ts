@@ -330,6 +330,27 @@ export function upgradeCardState(opts: Parameters<typeof upgradeAction>[0]): Upg
  * tiers are owned. Tier 0 (the first) is locked by nothing; tier 1 (the
  * second) is locked until tier 0 is bought.
  */
+export interface PathCard {
+  /** Which of the path's two tiers the card should describe. */
+  tierIndex: 0 | 1;
+  /** True when both tiers are bought, so the card reads as owned. */
+  finished: boolean;
+}
+
+/**
+ * Which single card a path shows, given how much of it has been bought.
+ *
+ * A path shows only its next tier, so there is never more than one card open
+ * on a path at a time. A finished path keeps its last tier on show, marked
+ * owned, rather than disappearing: both paths staying put is what lets the
+ * panel be read as a choice between two routes. With one of them gone, a
+ * tower that had gone all the way down speed looked like a tower with no
+ * speed upgrades at all.
+ */
+export function pathCard(bought: 0 | 1 | 2): PathCard {
+  return bought === 2 ? { tierIndex: 1, finished: true } : { tierIndex: bought, finished: false };
+}
+
 export function pathTierLocked(tierIndex: 0 | 1, boughtTier: 0 | 1 | 2): boolean {
   return tierIndex > boughtTier;
 }
