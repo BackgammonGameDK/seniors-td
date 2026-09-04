@@ -18,6 +18,15 @@ import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
+import { enemySprite, towerSprite } from './sprites.ts';
+
+/**
+ * How wide a drawn tower is on the board, in pixels.
+ *
+ * A shade wider than the 40px cell it stands in, so a senior reads as a
+ * person on the pavement rather than a tile that has been filled in.
+ */
+const SPRITE_SIZE = 42;
 
 interface Floater {
   x: number;
@@ -269,27 +278,45 @@ export class Renderer {
     g.fillStyle = 'rgba(0,0,0,.18)';
     g.fill();
 
-    g.beginPath();
-    g.arc(0, 0, 16, 0, Math.PI * 2);
-    g.fillStyle = look.color;
-    g.fill();
-    g.strokeStyle = isInspected ? '#fff' : 'rgba(0,0,0,.25)';
-    g.lineWidth = isInspected ? 3 : 2;
-    g.stroke();
-
-    if (t.disabled) {
-      g.globalAlpha = 0.45;
-      g.fillStyle = '#000';
+    // A drawn character replaces the coloured disc and its emoji entirely.
+    // The picture carries its own outline, so a disc behind it would only
+    // read as a plate the senior is standing on.
+    const sprite = towerSprite(t.def);
+    if (sprite !== null) {
+      if (isInspected) {
+        g.beginPath();
+        g.arc(0, 0, SPRITE_SIZE / 2 + 2, 0, Math.PI * 2);
+        g.strokeStyle = '#fff';
+        g.lineWidth = 3;
+        g.stroke();
+      }
+      g.globalAlpha = t.disabled ? 0.45 : 1;
+      g.drawImage(sprite, -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
+      g.globalAlpha = 1;
+    } else {
       g.beginPath();
       g.arc(0, 0, 16, 0, Math.PI * 2);
+      g.fillStyle = look.color;
       g.fill();
-      g.globalAlpha = 1;
+      g.strokeStyle = isInspected ? '#fff' : 'rgba(0,0,0,.25)';
+      g.lineWidth = isInspected ? 3 : 2;
+      g.stroke();
+
+      if (t.disabled) {
+        g.globalAlpha = 0.45;
+        g.fillStyle = '#000';
+        g.beginPath();
+        g.arc(0, 0, 16, 0, Math.PI * 2);
+        g.fill();
+        g.globalAlpha = 1;
+      }
+
+      g.font = '18px serif';
+      g.fillText(look.glyph, 0, 1);
     }
 
-    g.font = '18px serif';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(look.glyph, 0, 1);
 
     if (t.rateMult > 1) {
       g.font = '11px serif';
@@ -333,40 +360,60 @@ export class Renderer {
     g.save();
     g.translate(e.x, e.y);
 
-    g.beginPath();
-    g.arc(0, 0, r, 0, Math.PI * 2);
-    g.fillStyle = e.flash > 0 ? '#ffffff' : look.color;
-    g.fill();
-    g.strokeStyle = 'rgba(0,0,0,.3)';
-    g.lineWidth = 2;
-    g.stroke();
+    const sprite = enemySprite(e.def);
+    // The drawn picture is wider than the hit radius, so the shield and
+    // armour rings move out to sit just outside it. Kept as rings rather
+    // than folded into the artwork: they say what is true right now, and a
+    // shield comes and goes while the picture does not.
+    const edge = sprite !== null ? r * 1.5 : r;
+
+    if (sprite !== null) {
+      if (e.flash > 0) {
+        g.beginPath();
+        g.arc(0, 0, edge, 0, Math.PI * 2);
+        g.fillStyle = 'rgba(255,255,255,.85)';
+        g.fill();
+      }
+      const size = edge * 2;
+      g.drawImage(sprite, -edge, -edge, size, size);
+    } else {
+      g.beginPath();
+      g.arc(0, 0, r, 0, Math.PI * 2);
+      g.fillStyle = e.flash > 0 ? '#ffffff' : look.color;
+      g.fill();
+      g.strokeStyle = 'rgba(0,0,0,.3)';
+      g.lineWidth = 2;
+      g.stroke();
+    }
 
     if (e.shield > 0) {
       g.beginPath();
-      g.arc(0, 0, r + 4, 0, Math.PI * 2);
+      g.arc(0, 0, edge + 4, 0, Math.PI * 2);
       g.strokeStyle = 'rgba(186,104,200,.9)';
       g.lineWidth = 2;
       g.stroke();
     }
     if (d.armour > 0) {
       g.beginPath();
-      g.arc(0, 0, r + 1, 0, Math.PI * 2);
+      g.arc(0, 0, edge + 1, 0, Math.PI * 2);
       g.strokeStyle = 'rgba(60,70,80,.9)';
       g.lineWidth = 3;
       g.stroke();
     }
 
-    g.font = `${Math.round(r * 1.4)}px serif`;
     g.textAlign = 'center';
     g.textBaseline = 'middle';
-    g.fillText(look.glyph, 0, 1);
+    if (sprite === null) {
+      g.font = `${Math.round(r * 1.4)}px serif`;
+      g.fillText(look.glyph, 0, 1);
+    }
 
     if (e.stunTicks > 0) {
       g.font = '12px serif';
-      g.fillText('💫', 0, -r - 7);
+      g.fillText('💫', 0, -edge - 7);
     } else if (e.slowTicks > 0) {
       g.font = '12px serif';
-      g.fillText('🍯', 0, -r - 7);
+      g.fillText('🍯', 0, -edge - 7);
     }
     g.restore();
 
