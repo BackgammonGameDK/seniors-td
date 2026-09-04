@@ -31,9 +31,14 @@ export function boardAction(opts: {
   legal: boolean;
   /** Whether the inspect panel is currently open on that same tower. */
   inspectingSame: boolean;
+  /** Whether the inspect panel is open on anything at all. */
+  hasInspected: boolean;
 }): BoardAction {
   if (opts.occupied) return opts.inspectingSame ? 'close' : 'inspect';
   if (opts.selected) return opts.legal ? 'place' : 'unarm';
+  // An empty, unarmed tap elsewhere on the board reads as "done looking at
+  // that one" -- the same as tapping it again or pressing Escape.
+  if (opts.hasInspected) return 'close';
   return 'nothing';
 }
 

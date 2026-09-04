@@ -68,31 +68,73 @@ describe('arming a tower can always be undone', () => {
 describe('what a tap on the board means', () => {
   it('places when a legal empty cell is tapped with a tower armed', () => {
     expect(
-      boardAction({ selected: 'norah', occupied: false, legal: true, inspectingSame: false }),
+      boardAction({
+        selected: 'norah',
+        occupied: false,
+        legal: true,
+        inspectingSame: false,
+        hasInspected: false,
+      }),
     ).toBe('place');
   });
 
-  it('does nothing on an illegal cell with no tower armed', () => {
+  it('does nothing on an illegal cell with no tower armed and nothing inspected', () => {
     expect(
-      boardAction({ selected: null, occupied: false, legal: false, inspectingSame: false }),
+      boardAction({
+        selected: null,
+        occupied: false,
+        legal: false,
+        inspectingSame: false,
+        hasInspected: false,
+      }),
     ).toBe('nothing');
   });
 
   it('an illegal tap drops the armed tower, matching tapping the card again', () => {
     expect(
-      boardAction({ selected: 'norah', occupied: false, legal: false, inspectingSame: false }),
+      boardAction({
+        selected: 'norah',
+        occupied: false,
+        legal: false,
+        inspectingSame: false,
+        hasInspected: false,
+      }),
     ).toBe('unarm');
   });
 
   it('inspects an occupied cell even while a tower is armed', () => {
     expect(
-      boardAction({ selected: 'bill', occupied: true, legal: true, inspectingSame: false }),
+      boardAction({
+        selected: 'bill',
+        occupied: true,
+        legal: true,
+        inspectingSame: false,
+        hasInspected: false,
+      }),
     ).toBe('inspect');
   });
 
   it('closes the panel when the tower already being inspected is tapped again', () => {
     expect(
-      boardAction({ selected: null, occupied: true, legal: false, inspectingSame: true }),
+      boardAction({
+        selected: null,
+        occupied: true,
+        legal: false,
+        inspectingSame: true,
+        hasInspected: true,
+      }),
+    ).toBe('close');
+  });
+
+  it('closes the panel when an empty, unarmed spot is tapped elsewhere on the board', () => {
+    expect(
+      boardAction({
+        selected: null,
+        occupied: false,
+        legal: false,
+        inspectingSame: false,
+        hasInspected: true,
+      }),
     ).toBe('close');
   });
 });
