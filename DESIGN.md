@@ -74,7 +74,18 @@ Boombox Ben does the same job from the other side: he grants a flat absorption
 to the troublemakers *around* him, which blunts many light hits far more than
 it blunts a few heavy ones.
 
-Both are stats on an enemy rather than a cell in a chart, so no defender is
+Skateboard Skye applies the same arithmetic to the *effect* rather than to the
+damage. A slow is only ever worth the extra seconds it buys a defender to keep
+shooting, so she ignores three quarters of any slow and crosses the street too
+quickly to be worn down. A board that leans on glaze to buy time finds it has
+bought a quarter of what it paid for; a board that simply hits hard barely
+notices her. Measured on round 11, an all-Barbara board loses 16 of its 20
+points to her round while a Norah-and-Bill board loses 3.
+
+She resists a slow rather than being immune to one, and stun and a blockade
+both still stop her dead, so the answer to her is never a single defender.
+
+All three are stats on an enemy rather than a cell in a chart, so no defender is
 ever the designated answer to one troublemaker. The difference is that a player
 can work out what to do from what they see happening, rather than by learning a
 table.

@@ -181,6 +181,28 @@ describe('status effects', () => {
     applyHit(w, mike, 1, { slowTicks: 60, slowFactor: 0.5, stunTicks: 0 });
     expect(mike.slowTicks).toBe(60);
   });
+
+  it('gives a slow-resistant troublemaker most of the slow back', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 100);
+    const skye = spawnEnemy(w, 'skye', 100);
+    const effect = { slowTicks: 60, slowFactor: 0.4, stunTicks: 0 };
+    applyHit(w, sam, 0, effect);
+    applyHit(w, skye, 0, effect);
+    step(w);
+    // The same glaze, worth a quarter of itself against her.
+    expect(sam.slowFactor).toBeCloseTo(0.4);
+    expect(skye.slowFactor).toBeCloseTo(0.1);
+    expect(skye.speedMult).toBeGreaterThan(sam.speedMult);
+  });
+
+  it('still stops the slow-resistant one dead, because resistance is not immunity', () => {
+    const w = rich();
+    const skye = spawnEnemy(w, 'skye', 100);
+    applyHit(w, skye, 0, { slowTicks: 0, slowFactor: 0, stunTicks: 30 });
+    step(w);
+    expect(skye.speedMult).toBe(0);
+  });
 });
 
 describe('splitting', () => {
@@ -423,7 +445,7 @@ describe('the authored rounds', () => {
     const seen = new Set<EnemyId>();
     for (const wave of WAVES) for (const g of wave.groups) seen.add(g.enemy);
     // `walker` only ever arrives by splitting, so it is never in the table.
-    expect([...seen].sort()).toEqual(['ben', 'gang', 'mike', 'sam', 'tina']);
+    expect([...seen].sort()).toEqual(['ben', 'gang', 'mike', 'sam', 'skye', 'tina']);
   });
 
   it('introduce each one on its own before burying it in a crowd', () => {

@@ -222,6 +222,9 @@ export function enemyReadout(e: Pick<Enemy, 'def' | 'hp' | 'scale'>): EnemyReado
   const lines: string[] = [`${Math.max(0, Math.ceil(e.hp))} health left`];
   if (d.armour > 0) lines.push(`Armour ${d.armour}: every hit lands ${d.armour} lighter.`);
   if (d.stunImmune) lines.push('Cannot be stopped by shouting.');
+  if (d.slowResist > 0) {
+    lines.push(`Rolls on: slowing works ${Math.round(d.slowResist * 100)}% less on her.`);
+  }
   if (d.shieldAura > 0) lines.push(`Shields nearby troublemakers by ${d.shieldAura} a hit.`);
   if (d.disablesTowers) lines.push('Nearby defenders stop working.');
   if (d.splitsInto) lines.push(`Breaks into ${d.splitCount} on the way down.`);
