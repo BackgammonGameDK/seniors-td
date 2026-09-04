@@ -45,7 +45,7 @@ The classic axes of the genre, which are all shape rather than matchup:
   faster or hold the street still so the neighbours get more shots.
 
 Knitting Norah is cheap, short-sighted and constant. Binocular Bill is
-expensive, slow and sees most of the board. Baking Barbara is weak per hit and
+expensive, slow and sees a long way down the street. Baking Barbara is weak per hit and
 lands across a crowd, so she is paid for density and wasted on a lone target.
 None of them is *for* a particular troublemaker.
 
