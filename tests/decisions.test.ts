@@ -10,6 +10,7 @@ import {
   describeStats,
   endOverlay,
   enemyReadout,
+  hudReadouts,
   panelKey,
   pathTierLocked,
   pickEnemy,
@@ -364,5 +365,34 @@ describe('the troublemaker read-out teaches the mechanic', () => {
 
   it('has nothing special to say about the plain ones', () => {
     expect(enemyReadout({ def: 'sam', hp: 22, scale: 1 }).lines).toHaveLength(1);
+  });
+});
+
+describe('the readouts on the board', () => {
+  it('reads coins, peace and round, in that order', () => {
+    const rows = hudReadouts({ gold: 120, lives: 20, waveIndex: 0 });
+    expect(rows.map((r) => r.label)).toEqual(['pension coins', 'peace & quiet', 'round']);
+    expect(rows.map((r) => r.value)).toEqual(['120', '20', `1/${AUTHORED_ROUNDS}`]);
+  });
+
+  it('floors the coin count', () => {
+    // Gold accrues in fractions during a round. A readout of "40" beside a
+    // card priced at 40 has to mean the card is affordable, so the number
+    // shown is never rounded up past what can actually be spent.
+    const [coins] = hudReadouts({ gold: 39.97, lives: 20, waveIndex: 0 });
+    expect(coins?.value).toBe('39');
+  });
+
+  it('asks for a coin picture and nothing else', () => {
+    // The picture does not exist yet; naming it here is what lets it appear
+    // later without the readout changing. The renderer draws an emoji until
+    // the file lands, so an icon named early is never a broken image.
+    const rows = hudReadouts({ gold: 0, lives: 0, waveIndex: 0 });
+    expect(rows.map((r) => r.icon)).toEqual(['coin', null, null]);
+  });
+
+  it('stops counting rounds up at the last authored one', () => {
+    const rows = hudReadouts({ gold: 0, lives: 0, waveIndex: AUTHORED_ROUNDS + 5 });
+    expect(rows[2]?.value).toBe(`${AUTHORED_ROUNDS}/${AUTHORED_ROUNDS}`);
   });
 });

@@ -23,7 +23,6 @@ import {
   roundPreview,
   towerCard,
   upgradeCardState,
-  waveLabel,
 } from './decisions.ts';
 import type { Speed } from './clock.ts';
 
@@ -46,9 +45,6 @@ export interface UiHandlers {
 }
 
 export class Ui {
-  private gold = el<HTMLElement>('gold');
-  private lives = el<HTMLElement>('lives');
-  private wave = el<HTMLElement>('wave');
   private hint = el<HTMLElement>('hint');
   private preview = el<HTMLElement>('preview');
   private towerPanel = el<HTMLElement>('towerPanel');
@@ -126,9 +122,6 @@ export class Ui {
     world: World,
     state: { selected: TowerId | null; inspected: Tower | null; paused: boolean; speed: Speed },
   ): void {
-    this.gold.textContent = String(Math.floor(world.gold));
-    this.lives.textContent = String(world.lives);
-    this.wave.textContent = waveLabel(world.waveIndex);
 
     for (const id of TOWER_IDS) {
       const s = cardState({

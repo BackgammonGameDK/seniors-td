@@ -34,6 +34,19 @@ const ENEMY_ART: Partial<Record<EnemyId, string>> = {
   skye: skyePng,
 };
 
+/** Small pictures that belong to the readouts rather than to a character. */
+export type IconId = 'coin';
+
+/**
+ * Empty on purpose.
+ *
+ * A coin picture is coming. When it lands, import it above and add
+ * `coin: coinPng` here -- nothing else has to change, because the readout
+ * already asks for the icon and already knows to draw an emoji instead when
+ * the answer is `null`.
+ */
+const ICON_ART: Partial<Record<IconId, string>> = {};
+
 const images = new Map<string, HTMLImageElement>();
 
 /**
@@ -67,4 +80,9 @@ export function towerSprite(id: TowerId): HTMLImageElement | null {
 /** The troublemaker's picture, on the same terms. */
 export function enemySprite(id: EnemyId): HTMLImageElement | null {
   return ready(ENEMY_ART[id]);
+}
+
+/** The readout's picture, or `null` while it loads or before it is drawn. */
+export function iconSprite(id: IconId): HTMLImageElement | null {
+  return ready(ICON_ART[id]);
 }
