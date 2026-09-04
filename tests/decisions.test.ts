@@ -12,6 +12,7 @@ import {
   enemyReadout,
   hudReadouts,
   panelKey,
+  pathCard,
   pathTierLocked,
   pickEnemy,
   rate,
@@ -394,5 +395,29 @@ describe('the readouts on the board', () => {
   it('stops counting rounds up at the last authored one', () => {
     const rows = hudReadouts({ gold: 0, lives: 0, waveIndex: AUTHORED_ROUNDS + 5 });
     expect(rows[2]?.value).toBe(`${AUTHORED_ROUNDS}/${AUTHORED_ROUNDS}`);
+  });
+});
+
+describe('both upgrade paths stay on show', () => {
+  it('offers the first tier before anything is bought', () => {
+    expect(pathCard(0)).toEqual({ tierIndex: 0, finished: false });
+  });
+
+  it('offers the second tier once the first is bought', () => {
+    expect(pathCard(1)).toEqual({ tierIndex: 1, finished: false });
+  });
+
+  it('keeps a finished path on show, marked owned', () => {
+    // The point of the whole function. A finished path used to vanish, and
+    // a tower that had gone all the way down speed then looked like a tower
+    // with no speed upgrades at all -- the panel stopped reading as a choice
+    // between two routes and started reading as one route.
+    expect(pathCard(2)).toEqual({ tierIndex: 1, finished: true });
+  });
+
+  it('never asks for a tier the path does not have', () => {
+    for (const bought of [0, 1, 2] as const) {
+      expect(pathCard(bought).tierIndex).toBeLessThanOrEqual(1);
+    }
   });
 });
