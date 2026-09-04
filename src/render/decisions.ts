@@ -20,7 +20,7 @@ import { AUTHORED_ROUNDS, WAVES } from '../sim/waves.ts';
 import { ENEMY_LOOK, TOWER_LOOK } from '../shared/display.ts';
 
 /** What a tap on the board means, given what is already going on. */
-export type BoardAction = 'place' | 'inspect' | 'close' | 'nothing';
+export type BoardAction = 'place' | 'inspect' | 'close' | 'unarm' | 'nothing';
 
 export function boardAction(opts: {
   /** The tower armed on the build menu, if any. */
@@ -33,7 +33,7 @@ export function boardAction(opts: {
   inspectingSame: boolean;
 }): BoardAction {
   if (opts.occupied) return opts.inspectingSame ? 'close' : 'inspect';
-  if (opts.selected && opts.legal) return 'place';
+  if (opts.selected) return opts.legal ? 'place' : 'unarm';
   return 'nothing';
 }
 
