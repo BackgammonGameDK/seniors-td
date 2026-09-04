@@ -15,6 +15,7 @@ import {
 } from '../sim/path.ts';
 import { TOWERS } from '../sim/towers.ts';
 import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
+import { effectiveDef } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
 
@@ -161,11 +162,12 @@ export class Renderer {
   }
 
   private drawRange(t: Tower): void {
-    const d = TOWERS[t.def];
-    if (d.range <= 0) return;
+    const d = effectiveDef(t);
+    const range = d.range * t.rangeMult;
+    if (range <= 0) return;
     const g = this.g;
     g.beginPath();
-    g.arc(t.x, t.y, d.range, 0, Math.PI * 2);
+    g.arc(t.x, t.y, range, 0, Math.PI * 2);
     g.fillStyle = PALETTE.rangeFill;
     g.fill();
     g.strokeStyle = PALETTE.rangeLine;
@@ -275,6 +277,15 @@ export class Renderer {
     if (t.disabled) {
       g.font = '13px serif';
       g.fillText('💤', 12, -12);
+    }
+    // A ring for anything bought on the upgrade tree, gold once a capstone
+    // is chosen -- a glance should tell a built tower from a fresh one.
+    if (t.upgradeA > 0 || t.upgradeB > 0 || t.capstone) {
+      g.beginPath();
+      g.arc(0, 0, 19, 0, Math.PI * 2);
+      g.strokeStyle = t.capstone ? '#ffd54f' : 'rgba(255,255,255,.8)';
+      g.lineWidth = t.capstone ? 3 : 2;
+      g.stroke();
     }
     g.restore();
 

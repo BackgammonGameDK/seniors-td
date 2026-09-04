@@ -87,7 +87,14 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     slowFactor: 0,
     stunTicks: 0,
     buffRate: 1,
-    maxHp: 220,
+    // Lower than it was, to pay for what every Walter now does for free: he
+    // gets back up once a round rather than staying down, so his upgrade
+    // paths are what widen the gap between a fresh Walter and a built one.
+    maxHp: 180,
+    // Second Wind. Baseline on every Walter, not a capstone choice -- see
+    // world.ts's hitBlocker.
+    reviveDelayTicks: 360,
+    reviveHpFrac: 0.4,
   },
   clara: {
     id: 'clara',

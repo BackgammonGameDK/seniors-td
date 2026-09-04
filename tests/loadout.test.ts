@@ -4,9 +4,28 @@ import { describePlacement, parseLoadout } from '../src/sim/loadout.ts';
 describe('the loadout grammar', () => {
   it('reads a board written as a string', () => {
     expect(parseLoadout('norah@5,4 bill@11,9')).toEqual([
-      { def: 'norah', col: 5, row: 4 },
-      { def: 'bill', col: 11, row: 9 },
+      { def: 'norah', col: 5, row: 4, upgradeA: 0, upgradeB: 0, capstone: null },
+      { def: 'bill', col: 11, row: 9, upgradeA: 0, upgradeB: 0, capstone: null },
     ]);
+  });
+
+  it('reads a pre-upgraded tower from the +suffix', () => {
+    expect(parseLoadout('norah@5,4+a2b2:tripleKnit')).toEqual([
+      { def: 'norah', col: 5, row: 4, upgradeA: 2, upgradeB: 2, capstone: 'tripleKnit' },
+    ]);
+  });
+
+  it('accepts a partial suffix -- one path, or a path with no capstone yet', () => {
+    expect(parseLoadout('norah@5,4+a1')).toEqual([
+      { def: 'norah', col: 5, row: 4, upgradeA: 1, upgradeB: 0, capstone: null },
+    ]);
+    expect(parseLoadout('norah@5,4+a2b2')).toEqual([
+      { def: 'norah', col: 5, row: 4, upgradeA: 2, upgradeB: 2, capstone: null },
+    ]);
+  });
+
+  it('rejects a malformed upgrade suffix', () => {
+    expect(() => parseLoadout('norah@5,4+a9')).toThrow(/bad upgrade suffix/);
   });
 
   it('accepts semicolons and stray whitespace, because shells add both', () => {
