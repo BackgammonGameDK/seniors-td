@@ -1,0 +1,178 @@
+# Why the game is shaped this way
+
+This is the reasoning behind Seniors vs Troublemakers. `CLAUDE.md` says what
+the rules are; this file says why they were chosen, and what the previous
+project taught that led to them.
+
+Numbers are not repeated here. Damage, range and cost live in
+`src/sim/towers.ts`, enemy statistics in `src/sim/enemies.ts`, and the twenty
+rounds in `src/sim/waves.ts`. A number copied into prose goes stale the first
+time it is tuned, and a stale number is worse than no number, because someone
+will believe it.
+
+## There is no counter table
+
+The previous project was built on one. Every attack had an element, every enemy
+had a state, and a twenty-cell table decided both how much damage the pair did
+and how strong the lingering effect was. It worked, in the sense that it was
+fair and could be won on every seed. It was still wrong, for two reasons.
+
+The first is that it collapsed the game into lookup. Once a player knew the
+table, a round with a particular enemy in it had a particular answer, and
+building the board was recall rather than judgement.
+
+The second is that it left exactly one build worth making. The table decided
+which tower was best against what was coming, so the strongest board was
+simply the board that answered the schedule. Being balanced turned out to be
+necessary and not sufficient: **the standard this game is judged by is whether
+more than one build works**, not whether it can be won.
+
+So there is no element chart here, no type matchups, and no
+rock-paper-scissors. Proposing one is re-opening a decision that has already
+been made and paid for.
+
+## What tells two defenders apart instead
+
+The classic axes of the genre, which are all shape rather than matchup:
+
+- **Range** — how much of the street a defender can reach at all.
+- **Rate** — how often it acts.
+- **Damage per hit** — and, crucially, whether that arrives as many small hits
+  or few large ones, which armour then makes a real difference (see below).
+- **Single target or area** — whether a hit lands on one troublemaker or on
+  everyone standing near them, which pays for itself only when a crowd exists.
+- **Support** — defenders that never attack, and instead make their neighbours
+  faster or hold the street still so the neighbours get more shots.
+
+Knitting Norah is cheap, short-sighted and constant. Binocular Bill is
+expensive, slow and sees most of the board. Baking Barbara is weak per hit and
+lands across a crowd, so she is paid for density and wasted on a lone target.
+None of them is *for* a particular troublemaker.
+
+## Two of the six defenders never deal damage
+
+Protest Pete buys time and Coffee Clara buys rate, and both are worth their
+cost only in the company of defenders that actually do damage. This is
+deliberate, and it is what stops support from being a free purchase: a board of
+nothing but support loses, because nothing on it kills anything. The player
+therefore has to decide how much of their money goes into the attack and how
+much into multiplying it, which is a real decision rather than a strictly
+better one.
+
+Walker Walter is the third defender that never attacks. He stands *in* the
+road and is attacked instead, which turns a stretch of street into time.
+
+## Armour and shields are arithmetic, not a lookup
+
+Armour subtracts a flat amount from every hit that lands. That means the same
+total damage delivered as six small hits loses six subtractions, while
+delivered as one large hit it loses one. A fast, cheap, light-hitting board
+therefore genuinely struggles against an armoured troublemaker, and a slow
+heavy-hitting board does not — without any table saying so anywhere.
+
+Boombox Ben does the same job from the other side: he grants a flat absorption
+to the troublemakers *around* him, which blunts many light hits far more than
+it blunts a few heavy ones.
+
+Both are stats on an enemy rather than a cell in a chart, so no defender is
+ever the designated answer to one troublemaker. The difference is that a player
+can work out what to do from what they see happening, rather than by learning a
+table.
+
+**Ben never shields himself.** A shield carrier that did would be nearly
+unkillable by exactly the light, fast defenders he exists to punish. The
+intended reading is "shoot the carrier and the rest get easier", and that only
+works if the carrier is shootable.
+
+Status effects land even when the damage does not, so Pete still stuns at zero
+damage and Barbara's glaze still slows something armoured. An effect that was
+gated behind damage would make support defenders quietly useless against
+exactly the enemies they are meant to answer.
+
+Moped Mike ignores stuns entirely. That is the one hard immunity in the game,
+and it exists so that Pete cannot be the whole answer to a round.
+
+## The street is the decision
+
+The lane is a polyline with four hairpins, and that is not decoration. A corner
+is where one long-range defender covers several stretches of road at once, and
+where a crowd bunches up tightly enough for an area hit to be worth its price.
+Placement is most of the decision in this game, so the shape of the street is
+what gives placement something to decide.
+
+Ordinary defenders must be built clear of the road. Walter must be built in it.
+He is the one defender who inverts the clearance test rather than being
+exempted from it, which keeps the rule single rather than special-cased.
+
+Selling returns less than the defender cost, so a misplacement costs something
+real. Without that, placement carries no risk and the hairpins stop mattering.
+
+## Composition is the difficulty dial
+
+A late round is not an early round with more in it. Each troublemaker arrives
+in a quiet round of its own before it turns up inside a busy one, so the first
+time a player meets armour, or a shield, or a defender going silent, they can
+see what happened and why.
+
+Rounds do carry a toughness multiplier, but it multiplies hit points only.
+Speed and armour stay where they are, so a late round is harder without quietly
+becoming a different game — a troublemaker that got faster every round would
+eventually outrun the mechanics rather than test them.
+
+The round clear bonus is the part of the income that does *not* scale with how
+much walked down the street. Bounties alone would let a bigger round pay for
+the defenders that beat it, which makes round size useless as a dial. The clear
+bonus is therefore what actually decides how much board the player owns by the
+end.
+
+## The simulation is pure so that balance can be measured
+
+`src/sim/` is a pure function of state, input and seed: a fixed 60Hz timestep,
+one seeded random number generator, no wall clock, no DOM, and no import from
+`src/render/`. `tests/architecture.test.ts` enforces this by reading the
+source.
+
+The point is not tidiness. It is that the same rounds can be played thousands
+of times without a browser, which is what makes `npm run sim` possible and
+what turns a claim about difficulty into a measurement instead of an opinion.
+Every balance change is expected to be followed by a run of it. The rule is
+also what will make the campaign and build-variety harnesses possible, and
+those are what would actually prove the standard at the top of this file — that
+more than one build works.
+
+## Interface decisions live where a test can reach them
+
+Every interface bug the previous project shipped came from logic tangled up
+with the DOM in an event handler, where nothing could test it: a selected tower
+that could not be deselected, a panel showing the tower clicked before this
+one, and a board that read its target cell from the last `mousemove`, which
+made the game completely unplayable on a phone.
+
+So anything of the form "what should happen if the player does this" is a pure
+function in `src/render/decisions.ts` with a test named after the bug it
+prevents, and `src/render/ui.ts` only applies the answer. A tap's target cell
+is read from the tap's own coordinates, always.
+
+## Effects resolve once
+
+A lingering effect is resolved at the moment the hit lands and then ticks down
+as flat numbers. Nothing that advances an effect may re-enter damage
+application, because an effect that re-ran its own hit would re-apply itself
+and never expire.
+
+The same instinct runs through the rest of the tick. Auras are recomputed from
+nothing every tick rather than accumulated, so a buff cannot leak, double up or
+outlive the defender that granted it. Anything created during a tick is queued
+and flushed at the end, so an area hit can never reach the troublemakers it
+just created by splitting something.
+
+## Names
+
+Ids are lowercase first names and display names are the full ones: `norah` is
+Knitting Norah, `bill` is Binocular Bill. They must never drift apart, because
+the loadout grammar the harnesses parse is built from the ids — `norah@5,4`.
+
+The vocabulary is meant to teach rather than to be known in advance. A panel
+says "slows them by 35%", not "slowFactor 0.35", and the game's two currencies
+are named after what they are: Pension Coins to spend, Peace & Quiet Points to
+lose.
