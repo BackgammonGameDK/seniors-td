@@ -144,6 +144,7 @@ export function placeTower(w: World, def: TowerId, col: number, row: number): bo
     laneDist: d.mode === 'blocker' ? distanceAlong(p) : -1,
     rateMult: 1,
     disabled: false,
+    targetId: null,
   });
   return true;
 }

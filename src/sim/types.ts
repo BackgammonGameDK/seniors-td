@@ -147,6 +147,16 @@ export interface Tower {
   rateMult: number;
   /** Derived from nearby disruptors every tick. Never written directly. */
   disabled: boolean;
+  /**
+   * Id of the enemy this tower is currently aimed at, or null when it has
+   * none in range. Unused for now -- `findTarget` picks a target fresh each
+   * tick and discards it once a shot is fired, so nothing currently writes
+   * this field. It exists so a future facing/rotation feature (the tower
+   * turning to face what it shoots, purely cosmetic -- this game has no aim
+   * mechanic) has somewhere to read a target from between shots, without
+   * `src/render/` needing to re-run targeting logic itself.
+   */
+  targetId: number | null;
 }
 
 export interface Projectile {

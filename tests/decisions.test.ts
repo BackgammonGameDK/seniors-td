@@ -40,6 +40,7 @@ const tower = (over: Partial<Tower> = {}): Tower => ({
   laneDist: -1,
   rateMult: 1,
   disabled: false,
+  targetId: null,
   ...over,
 });
 
