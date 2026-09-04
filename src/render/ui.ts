@@ -8,7 +8,7 @@
 import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
 import type { Tower, TowerId } from '../sim/types.ts';
-import { UPGRADES } from '../sim/upgrades.ts';
+import { effectiveDef, UPGRADES } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { refundOf } from '../sim/world.ts';
 import { TOWER_LOOK } from '../shared/display.ts';
@@ -16,6 +16,7 @@ import { UPGRADE_LOOK } from '../shared/upgrades.ts';
 import {
   capstoneLocked,
   cardState,
+  describeStats,
   endOverlay,
   enemyReadout,
   panelKey,
@@ -159,7 +160,7 @@ export class Ui {
     this.inspect.hidden = false;
     const card = towerCard(t.def);
     this.inspectTitle.textContent = card.name;
-    const rows = [...card.rows];
+    const rows = describeStats(effectiveDef(t));
     if (TOWERS[t.def].mode === 'blocker') {
       rows.push({ label: 'Still standing', value: `${Math.max(0, Math.ceil(t.hp))}` });
     }
