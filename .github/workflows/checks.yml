@@ -1,0 +1,32 @@
+name: Checks
+
+# The same typecheck and tests the deploy gates on, run early enough to matter:
+# on a pull request, before the merge, rather than after it. Pushes to main are
+# ignored here because deploy.yml already runs these on main, and paying twice
+# for one answer is waste.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      # The full suite, not test:fast. The balance sweeps take about twenty
+      # seconds, which is too slow for the edit hook and irrelevant here.
+      - run: npm test
