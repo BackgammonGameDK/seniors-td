@@ -370,9 +370,9 @@ describe('the troublemaker read-out teaches the mechanic', () => {
 });
 
 describe('the readouts on the board', () => {
-  it('reads coins, peace and round, in that order', () => {
+  it('reads coins, lives and round, in that order', () => {
     const rows = hudReadouts({ gold: 120, lives: 20, waveIndex: 0 });
-    expect(rows.map((r) => r.label)).toEqual(['pension coins', 'peace & quiet', 'round']);
+    expect(rows.map((r) => r.label)).toEqual(['', '', 'round']);
     expect(rows.map((r) => r.value)).toEqual(['120', '20', `1/${AUTHORED_ROUNDS}`]);
   });
 
@@ -384,12 +384,14 @@ describe('the readouts on the board', () => {
     expect(coins?.value).toBe('39');
   });
 
-  it('asks for a coin picture and nothing else', () => {
-    // The picture does not exist yet; naming it here is what lets it appear
-    // later without the readout changing. The renderer draws an emoji until
-    // the file lands, so an icon named early is never a broken image.
+  it('gives the two resources a picture and no words', () => {
+    // The picture is the whole readout: a number with an icon beside it and
+    // nothing to read. An icon may be named before its artwork exists -- the
+    // renderer draws an emoji until the file lands -- so this never depends
+    // on a picture being there.
     const rows = hudReadouts({ gold: 0, lives: 0, waveIndex: 0 });
-    expect(rows.map((r) => r.icon)).toEqual(['coin', null, null]);
+    expect(rows.map((r) => r.icon)).toEqual(['coin', 'heart', null]);
+    expect(rows.map((r) => r.label)).toEqual(['', '', 'round']);
   });
 
   it('stops counting rounds up at the last authored one', () => {

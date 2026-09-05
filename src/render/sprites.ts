@@ -36,10 +36,21 @@ const ENEMY_ART: Partial<Record<EnemyId, string>> = {
 };
 
 /** Small pictures that belong to the readouts rather than to a character. */
-export type IconId = 'coin';
+export type IconId = 'coin' | 'heart';
 
 const ICON_ART: Partial<Record<IconId, string>> = {
   coin: coinPng,
+};
+
+/**
+ * What stands in until an icon has been drawn.
+ *
+ * Every icon needs one, so a readout can name a picture before the artwork
+ * exists and still have something to show.
+ */
+const ICON_GLYPH: Record<IconId, string> = {
+  coin: '\u{1FA99}',
+  heart: '\u{2764}\u{FE0F}',
 };
 
 const images = new Map<string, HTMLImageElement>();
@@ -80,4 +91,9 @@ export function enemySprite(id: EnemyId): HTMLImageElement | null {
 /** The readout's picture, or `null` while it loads or before it is drawn. */
 export function iconSprite(id: IconId): HTMLImageElement | null {
   return ready(ICON_ART[id]);
+}
+
+/** The emoji drawn in an icon's place while it has no picture. */
+export function iconGlyph(id: IconId): string {
+  return ICON_GLYPH[id];
 }

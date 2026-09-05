@@ -95,24 +95,29 @@ export function waveLabel(waveIndex: number): string {
 export interface Readout {
   /** The number, already formatted for reading. */
   value: string;
-  /** What the number means, in words. */
+  /**
+   * What the number means, in words. Empty when the picture says it alone.
+   */
   label: string;
   /**
-   * A picture that may stand in front of the number.
+   * A picture that stands just after the number.
    *
    * `null` means the words carry it alone. A name here is a request, not a
    * promise -- the renderer draws the picture if it has one and an emoji if
    * it does not, so naming an icon before the artwork exists is safe.
    */
-  icon: 'coin' | null;
+  icon: 'coin' | 'heart' | null;
 }
 
 /**
  * The three numbers along the top of the board, in the order they are read.
  *
- * Here rather than in the drawing code because the phrasing is a decision:
- * "peace & quiet" is what the game calls lives, and a coin count is floored
- * so a tower's price never looks affordable by a fraction.
+ * Here rather than in the drawing code because the phrasing is a decision: a
+ * coin count is floored so a tower's price never looks affordable by a
+ * fraction, and the two resources are a picture and a number with no words at
+ * all. A coin and a heart are read the same way in every language, which
+ * "pension coins" and "peace & quiet" are not. The round keeps its word,
+ * because 1/20 on its own could be anything.
  */
 export function hudReadouts(opts: {
   gold: number;
@@ -120,8 +125,8 @@ export function hudReadouts(opts: {
   waveIndex: number;
 }): Readout[] {
   return [
-    { value: String(Math.floor(opts.gold)), label: 'pension coins', icon: 'coin' },
-    { value: String(opts.lives), label: 'peace & quiet', icon: null },
+    { value: String(Math.floor(opts.gold)), label: '', icon: 'coin' },
+    { value: String(opts.lives), label: '', icon: 'heart' },
     { value: waveLabel(opts.waveIndex), label: 'round', icon: null },
   ];
 }
