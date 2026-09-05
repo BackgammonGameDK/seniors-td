@@ -83,14 +83,21 @@ export const ENEMY_LOOK: Record<EnemyId, EnemyLook> = {
 /** Board furniture. Kept here so the renderer has one palette to read. */
 export const PALETTE = {
   /**
-   * Grass, as an 8-bit pixel field rather than a flat colour: four close
-   * greens scattered over a fixed block grid, plus two accents for tufts and
-   * flowers. The renderer indexes into this list, so the order is the order
-   * from darkest to lightest.
+   * Grass, in the same hand-drawn style as the painted characters: soft
+   * patches of close greens for the ground, then blades and flowers with a
+   * dark outline and a lighter tip, the way the seniors are drawn. The
+   * renderer indexes into the ground list, so the order is darkest to
+   * lightest.
    */
-  grass: ['#7fae68', '#87b671', '#8fbf7a', '#97c884'],
-  grassDeep: '#71a05c',
-  grassBloom: '#d7e59b',
+  grass: ['#74a45e', '#82b46b', '#90c07b', '#a0cd8a'],
+  grassBlade: '#67a44e',
+  grassBladeTip: '#bde39d',
+  /** The outline around every blade and petal. Dark and green, never black. */
+  grassLine: '#3f5c34',
+  /** The contact shadow that sits a tuft on the ground rather than over it. */
+  grassShadow: 'rgba(48, 74, 40, 0.20)',
+  grassBloom: '#fbf6df',
+  grassBloomCore: '#f2c14e',
   road: '#6d6a63',
   roadEdge: '#5a5751',
   kerb: '#cfc9bd',

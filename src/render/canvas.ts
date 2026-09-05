@@ -70,8 +70,16 @@ const EVENT_COLOR: Record<SimEvent['type'], string> = {
   stun: '#7986cb',
 };
 
-/** The side of one grass pixel. Five of them to a 40px board cell. */
-const GRASS_PIXEL = 8;
+/**
+ * How coarse the lawn's colour variation is, in board pixels.
+ *
+ * The ground is painted this small and then blown up smoothly, which is what
+ * turns a grid of flat greens into soft patches with no visible edges.
+ */
+const MOTTLE = 16;
+
+/** How much lawn one scattered tuft of grass is given to itself. */
+const TUFT_CELL = 26;
 
 /**
  * A fixed hash for the grass, so the field looks the same in every session.
@@ -87,43 +95,156 @@ function grassNoise(x: number, y: number): number {
 }
 
 /**
- * The lawn, drawn as blocks of flat colour with no blending anywhere.
+ * The ground the blades stand in: broad, soft patches of close greens.
  *
- * Three passes stacked: broad patches that pick the base tone, per-pixel
- * speckle that breaks the patch edges up, and sparse tufts and flowers so the
- * eye has something to land on.
+ * Painted onto a canvas a sixteenth of the size and then drawn back
+ * stretched, so the browser's own smoothing does the blending. Blurring 960
+ * pixels' worth of noise directly would be slower and is not supported
+ * everywhere; this trick is, and it gives the soft painted ground the
+ * characters are drawn on rather than a field of squares.
+ */
+function paintLawnGround(g: CanvasRenderingContext2D): void {
+  const tones = PALETTE.grass;
+  const cols = Math.ceil(BOARD.width / MOTTLE) + 1;
+  const rows = Math.ceil(BOARD.height / MOTTLE) + 1;
+
+  const small = document.createElement('canvas');
+  small.width = cols;
+  small.height = rows;
+  const sg = small.getContext('2d')!;
+
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < cols; x++) {
+      // A cell is averaged with its neighbours and with a coarser field, so
+      // patches come out broad and related instead of as pure static.
+      const n =
+        (grassNoise(x, y) +
+          grassNoise(x + 1, y) +
+          grassNoise(x, y + 1) +
+          grassNoise(x >> 1, y >> 1) * 2) /
+        5;
+      sg.fillStyle = tones[Math.min(tones.length - 1, Math.floor(n * tones.length))]!;
+      sg.fillRect(x, y, 1, 1);
+    }
+  }
+
+  g.imageSmoothingEnabled = true;
+  g.drawImage(small, 0, 0, cols * MOTTLE, rows * MOTTLE);
+}
+
+/**
+ * One blade, as a leaf shape that leans and tapers to a point.
+ *
+ * The path only: the caller fills and outlines it, because a blade is drawn
+ * the way the characters are -- flat colour first, dark line around it after.
+ */
+function bladePath(
+  g: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  height: number,
+  width: number,
+  lean: number,
+): void {
+  g.beginPath();
+  g.moveTo(x - width, y);
+  g.quadraticCurveTo(x - width * 0.5, y - height * 0.55, x + lean, y - height);
+  g.quadraticCurveTo(x + width * 0.85, y - height * 0.45, x + width, y);
+  g.closePath();
+}
+
+/** Three blades from one root, the middle one tallest. */
+function paintTuft(g: CanvasRenderingContext2D, x: number, y: number, height: number): void {
+  // Height, how far the tip leans, and how far the root sits from the middle.
+  // The tall one in the centre with two shorter ones splaying out is what
+  // makes a tuft read as grass rather than as a spiky crown.
+  const w = height * 0.2;
+  const blades: [number, number, number][] = [
+    [height * 0.66, -height * 0.5, -w * 1.4],
+    [height, height * 0.04, 0],
+    [height * 0.78, height * 0.58, w * 1.4],
+  ];
+
+  // Sat on the ground with a soft shadow, the way every character has one
+  // under them. Without it a tuft floats above the lawn.
+  g.beginPath();
+  g.ellipse(x, y, height * 0.5, height * 0.15, 0, 0, Math.PI * 2);
+  g.fillStyle = PALETTE.grassShadow;
+  g.fill();
+
+  // Mitred rather than rounded, so a blade ends in a point the way a drawn
+  // one does. Round joins turned every tip into a blunt stub.
+  g.lineJoin = 'miter';
+  g.miterLimit = 6;
+
+  for (const [h, lean, root] of blades) {
+    // Light at the tip and deeper at the root: the same two-tone shading the
+    // painted characters have, rather than one flat green.
+    const shade = g.createLinearGradient(x, y, x, y - h);
+    shade.addColorStop(0, PALETTE.grassBlade);
+    shade.addColorStop(1, PALETTE.grassBladeTip);
+
+    bladePath(g, x + root, y, h, w, lean);
+    g.fillStyle = shade;
+    g.fill();
+    g.strokeStyle = PALETTE.grassLine;
+    g.lineWidth = 1.7;
+    g.stroke();
+  }
+}
+
+/** A small daisy: five outlined petals around a warm centre. */
+function paintBloom(g: CanvasRenderingContext2D, x: number, y: number): void {
+  g.strokeStyle = PALETTE.grassLine;
+  g.lineWidth = 1.5;
+  g.fillStyle = PALETTE.grassBloom;
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2;
+    g.beginPath();
+    g.arc(x + Math.cos(a) * 2.6, y + Math.sin(a) * 2.6, 2.2, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  }
+  g.beginPath();
+  g.arc(x, y, 1.8, 0, Math.PI * 2);
+  g.fillStyle = PALETTE.grassBloomCore;
+  g.fill();
+  g.stroke();
+}
+
+/**
+ * The lawn, drawn the way the characters are drawn.
+ *
+ * They are painted illustrations -- soft shading inside a bold dark outline --
+ * and a field of hard 8-bit squares underneath them read as two games at once.
+ * So: soft ground first, then outlined blades and flowers scattered over it,
+ * every one of them shaded from a deep root to a light tip.
  */
 function paintGrass(g: CanvasRenderingContext2D): void {
-  const tones = PALETTE.grass;
-  const cols = Math.ceil(BOARD.width / GRASS_PIXEL);
-  const rows = Math.ceil(BOARD.height / GRASS_PIXEL);
+  paintLawnGround(g);
 
-  for (let py = 0; py < rows; py++) {
-    for (let px = 0; px < cols; px++) {
-      const patch = grassNoise(px >> 2, py >> 2);
-      const speckle = grassNoise(px, py);
-      let tone = patch < 0.35 ? 1 : patch < 0.8 ? 2 : 3;
-      if (speckle < 0.18) tone -= 1;
-      else if (speckle > 0.88) tone += 1;
-      g.fillStyle = tones[Math.max(0, Math.min(tones.length - 1, tone))]!;
-      g.fillRect(px * GRASS_PIXEL, py * GRASS_PIXEL, GRASS_PIXEL, GRASS_PIXEL);
+  g.save();
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+
+  const cols = Math.ceil(BOARD.width / TUFT_CELL);
+  const rows = Math.ceil(BOARD.height / TUFT_CELL);
+  for (let cy = 0; cy < rows; cy++) {
+    for (let cx = 0; cx < cols; cx++) {
+      const seed = grassNoise(cx + 911, cy + 733);
+      if (seed < 0.56) continue;
+
+      // Jittered inside its own cell, so the scatter is even without the
+      // regularity of a grid showing through.
+      const x = cx * TUFT_CELL + grassNoise(cx + 17, cy + 53) * TUFT_CELL;
+      const y = cy * TUFT_CELL + grassNoise(cx + 71, cy + 29) * TUFT_CELL;
+
+      if (seed > 0.975) paintBloom(g, x, y);
+      else paintTuft(g, x, y, 13 + grassNoise(cx + 5, cy + 97) * 9);
     }
   }
 
-  for (let py = 1; py < rows - 1; py++) {
-    for (let px = 1; px < cols - 1; px++) {
-      const seed = grassNoise(px + 911, py + 733);
-      if (seed > 0.986) {
-        // A tuft: a single pixel above a three-pixel base, on the same grid.
-        g.fillStyle = PALETTE.grassDeep;
-        g.fillRect(px * GRASS_PIXEL, (py - 1) * GRASS_PIXEL, GRASS_PIXEL, GRASS_PIXEL);
-        g.fillRect((px - 1) * GRASS_PIXEL, py * GRASS_PIXEL, GRASS_PIXEL * 3, GRASS_PIXEL);
-      } else if (seed > 0.981) {
-        g.fillStyle = PALETTE.grassBloom;
-        g.fillRect(px * GRASS_PIXEL, py * GRASS_PIXEL, GRASS_PIXEL, GRASS_PIXEL);
-      }
-    }
-  }
+  g.restore();
 }
 
 export class Renderer {
