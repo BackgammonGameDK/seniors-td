@@ -1,23 +1,23 @@
 name: Checks
 
 # The same typecheck and tests the deploy gates on, run early enough to matter:
-# on a pull request, before the merge, rather than after it. Pushes to main are
-# ignored here because deploy.yml already runs these on main, and paying twice
-# for one answer is waste.
+# on a pull request, before the merge, rather than after it. Main is left to
+# deploy.yml, which runs these before it publishes.
+#
+# Pull requests only, deliberately. A branch push trigger as well would fire a
+# second run for the same commit, and the one the concurrency group cancelled
+# still showed on the pull request as a cancelled check -- which is noise now
+# and a problem later, once a branch protection rule requires this job to pass.
+# A branch with no pull request open is covered by the edit hook, which
+# typechecks and tests locally on every change.
 on:
   pull_request:
-  push:
-    branches-ignore: [main]
 
 permissions:
   contents: read
 
-# A branch with an open pull request fires both triggers above for one commit.
-# head_ref (the pull request) and ref_name (the push) are the same branch name,
-# so both runs land in one group and the older is cancelled -- one commit gets
-# one answer, not two identical ones.
 concurrency:
-  group: checks-${{ github.head_ref || github.ref_name }}
+  group: checks-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
