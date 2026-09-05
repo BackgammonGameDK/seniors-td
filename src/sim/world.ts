@@ -440,6 +440,24 @@ function hitBlocker(w: World, e: Enemy, t: Tower): void {
 }
 
 /**
+ * A round ending patches the blockers up.
+ *
+ * Regen is an in-round survivability stat, not a timer the player can farm by
+ * taking longer over the upgrade panel -- `step` keeps ticking while the game
+ * is idle, so anything that healed between rounds would be paid for in
+ * wall-clock time. Clearing `reviveAt` matters too: a blocker felled by the
+ * last enemy of a round would otherwise stand at 0 HP counting down to
+ * nothing.
+ */
+function restoreBlockers(w: World): void {
+  for (const t of w.towers) {
+    if (TOWERS[t.def].mode !== 'blocker') continue;
+    t.hp = effectiveDef(t).maxHp;
+    t.reviveAt = null;
+  }
+}
+
+/**
  * A blocker's own upkeep: Second Wind coming back up, and regen while
  * standing. Kept apart from `advanceEffects`, which is enemies-only and
  * never writes a tower's hp.
@@ -771,6 +789,7 @@ export function step(w: World): void {
   }
 
   if (w.status === 'running' && w.spawnQueue.length === 0 && w.enemies.length === 0) {
+    restoreBlockers(w);
     award(w, ECONOMY.roundClearBonus(w.waveIndex + 1));
     w.waveIndex++;
     w.status = w.waveIndex >= AUTHORED_ROUNDS ? 'won' : 'idle';
