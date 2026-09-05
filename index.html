@@ -30,8 +30,16 @@
       }
       #hud h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
       #hud h1 small { font-weight: normal; opacity: .6; font-size: 12px; display: block; }
-      #main { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+      /*
+       * The board sets the height of the row and the aside stretches to it,
+       * which is what makes the tower panel end exactly on the board's bottom
+       * border. The hint moved out from under the board for the same reason:
+       * anything below the canvas inside #stage would have made the column
+       * taller than the board it is being measured against.
+       */
+      #main { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
       #stage { flex: 1 1 640px; min-width: 320px; }
+      #boardWrap { position: relative; }
       canvas {
         width: 100%; height: auto; display: block;
         border: 2px solid var(--line); border-radius: 12px;
@@ -39,7 +47,13 @@
       }
       #hint { margin: 8px 2px 0; min-height: 20px; opacity: .75; font-size: 13px; }
       #build { flex: 0 0 310px; display: flex; flex-direction: column; gap: 10px; }
-      @media (max-width: 760px) { #build { flex: 1 1 100%; } }
+      /* The list is the part that gives, so the panel's bottom stays put. */
+      #towerPanel { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+      #towerList { overflow-y: auto; min-height: 0; }
+      @media (max-width: 760px) {
+        #build { flex: 1 1 100%; }
+        #towerList { overflow-y: visible; }
+      }
       section, #controls {
         background: var(--card); border: 2px solid var(--line);
         border-radius: 12px; padding: 10px 12px;
@@ -59,6 +73,19 @@
       .card .c { font-weight: bold; font-size: 13px; white-space: nowrap; }
       .card.on { border-color: var(--accent); background: #fff3ee; }
       .card.on .b { display: block; }
+      /*
+       * The fold-out. Only the selected card opens one, so the panel shows
+       * the whole of one neighbour instead of a line each about six.
+       */
+      .card .fold { display: none; grid-column: 1 / -1; gap: 10px;
+                    margin-top: 6px; padding-top: 8px;
+                    border-top: 2px dotted var(--line); }
+      .card.on .fold { display: flex; }
+      .card .fold img { width: 116px; height: 116px; flex: 0 0 116px;
+                        align-self: center; }
+      .card .fold .big { font-size: 74px; line-height: 116px; width: 116px;
+                         flex: 0 0 116px; text-align: center; }
+      .card .fold .rows { flex: 1 1 auto; min-width: 0; }
       .card.poor { opacity: .45; cursor: not-allowed; }
       .card.locked { opacity: .4; cursor: not-allowed; }
       .card.bought { border-color: var(--good); background: #f1f8f3; cursor: default; }
@@ -68,15 +95,34 @@
       #upgrades .card { grid-template-columns: 1fr auto; padding: 6px 8px; margin-bottom: 4px; }
       #upgrades .card .n { font-size: 12px; }
       #upgrades .card .b { display: block; font-size: 10.5px; margin-top: 0; }
-      #controls { display: flex; gap: 8px; flex-wrap: wrap; }
+      /*
+       * On the board rather than under it, in the corner furthest from the
+       * road, dressed like the readouts in the other three corners.
+       */
+      #controls {
+        position: absolute; left: 12px; bottom: 12px;
+        display: flex; gap: 8px; align-items: center;
+      }
+      /*
+       * Solid rather than translucent, unlike the readouts it sits between.
+       * Those are painted into the canvas, where the lawn behind them is
+       * already drawn; a see-through DOM element over the canvas is at the
+       * mercy of how the browser composites the two, and rendered light in
+       * testing. A control has to be legible everywhere, so it is opaque.
+       */
+      #controls button {
+        background: #332c26; color: #fff;
+        border: 2px solid rgba(255, 255, 255, .28);
+      }
+      #controls button:hover:not(:disabled) { border-color: #fff; }
+      #run { font-weight: bold; }
+      #speed { padding: 8px 10px; }
       button {
         font: inherit; padding: 8px 12px; border-radius: 9px; cursor: pointer;
         border: 2px solid var(--line); background: #fff; color: inherit;
       }
       button:hover:not(:disabled) { border-color: var(--accent); }
       button:disabled { opacity: .45; cursor: default; }
-      #startWave { background: var(--good); color: #fff; border-color: #3f8460; font-weight: bold; }
-      #startWave:disabled { background: #cfcfcf; border-color: var(--line); color: #777; }
       #preview { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; }
       #preview span { display: flex; align-items: center; gap: 4px; }
       .statrow { display: flex; justify-content: space-between; gap: 10px;
@@ -106,8 +152,13 @@
 
       <div id="main">
         <div id="stage">
-          <canvas id="board" width="960" height="600"></canvas>
-          <p id="hint"></p>
+          <div id="boardWrap">
+            <canvas id="board" width="960" height="600"></canvas>
+            <div id="controls">
+              <button id="run">Start round</button>
+              <button id="speed" title="Cycle 1x / 2x / 3x (F)">1&times;</button>
+            </div>
+          </div>
         </div>
 
         <aside id="build">
@@ -131,13 +182,9 @@
             <button id="sell">Send home</button>
           </section>
 
-          <div id="controls">
-            <button id="startWave">Start round</button>
-            <button id="pause" title="Pause or resume (P)">Pause</button>
-            <button id="speed" title="Cycle 1x / 2x / 3x (F)">1&times;</button>
-          </div>
         </aside>
       </div>
+      <p id="hint"></p>
     </div>
 
     <div id="overlay" hidden>
