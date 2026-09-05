@@ -17,6 +17,7 @@ import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
 import type { Enemy, EnemyId, Stats, Tower, TowerDef, TowerId } from '../sim/types.ts';
 import { AUTHORED_ROUNDS, WAVES } from '../sim/waves.ts';
+import { cooldownAt } from '../sim/world.ts';
 import { ENEMY_LOOK, TOWER_LOOK } from '../shared/display.ts';
 
 /** What a tap on the board means, given what is already going on. */
@@ -85,7 +86,18 @@ export function cardState(opts: { gold: number; cost: number; isSelected: boolea
  */
 export function panelKey(t: Tower | null): string {
   if (!t) return 'none';
-  return `${t.id}:${t.def}:${Math.ceil(t.hp)}:${t.upgradeA}:${t.upgradeB}:${t.capstone ?? ''}`;
+  // The multipliers belong in the key too: a Clara put down or sent home next
+  // door changes what this panel should say without touching the tower itself.
+  return [
+    t.id,
+    t.def,
+    Math.ceil(t.hp),
+    t.upgradeA,
+    t.upgradeB,
+    t.capstone ?? '',
+    t.rateMult,
+    t.rangeMult,
+  ].join(':');
 }
 
 export function waveLabel(waveIndex: number): string {
@@ -247,13 +259,29 @@ export interface StatRow {
 }
 
 /**
+ * What a neighbour standing nearby is doing to this tower, right now.
+ *
+ * Both come straight off the tower the panel is showing, which is the only
+ * place they are ever true -- a build card has no neighbours yet, so it leaves
+ * them out and gets the plain numbers.
+ */
+export interface Buffs {
+  rateMult?: number;
+  rangeMult?: number;
+}
+
+/**
  * What a build card says about a tower.
  *
  * Written for someone meeting the game for the first time, so every row names
  * the effect rather than the jargon: "slows them by 35%", not "slowFactor
  * 0.35". A player should not have to already know a word to read this panel.
  */
-export function describeStats(def: TowerDef): StatRow[] {
+export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
+  const rateMult = buffs.rateMult ?? 1;
+  const rangeMult = buffs.rangeMult ?? 1;
+  const range = Math.round(def.range * rangeMult);
+  const reach = rangeMult > 1 ? `${range} px, up from ${def.range}` : `${def.range} px`;
   const rows: StatRow[] = [{ label: 'Cost', value: `${def.cost} coins` }];
   if (def.mode === 'blocker') {
     rows.push({ label: 'Stands in', value: 'the road itself' });
@@ -261,7 +289,7 @@ export function describeStats(def: TowerDef): StatRow[] {
     return rows;
   }
   if (def.mode === 'support') {
-    rows.push({ label: 'Reach', value: `${def.range} px` });
+    rows.push({ label: 'Reach', value: reach });
     rows.push({
       label: 'Neighbours',
       value: `fire ${Math.round((def.buffRate - 1) * 100)}% faster`,
@@ -269,8 +297,14 @@ export function describeStats(def: TowerDef): StatRow[] {
     return rows;
   }
   rows.push({ label: 'Damage', value: def.damage > 0 ? `${def.damage} a hit` : 'none' });
-  rows.push({ label: 'Reach', value: `${def.range} px` });
-  rows.push({ label: 'Rate', value: rate(def.cooldown) });
+  rows.push({ label: 'Reach', value: reach });
+  rows.push({
+    label: 'Rate',
+    value:
+      rateMult > 1
+        ? `${rate(cooldownAt(def.cooldown, rateMult))}, up from ${rate(def.cooldown)}`
+        : rate(def.cooldown),
+  });
   if (def.splash > 0) {
     rows.push({
       label: 'Area',

@@ -201,7 +201,7 @@ export class Ui {
     this.inspect.hidden = false;
     const card = towerCard(t.def);
     this.inspectTitle.textContent = card.name;
-    const rows = describeStats(effectiveDef(t));
+    const rows = describeStats(effectiveDef(t), { rateMult: t.rateMult, rangeMult: t.rangeMult });
     if (TOWERS[t.def].mode === 'blocker') {
       rows.push({ label: 'Still standing', value: `${Math.max(0, Math.ceil(t.hp))}` });
     }
