@@ -11,6 +11,7 @@ import {
   endOverlay,
   enemyReadout,
   hudReadouts,
+  roundReadout,
   panelKey,
   pathCard,
   pathTierLocked,
@@ -370,17 +371,17 @@ describe('the troublemaker read-out teaches the mechanic', () => {
 });
 
 describe('the readouts on the board', () => {
-  it('reads coins, lives and round, in that order', () => {
-    const rows = hudReadouts({ gold: 120, lives: 20, waveIndex: 0 });
-    expect(rows.map((r) => r.label)).toEqual(['', '', 'round']);
-    expect(rows.map((r) => r.value)).toEqual(['120', '20', `1/${AUTHORED_ROUNDS}`]);
+  it('reads coins then lives, with no words on either', () => {
+    const rows = hudReadouts({ gold: 120, lives: 20 });
+    expect(rows.map((r) => r.value)).toEqual(['120', '20']);
+    expect(rows.map((r) => r.label)).toEqual(['', '']);
   });
 
   it('floors the coin count', () => {
     // Gold accrues in fractions during a round. A readout of "40" beside a
     // card priced at 40 has to mean the card is affordable, so the number
     // shown is never rounded up past what can actually be spent.
-    const [coins] = hudReadouts({ gold: 39.97, lives: 20, waveIndex: 0 });
+    const [coins] = hudReadouts({ gold: 39.97, lives: 20 });
     expect(coins?.value).toBe('39');
   });
 
@@ -389,14 +390,24 @@ describe('the readouts on the board', () => {
     // nothing to read. An icon may be named before its artwork exists -- the
     // renderer draws an emoji until the file lands -- so this never depends
     // on a picture being there.
-    const rows = hudReadouts({ gold: 0, lives: 0, waveIndex: 0 });
-    expect(rows.map((r) => r.icon)).toEqual(['coin', 'heart', null]);
-    expect(rows.map((r) => r.label)).toEqual(['', '', 'round']);
+    const rows = hudReadouts({ gold: 0, lives: 0 });
+    expect(rows.map((r) => r.icon)).toEqual(['coin', 'heart']);
+  });
+
+  it('keeps the round out of the resources, and keeps its word', () => {
+    // It goes in its own panel in the far corner, so it is not measured or
+    // placed with the two numbers that change every second. On its own, 1/20
+    // could be anything -- so this is the one readout that says what it is.
+    const round = roundReadout(0);
+    expect(round.value).toBe(`1/${AUTHORED_ROUNDS}`);
+    expect(round.label).toBe('round');
+    expect(round.icon).toBeNull();
   });
 
   it('stops counting rounds up at the last authored one', () => {
-    const rows = hudReadouts({ gold: 0, lives: 0, waveIndex: AUTHORED_ROUNDS + 5 });
-    expect(rows[2]?.value).toBe(`${AUTHORED_ROUNDS}/${AUTHORED_ROUNDS}`);
+    expect(roundReadout(AUTHORED_ROUNDS + 5).value).toBe(
+      `${AUTHORED_ROUNDS}/${AUTHORED_ROUNDS}`,
+    );
   });
 });
 

@@ -101,7 +101,6 @@ export const PALETTE = {
   road: '#6d6a63',
   roadEdge: '#5a5751',
   kerb: '#cfc9bd',
-  grid: 'rgba(255,255,255,0.10)',
   buildable: 'rgba(255,255,255,0.16)',
   blocked: 'rgba(220,60,60,0.22)',
   /**

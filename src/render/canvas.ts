@@ -18,7 +18,8 @@ import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
-import { hudReadouts } from './decisions.ts';
+import { hudReadouts, roundReadout } from './decisions.ts';
+import type { Readout } from './decisions.ts';
 import { enemySprite, iconGlyph, iconSprite, towerSprite } from './sprites.ts';
 
 /**
@@ -311,27 +312,13 @@ export class Renderer {
     const g = c.getContext('2d')!;
     g.scale(this.scale, this.scale);
 
-    paintGrass(g);
-
     /*
-     * The cell grid goes down before the street, so the road paints over it.
-     * The lines mark where a neighbour can stand, and nobody can stand on the
-     * road -- drawn on top they were only a barely visible smudge across it.
+     * No cell grid over the lawn. It used to mark where a neighbour can stand,
+     * but the placement preview under the cursor already says that, cell by
+     * cell, at the moment it is being asked -- and the ruled lines cut the
+     * painted grass into squares.
      */
-    g.strokeStyle = PALETTE.grid;
-    g.lineWidth = 1;
-    for (let col = 1; col < BOARD.cols; col++) {
-      g.beginPath();
-      g.moveTo(col * BOARD.cell + 0.5, 0);
-      g.lineTo(col * BOARD.cell + 0.5, BOARD.height);
-      g.stroke();
-    }
-    for (let row = 1; row < BOARD.rows; row++) {
-      g.beginPath();
-      g.moveTo(0, row * BOARD.cell + 0.5);
-      g.lineTo(BOARD.width, row * BOARD.cell + 0.5);
-      g.stroke();
-    }
+    paintGrass(g);
 
     g.lineCap = 'round';
     g.lineJoin = 'round';
@@ -404,90 +391,114 @@ export class Renderer {
   }
 
   /**
-   * The coin, heart and round numbers, drawn on the board rather than above
-   * it.
+   * The readouts, drawn on the board rather than above it.
    *
-   * A readout reads number first, then its picture, then any words -- so the
-   * count is always in the same place along the row and the eye does not have
-   * to step over an icon to find it.
+   * Two panels, because they are two different things. Coins and lives change
+   * from second to second and sit together in the top-left, under the eye and
+   * beside the build menu they are spent on. The round changes once a round,
+   * so it sits out of the way in the far corner.
    *
-   * The panel is measured rather than fixed, so it grows with a three-digit
-   * coin count instead of leaving a gap after a one-digit one. It is drawn
-   * last, which is what keeps a senior standing in the top-left corner from
-   * covering the numbers.
+   * A readout reads picture first, then the number, then any words. Each panel
+   * is measured rather than fixed, so it grows with a three-digit coin count
+   * instead of leaving a gap after a one-digit one. They are drawn last, which
+   * is what keeps a senior standing in a corner from covering the numbers.
    */
   private drawHud(world: World): void {
     const g = this.g;
-    const rows = hudReadouts(world);
-    const label = (r: { label: string }): string => r.label.toUpperCase();
 
     g.save();
     g.textAlign = 'left';
     g.textBaseline = 'middle';
 
+    const resources = this.panelWidth(hudReadouts(world));
+    this.drawPanel(HUD.x, resources.width, resources.rows);
+
+    const round = this.panelWidth([roundReadout(world.waveIndex)]);
+    this.drawPanel(BOARD.width - HUD.x - round.width, round.width, round.rows);
+
+    g.restore();
+  }
+
+  /**
+   * How wide a panel of readouts needs to be, and how wide each row in it is.
+   *
+   * Measuring is a pass of its own because a panel has to be painted before
+   * the text that decides its size is drawn into it.
+   */
+  private panelWidth(rows: Readout[]): { width: number; rows: [Readout, number][] } {
+    const g = this.g;
+
     // A number is given the room three digits would need even when it is
     // showing one. Gold changes constantly during a round, and without this
-    // the two readouts to its right slid sideways every time it crossed 100.
+    // the readout to its right slid sideways every time it crossed 100.
     g.font = HUD.valueFont;
     const floor = g.measureText('000').width;
-    const valueWidth = (value: string): number =>
-      Math.max(g.measureText(value).width, floor);
 
-    const widths = rows.map((r) => {
+    const measured = rows.map((r): [Readout, number] => {
       g.font = HUD.valueFont;
-      let w = valueWidth(r.value);
-      if (r.icon !== null) w += 6 + HUD.icon;
+      let w = Math.max(g.measureText(r.value).width, floor);
+      if (r.icon !== null) w += HUD.icon + 6;
       if (r.label !== '') {
         g.font = HUD.labelFont;
-        w += 6 + g.measureText(label(r)).width;
+        w += 6 + g.measureText(r.label.toUpperCase()).width;
       }
-      return w;
+      return [r, w];
     });
+
     const width =
-      HUD.pad * 2 + widths.reduce((a, b) => a + b, 0) + HUD.gap * (rows.length - 1);
+      HUD.pad * 2 +
+      measured.reduce((a, [, w]) => a + w, 0) +
+      HUD.gap * (measured.length - 1);
+    return { width, rows: measured };
+  }
+
+  /** One panel of readouts, at the x it was measured for. */
+  private drawPanel(x: number, width: number, rows: [Readout, number][]): void {
+    const g = this.g;
 
     g.beginPath();
-    g.roundRect(HUD.x, HUD.y, width, HUD.height, 10);
+    g.roundRect(x, HUD.y, width, HUD.height, 10);
     g.fillStyle = PALETTE.hudFill;
     g.fill();
     g.strokeStyle = PALETTE.hudLine;
     g.lineWidth = 2;
     g.stroke();
 
-    let x = HUD.x + HUD.pad;
+    g.font = HUD.valueFont;
+    const floor = g.measureText('000').width;
     const y = HUD.y + HUD.height / 2;
-    for (const r of rows) {
-      g.font = HUD.valueFont;
-      g.fillStyle = PALETTE.hudInk;
-      g.fillText(r.value, x, y);
-      x += valueWidth(r.value);
+    let at = x + HUD.pad;
+
+    for (const [r, w] of rows) {
+      const start = at;
 
       if (r.icon !== null) {
-        x += 6;
         const picture = iconSprite(r.icon);
         if (picture !== null) {
-          g.drawImage(picture, x, y - HUD.icon / 2, HUD.icon, HUD.icon);
+          g.drawImage(picture, at, y - HUD.icon / 2, HUD.icon, HUD.icon);
         } else {
           // Stands in until the picture arrives, drawn at the size the
           // picture will be, so nothing shifts along when it does.
           g.font = `${HUD.icon}px serif`;
-          g.fillText(iconGlyph(r.icon), x, y + 1);
+          g.fillText(iconGlyph(r.icon), at, y + 1);
         }
-        x += HUD.icon;
+        at += HUD.icon + 6;
       }
+
+      g.font = HUD.valueFont;
+      g.fillStyle = PALETTE.hudInk;
+      g.fillText(r.value, at, y);
+      at += Math.max(g.measureText(r.value).width, floor);
 
       if (r.label !== '') {
-        x += 6;
+        at += 6;
         g.font = HUD.labelFont;
         g.fillStyle = PALETTE.hudLabel;
-        g.fillText(label(r), x, y + 1);
-        x += g.measureText(label(r)).width;
+        g.fillText(r.label.toUpperCase(), at, y + 1);
       }
 
-      x += HUD.gap;
+      at = start + w + HUD.gap;
     }
-
-    g.restore();
   }
 
   private drawRange(t: Tower): void {

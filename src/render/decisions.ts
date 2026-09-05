@@ -100,7 +100,7 @@ export interface Readout {
    */
   label: string;
   /**
-   * A picture that stands just after the number.
+   * A picture that stands in front of the number.
    *
    * `null` means the words carry it alone. A name here is a request, not a
    * promise -- the renderer draws the picture if it has one and an emoji if
@@ -110,25 +110,31 @@ export interface Readout {
 }
 
 /**
- * The three numbers along the top of the board, in the order they are read.
+ * What the player owns: coins to spend and lives to lose, in that order.
  *
  * Here rather than in the drawing code because the phrasing is a decision: a
  * coin count is floored so a tower's price never looks affordable by a
- * fraction, and the two resources are a picture and a number with no words at
- * all. A coin and a heart are read the same way in every language, which
- * "pension coins" and "peace & quiet" are not. The round keeps its word,
- * because 1/20 on its own could be anything.
+ * fraction, and each is a picture and a number with no words at all. A coin
+ * and a heart are read the same way in every language, which "pension coins"
+ * and "peace & quiet" are not.
  */
-export function hudReadouts(opts: {
-  gold: number;
-  lives: number;
-  waveIndex: number;
-}): Readout[] {
+export function hudReadouts(opts: { gold: number; lives: number }): Readout[] {
   return [
     { value: String(Math.floor(opts.gold)), label: '', icon: 'coin' },
     { value: String(opts.lives), label: '', icon: 'heart' },
-    { value: waveLabel(opts.waveIndex), label: 'round', icon: null },
   ];
+}
+
+/**
+ * How far through the campaign the player is.
+ *
+ * Apart from the resources, because it is not one: coins and lives change
+ * from second to second and belong together under the eye, where the round
+ * changes once a round and sits out of the way in the far corner. It keeps
+ * its word, since 1/20 on its own could be anything.
+ */
+export function roundReadout(waveIndex: number): Readout {
+  return { value: waveLabel(waveIndex), label: 'round', icon: null };
 }
 
 export interface PreviewRow {
