@@ -380,6 +380,10 @@ export class Ui {
     this.inspected = null;
     this.inspect.hidden = false;
     this.inspectTitle.textContent = r.name;
+    // An enemy has no upgrades to preview, so it drops the height a tower
+    // panel reserved -- otherwise a two-line troublemaker sits in the blank
+    // space the last defender's stat block needed.
+    this.inspectBody.style.minHeight = '';
     this.inspectBody.innerHTML = r.lines
       .map((line) => `<div class="statrow"><span>${line}</span></div>`)
       .join('');
