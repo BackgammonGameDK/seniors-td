@@ -15,6 +15,7 @@
 import type { EnemyId, TowerId } from '../sim/types.ts';
 
 import barbaraPng from '../assets/barbara.png';
+import cinnamonRollPng from '../assets/cinnamon-roll.png';
 import coinPng from '../assets/coin.png';
 import heartPng from '../assets/heart.png';
 import norahPng from '../assets/norah.png';
@@ -34,6 +35,18 @@ const TOWER_ART: Partial<Record<TowerId, string>> = {
 const ENEMY_ART: Partial<Record<EnemyId, string>> = {
   sam: samPng,
   skye: skyePng,
+};
+
+/**
+ * The things that fly between a defender and a troublemaker.
+ *
+ * A shot without an entry here is drawn by hand in `canvas.ts` instead, the
+ * same way a character without a portrait falls back to an emoji.
+ */
+export type ShotId = 'cinnamonRoll';
+
+const SHOT_ART: Partial<Record<ShotId, string>> = {
+  cinnamonRoll: cinnamonRollPng,
 };
 
 /** Small pictures that belong to the readouts rather than to a character. */
@@ -96,6 +109,11 @@ export function towerSprite(id: TowerId): HTMLImageElement | null {
 /** The troublemaker's picture, on the same terms. */
 export function enemySprite(id: EnemyId): HTMLImageElement | null {
   return ready(ENEMY_ART[id]);
+}
+
+/** A shot's picture, or `null` while it loads or if it was never drawn. */
+export function shotSprite(id: ShotId): HTMLImageElement | null {
+  return ready(SHOT_ART[id]);
 }
 
 /** The readout's picture, or `null` while it loads or before it is drawn. */
