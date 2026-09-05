@@ -20,7 +20,15 @@ import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
 import { hudReadouts, roundReadout } from './decisions.ts';
 import type { Readout } from './decisions.ts';
-import { enemySprite, iconGlyph, iconSprite, towerSprite } from './sprites.ts';
+import { enemySprite, iconGlyph, iconSprite, shotSprite, towerSprite } from './sprites.ts';
+
+/**
+ * How wide Barbara's cinnamon roll is on the board, in pixels.
+ *
+ * Larger than the 10px dot it replaces: a picture needs the room to be read
+ * as a bun, where a flat circle only had to be seen.
+ */
+const ROLL_SIZE = 15;
 
 /**
  * How wide a drawn tower is on the board, in pixels.
@@ -770,18 +778,25 @@ export class Renderer {
         g.lineTo(p.x + 5, p.y + 2);
         g.stroke();
       } else if (p.from === 'barbara') {
+        // Barbara throws a bun, so it turns end over end on the way. The
+        // drawn roll underneath is what flies until the picture has loaded.
         g.save();
         g.translate(p.x, p.y);
         g.rotate((world.tick % 60) * 0.1);
-        g.fillStyle = color;
-        g.beginPath();
-        g.arc(0, 0, 5, 0, Math.PI * 2);
-        g.fill();
-        g.strokeStyle = 'rgba(120,72,20,.85)';
-        g.lineWidth = 1.5;
-        g.beginPath();
-        g.arc(0, 0, 2.5, 0, Math.PI * 1.6);
-        g.stroke();
+        const roll = shotSprite('cinnamonRoll');
+        if (roll !== null) {
+          g.drawImage(roll, -ROLL_SIZE / 2, -ROLL_SIZE / 2, ROLL_SIZE, ROLL_SIZE);
+        } else {
+          g.fillStyle = color;
+          g.beginPath();
+          g.arc(0, 0, 5, 0, Math.PI * 2);
+          g.fill();
+          g.strokeStyle = 'rgba(120,72,20,.85)';
+          g.lineWidth = 1.5;
+          g.beginPath();
+          g.arc(0, 0, 2.5, 0, Math.PI * 1.6);
+          g.stroke();
+        }
         g.restore();
       } else {
         g.fillStyle = color;
