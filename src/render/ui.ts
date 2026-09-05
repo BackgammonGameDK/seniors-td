@@ -117,12 +117,14 @@ export class Ui {
       this.hoverChoice = btn.dataset.choice ?? null;
       this.hoverRange = btn.dataset.range !== undefined ? Number(btn.dataset.range) : null;
     });
-    this.upgrades.addEventListener('pointerout', (ev) => {
-      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-choice]');
-      if (btn && !btn.contains(ev.relatedTarget as Node | null)) {
-        this.hoverChoice = null;
-        this.hoverRange = null;
-      }
+    // Cleared only when the pointer leaves the whole list, never card by
+    // card. A preview can make the stat rows above taller, which slides the
+    // cards down under a stationary pointer; a per-card pointerout would read
+    // that as "the pointer left", drop the preview, slide them back and start
+    // again, which is the flicker you get on a card's top edge.
+    this.upgrades.addEventListener('pointerleave', () => {
+      this.hoverChoice = null;
+      this.hoverRange = null;
     });
   }
 
@@ -222,6 +224,7 @@ export class Ui {
     const card = towerCard(t.def);
     this.inspectTitle.textContent = card.name;
     this.paintStats(t);
+    this.reserveStatHeight(t);
     this.upgrades.innerHTML = this.renderUpgrades(t, gold);
     this.sell.textContent = `Send home (+${refundOf(t.def)})`;
   }
@@ -238,16 +241,20 @@ export class Ui {
     const key = `${panelKey(t)}|${this.hoverChoice ?? ''}`;
     if (key === this.lastStats) return;
     this.lastStats = key;
+    this.inspectBody.innerHTML = this.statRowsHtml(t, this.hoverChoice);
+  }
 
+  /** The stat rows for a tower, as they read with `choice` hovered. */
+  private statRowsHtml(t: Tower, choice: string | null): string {
     const buffs = { rateMult: t.rateMult, rangeMult: t.rangeMult };
-    const next = hoveredStat(t, this.hoverChoice);
+    const next = hoveredStat(t, choice);
     const rows = next
       ? previewStats(effectiveDef(t), next, buffs)
       : describeStats(effectiveDef(t), buffs);
     if (TOWERS[t.def].mode === 'blocker') {
       rows.push({ label: 'Still standing', value: `${Math.max(0, Math.ceil(t.hp))}` });
     }
-    this.inspectBody.innerHTML = rows
+    return rows
       .map((r) => {
         const was = r.was !== undefined ? `<s>${r.was}</s> ` : '';
         return (
@@ -256,6 +263,29 @@ export class Ui {
         );
       })
       .join('');
+  }
+
+  /**
+   * Hold the stat block at the height of its tallest preview.
+   *
+   * A preview can add a row the tower did not have (splash on a tower with
+   * none) or wrap one that now carries a struck-through old value, and either
+   * would push the upgrade cards down the moment the pointer touched one.
+   * Measuring every preview once, when the panel is built, means hovering
+   * changes the words and never the layout. Done here rather than in CSS
+   * because the height depends on which tower is open.
+   */
+  private reserveStatHeight(t: Tower): void {
+    const base = this.inspectBody.innerHTML;
+    this.inspectBody.style.minHeight = '';
+    let tallest = this.inspectBody.offsetHeight;
+    const tree = UPGRADES[t.def];
+    for (const choice of ['pathA', 'pathB', ...tree.capstones.map((c) => c.id)]) {
+      this.inspectBody.innerHTML = this.statRowsHtml(t, choice);
+      tallest = Math.max(tallest, this.inspectBody.offsetHeight);
+    }
+    this.inspectBody.innerHTML = base;
+    this.inspectBody.style.minHeight = `${tallest}px`;
   }
 
   /** One card per path tier and per capstone, built once per `panelKey`. */
