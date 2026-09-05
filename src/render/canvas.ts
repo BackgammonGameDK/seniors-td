@@ -19,7 +19,7 @@ import { effectiveDef } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
 import { hudReadouts } from './decisions.ts';
-import { enemySprite, iconSprite, towerSprite } from './sprites.ts';
+import { enemySprite, iconGlyph, iconSprite, towerSprite } from './sprites.ts';
 
 /**
  * How wide a drawn tower is on the board, in pixels.
@@ -142,18 +142,53 @@ export class Renderer {
   private recoil = new Map<number, number>();
   private floor: HTMLCanvasElement | null = null;
 
+  /**
+   * How many real screen pixels one board pixel is drawn with.
+   *
+   * The board is 960x600 in its own units, but the page stretches the canvas
+   * to the width of the column and a modern phone or laptop packs two or three
+   * screen pixels into each of those. Left alone the canvas is drawn at 960
+   * wide and then blown up by the browser, which is what made the readout look
+   * soft. Everything is drawn at this scale instead and the drawing code goes
+   * on speaking in board units.
+   */
+  private scale = 0;
+
   constructor(private canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('no 2d context');
     this.g = ctx;
   }
 
+  /**
+   * Matches the canvas to the room the page gives it and the sharpness the
+   * screen offers.
+   *
+   * Cheap enough to call every frame: it measures, and only touches the canvas
+   * when the answer changed. Resizing a canvas wipes it, so doing this on
+   * every frame regardless would clear the board.
+   */
+  private syncResolution(): void {
+    const dpr = typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1;
+    const shown = this.canvas.getBoundingClientRect().width || BOARD.width;
+    // Three is past the point where more pixels are visible, and it keeps a
+    // phone from being asked to fill a needlessly enormous canvas.
+    const scale = Math.min(3, Math.max(1, (shown * dpr) / BOARD.width));
+    if (Math.abs(scale - this.scale) < 0.01) return;
+    this.scale = scale;
+    this.canvas.width = Math.round(BOARD.width * scale);
+    this.canvas.height = Math.round(BOARD.height * scale);
+    // The street was painted for the old scale, so it is painted again.
+    this.floor = null;
+  }
+
   /** The street, painted once and blitted every frame. */
   private paintFloor(): HTMLCanvasElement {
     const c = document.createElement('canvas');
-    c.width = BOARD.width;
-    c.height = BOARD.height;
+    c.width = Math.round(BOARD.width * this.scale);
+    c.height = Math.round(BOARD.height * this.scale);
     const g = c.getContext('2d')!;
+    g.scale(this.scale, this.scale);
 
     paintGrass(g);
 
@@ -226,10 +261,12 @@ export class Renderer {
       previewRange: number | null;
     },
   ): void {
+    this.syncResolution();
     if (!this.floor) this.floor = this.paintFloor();
     const g = this.g;
+    g.setTransform(this.scale, 0, 0, this.scale, 0, 0);
     g.clearRect(0, 0, BOARD.width, BOARD.height);
-    g.drawImage(this.floor, 0, 0);
+    g.drawImage(this.floor, 0, 0, BOARD.width, BOARD.height);
 
     if (opts.selected && opts.hover) this.drawPlacementPreview(world, opts.hover, opts.selected);
     if (opts.inspected) this.drawRange(opts.inspected);
@@ -246,8 +283,12 @@ export class Renderer {
   }
 
   /**
-   * The coin, peace and round numbers, drawn on the board rather than above
+   * The coin, heart and round numbers, drawn on the board rather than above
    * it.
+   *
+   * A readout reads number first, then its picture, then any words -- so the
+   * count is always in the same place along the row and the eye does not have
+   * to step over an icon to find it.
    *
    * The panel is measured rather than fixed, so it grows with a three-digit
    * coin count instead of leaving a gap after a one-digit one. It is drawn
@@ -273,10 +314,13 @@ export class Renderer {
 
     const widths = rows.map((r) => {
       g.font = HUD.valueFont;
-      let w = valueWidth(r.value) + 6;
-      g.font = HUD.labelFont;
-      w += g.measureText(label(r)).width;
-      return r.icon === null ? w : w + HUD.icon + 6;
+      let w = valueWidth(r.value);
+      if (r.icon !== null) w += 6 + HUD.icon;
+      if (r.label !== '') {
+        g.font = HUD.labelFont;
+        w += 6 + g.measureText(label(r)).width;
+      }
+      return w;
     });
     const width =
       HUD.pad * 2 + widths.reduce((a, b) => a + b, 0) + HUD.gap * (rows.length - 1);
@@ -292,28 +336,34 @@ export class Renderer {
     let x = HUD.x + HUD.pad;
     const y = HUD.y + HUD.height / 2;
     for (const r of rows) {
+      g.font = HUD.valueFont;
+      g.fillStyle = PALETTE.hudInk;
+      g.fillText(r.value, x, y);
+      x += valueWidth(r.value);
+
       if (r.icon !== null) {
+        x += 6;
         const picture = iconSprite(r.icon);
         if (picture !== null) {
           g.drawImage(picture, x, y - HUD.icon / 2, HUD.icon, HUD.icon);
         } else {
-          // Stands in until the coin picture arrives, drawn at the size the
+          // Stands in until the picture arrives, drawn at the size the
           // picture will be, so nothing shifts along when it does.
           g.font = `${HUD.icon}px serif`;
-          g.fillText('\u{1FA99}', x, y + 1);
+          g.fillText(iconGlyph(r.icon), x, y + 1);
         }
-        x += HUD.icon + 6;
+        x += HUD.icon;
       }
 
-      g.font = HUD.valueFont;
-      g.fillStyle = PALETTE.hudInk;
-      g.fillText(r.value, x, y);
-      x += valueWidth(r.value) + 6;
+      if (r.label !== '') {
+        x += 6;
+        g.font = HUD.labelFont;
+        g.fillStyle = PALETTE.hudLabel;
+        g.fillText(label(r), x, y + 1);
+        x += g.measureText(label(r)).width;
+      }
 
-      g.font = HUD.labelFont;
-      g.fillStyle = PALETTE.hudLabel;
-      g.fillText(label(r), x, y + 1);
-      x += g.measureText(label(r)).width + HUD.gap;
+      x += HUD.gap;
     }
 
     g.restore();

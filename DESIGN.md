@@ -219,3 +219,11 @@ The vocabulary is meant to teach rather than to be known in advance. A panel
 says "slows them by 35%", not "slowFactor 0.35", and the game's two currencies
 are named after what they are: Pension Coins to spend, Peace & Quiet Points to
 lose.
+
+The readout on the board goes one step further and drops the words for both
+resources: a coin and a heart beside their numbers are read the same way in
+every language, where "pension coins" and "peace & quiet" have to be learnt
+first. The round keeps its word, since 1/20 on its own could be anything. Each
+readout shows the number and then its picture, so the counts line up down the
+row instead of starting at whatever width the icon before them happened to
+be.
