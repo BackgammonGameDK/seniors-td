@@ -17,10 +17,12 @@ import {
   capstoneLocked,
   cardState,
   describeStats,
+  hoveredStat,
   endOverlay,
   enemyReadout,
   panelKey,
   pathCard,
+  previewStats,
   roundPreview,
   runButton,
   towerCard,
@@ -70,6 +72,12 @@ export class Ui {
   private lastPreview = -1;
   private inspected: Tower | null = null;
   private hoverRange: number | null = null;
+  /** Which upgrade card the pointer is on, so the stat rows can show what
+   *  buying it would do. `null` whenever the pointer is anywhere else. */
+  private hoverChoice: string | null = null;
+  /** `panelKey` plus the hovered card: what the stat rows were last drawn
+   *  from, so they are rewritten only when one of the two moves. */
+  private lastStats = '';
 
   /** What the range would become if the tier currently under the pointer
    *  were bought, for the board to draw as a preview -- `null` otherwise. */
@@ -93,19 +101,28 @@ export class Ui {
     // rebuilt whenever `panelKey` changes.
     this.upgrades.addEventListener('click', (ev) => {
       const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-choice]');
-      if (btn && !btn.disabled && this.inspected) {
+      if (btn && btn.getAttribute('aria-disabled') !== 'true' && this.inspected) {
         handlers.onBuyUpgrade(this.inspected, btn.dataset.choice!);
       }
     });
-    // Same delegation for hover: only a card whose tier actually changes
-    // range carries data-range, so anything else leaves the preview alone.
+    // Same delegation for hover: any upgrade card previews its stats, and the
+    // ones that also move the range carry data-range for the board's circle.
+    //
+    // A card you cannot afford is marked aria-disabled rather than disabled,
+    // because a disabled button fires no pointer events at all -- and "what
+    // am I saving up for?" is exactly when this preview earns its keep.
     this.upgrades.addEventListener('pointerover', (ev) => {
-      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-range]');
-      if (btn) this.hoverRange = Number(btn.dataset.range);
+      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-choice]');
+      if (!btn) return;
+      this.hoverChoice = btn.dataset.choice ?? null;
+      this.hoverRange = btn.dataset.range !== undefined ? Number(btn.dataset.range) : null;
     });
     this.upgrades.addEventListener('pointerout', (ev) => {
-      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-range]');
-      if (btn && !btn.contains(ev.relatedTarget as Node | null)) this.hoverRange = null;
+      const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-choice]');
+      if (btn && !btn.contains(ev.relatedTarget as Node | null)) {
+        this.hoverChoice = null;
+        this.hoverRange = null;
+      }
     });
   }
 
@@ -189,7 +206,10 @@ export class Ui {
       // open (gold keeps arriving mid-round) without anything else here
       // changing. Refresh just the affordability of what's already on
       // screen instead of skipping the frame outright.
-      if (t) this.refreshUpgradeAffordability(gold);
+      if (t) {
+        this.refreshUpgradeAffordability(gold);
+        this.paintStats(t);
+      }
       return;
     }
     this.lastPanel = key;
@@ -201,15 +221,41 @@ export class Ui {
     this.inspect.hidden = false;
     const card = towerCard(t.def);
     this.inspectTitle.textContent = card.name;
-    const rows = describeStats(effectiveDef(t), { rateMult: t.rateMult, rangeMult: t.rangeMult });
+    this.paintStats(t);
+    this.upgrades.innerHTML = this.renderUpgrades(t, gold);
+    this.sell.textContent = `Send home (+${refundOf(t.def)})`;
+  }
+
+  /**
+   * The stat rows, showing the hovered upgrade's numbers where there is one.
+   *
+   * Only `inspectBody` is written, never the upgrade cards -- rebuilding the
+   * card the pointer is sitting on would destroy it mid-hover and the preview
+   * would flicker itself off. The key stops a hover-less panel from being
+   * rewritten on every frame.
+   */
+  private paintStats(t: Tower): void {
+    const key = `${panelKey(t)}|${this.hoverChoice ?? ''}`;
+    if (key === this.lastStats) return;
+    this.lastStats = key;
+
+    const buffs = { rateMult: t.rateMult, rangeMult: t.rangeMult };
+    const next = hoveredStat(t, this.hoverChoice);
+    const rows = next
+      ? previewStats(effectiveDef(t), next, buffs)
+      : describeStats(effectiveDef(t), buffs);
     if (TOWERS[t.def].mode === 'blocker') {
       rows.push({ label: 'Still standing', value: `${Math.max(0, Math.ceil(t.hp))}` });
     }
     this.inspectBody.innerHTML = rows
-      .map((r) => `<div class="statrow"><i>${r.label}</i><span>${r.value}</span></div>`)
+      .map((r) => {
+        const was = r.was !== undefined ? `<s>${r.was}</s> ` : '';
+        return (
+          `<div class="statrow${r.changed ? ' changed' : ''}">` +
+          `<i>${r.label}</i><span>${was}${r.value}</span></div>`
+        );
+      })
       .join('');
-    this.upgrades.innerHTML = this.renderUpgrades(t, gold);
-    this.sell.textContent = `Send home (+${refundOf(t.def)})`;
   }
 
   /** One card per path tier and per capstone, built once per `panelKey`. */
@@ -270,7 +316,7 @@ export class Ui {
         : state.action === 'locked' || state.action === 'otherCapstoneChosen'
           ? 'locked'
           : `${cost}`;
-    const disabled = state.action !== 'buy' ? 'disabled' : '';
+    const disabled = state.action !== 'buy' ? 'aria-disabled="true"' : '';
     const rangeAttr = range !== undefined ? ` data-range="${range}"` : '';
     return (
       `<button class="${state.className}" data-choice="${choice}" data-cost="${cost}"${rangeAttr} ${disabled}>` +
@@ -292,7 +338,8 @@ export class Ui {
       if (btn.classList.contains('locked') || btn.classList.contains('bought')) continue;
       const affordable = gold >= Number(btn.dataset.cost);
       btn.classList.toggle('poor', !affordable);
-      btn.disabled = !affordable;
+      if (affordable) btn.removeAttribute('aria-disabled');
+      else btn.setAttribute('aria-disabled', 'true');
     }
   }
 

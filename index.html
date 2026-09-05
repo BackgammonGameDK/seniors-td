@@ -122,14 +122,17 @@
         font: inherit; padding: 8px 12px; border-radius: 9px; cursor: pointer;
         border: 2px solid var(--line); background: #fff; color: inherit;
       }
-      button:hover:not(:disabled) { border-color: var(--accent); }
-      button:disabled { opacity: .45; cursor: default; }
+      button:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--accent); }
+      button:disabled, button[aria-disabled="true"] { opacity: .45; cursor: default; }
       #preview { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; }
       #preview span { display: flex; align-items: center; gap: 4px; }
       .statrow { display: flex; justify-content: space-between; gap: 10px;
                  font-size: 12px; padding: 2px 0; border-bottom: 1px dotted var(--line); }
       .statrow:last-child { border-bottom: none; }
       .statrow i { font-style: normal; opacity: .6; }
+      /* What a hovered upgrade would change, old value struck through. */
+      .statrow.changed span { color: var(--good); font-weight: 600; }
+      .statrow.changed s { color: var(--ink); opacity: .45; font-weight: 400; }
       #inspectHead { display: flex; justify-content: space-between; align-items: center; }
       #inspectHead h3 { margin: 0 0 6px; font-size: 15px; }
       #inspectClose { padding: 2px 8px; }

@@ -17,6 +17,7 @@ import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
 import type { Enemy, EnemyId, Stats, Tower, TowerDef, TowerId } from '../sim/types.ts';
 import { AUTHORED_ROUNDS, WAVES } from '../sim/waves.ts';
+import { UPGRADES } from '../sim/upgrades.ts';
 import { cooldownAt } from '../sim/world.ts';
 import { ENEMY_LOOK, TOWER_LOOK } from '../shared/display.ts';
 
@@ -256,6 +257,13 @@ export function rate(cooldownTicks: number): string {
 export interface StatRow {
   label: string;
   value: string;
+  /**
+   * What this row said before the upgrade being previewed. Only ever set by
+   * `previewStats`, so an ordinary panel row carries neither field.
+   */
+  was?: string;
+  /** True for a row the upgrade changes, including one it adds outright. */
+  changed?: boolean;
 }
 
 /**
@@ -286,6 +294,15 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
   if (def.mode === 'blocker') {
     rows.push({ label: 'Stands in', value: 'the road itself' });
     rows.push({ label: 'Holds', value: `${def.maxHp} damage before falling` });
+    if ((def.regen ?? 0) > 0) {
+      rows.push({ label: 'Patches himself up', value: `${def.regen} damage a second` });
+    }
+    if ((def.reviveHpFrac ?? 0) > 0) {
+      rows.push({
+        label: 'Gets back up with',
+        value: `${Math.round((def.reviveHpFrac ?? 0) * 100)}% of himself`,
+      });
+    }
     return rows;
   }
   if (def.mode === 'support') {
@@ -320,7 +337,57 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
   if (def.stunTicks > 0) {
     rows.push({ label: 'Stops them', value: `${(def.stunTicks / 60).toFixed(1)}s` });
   }
+  if ((def.multiShot ?? 1) > 1) {
+    rows.push({ label: 'Picks', value: `${def.multiShot} of them at once` });
+  }
+  if ((def.pierce ?? 0) > 0) {
+    rows.push({
+      label: 'Carries on through',
+      value: `${def.pierce} more behind the first`,
+    });
+  }
   return rows;
+}
+
+/**
+ * The same rows, as they would read after buying one upgrade.
+ *
+ * The formatting is not repeated here: both sides go through `describeStats`,
+ * so a preview cannot word a stat differently from the panel it sits in, and
+ * a row that appears only after the upgrade (splash on a tower that had none)
+ * comes out marked as new rather than silently missing.
+ */
+export function previewStats(
+  def: TowerDef,
+  next: Partial<TowerDef>,
+  buffs: Buffs = {},
+): StatRow[] {
+  const before = describeStats(def, buffs);
+  const after = describeStats({ ...def, ...next }, buffs);
+  return after.map((row) => {
+    const was = before.find((r) => r.label === row.label);
+    if (!was) return { ...row, changed: true };
+    if (was.value === row.value) return row;
+    return { ...row, was: was.value, changed: true };
+  });
+}
+
+/**
+ * What a hovered upgrade card would actually apply.
+ *
+ * The card carries only its `data-choice`, the same string the buy handler
+ * sends, so the stat object is looked up here rather than written into the
+ * DOM -- one place decides what a choice means. `null` for a path with
+ * nothing left to buy, or an id that is not a capstone of this tower.
+ */
+export function hoveredStat(t: Tower, choice: string | null): Partial<TowerDef> | null {
+  if (!choice) return null;
+  const tree = UPGRADES[t.def];
+  if (choice === 'pathA' || choice === 'pathB') {
+    const { tierIndex, finished } = pathCard(choice === 'pathA' ? t.upgradeA : t.upgradeB);
+    return finished ? null : (tree[choice][tierIndex]?.stat ?? null);
+  }
+  return tree.capstones.find((c) => c.id === choice)?.stat ?? null;
 }
 
 export interface EnemyReadout {

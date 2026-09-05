@@ -8,6 +8,8 @@ import {
   capstoneLocked,
   cardState,
   describeStats,
+  hoveredStat,
+  previewStats,
   endOverlay,
   enemyReadout,
   hudReadouts,
@@ -26,6 +28,7 @@ import {
   waveLabel,
 } from '../src/render/decisions.ts';
 import type { StatRow } from '../src/render/decisions.ts';
+import { UPGRADES } from '../src/sim/upgrades.ts';
 import { cooldownAt } from '../src/sim/world.ts';
 import type { Stats, Tower } from '../src/sim/types.ts';
 
@@ -226,6 +229,47 @@ describe('build cards', () => {
       `${Math.round(TOWERS.norah.range * 1.15)} px`,
     );
     expect(reachOf(describeStats(TOWERS.norah))).toBe(`${TOWERS.norah.range} px`);
+  });
+});
+
+describe('an upgrade under the pointer previews its own stats', () => {
+  const rowsBy = (rows: StatRow[]) => new Map(rows.map((r) => [r.label, r]));
+
+  it('marks only the row the tier moves, and says what it moved from', () => {
+    const longerThread = UPGRADES.norah.pathB[0].stat;
+    const rows = rowsBy(previewStats(TOWERS.norah, longerThread));
+    const reach = rows.get('Reach')!;
+    expect(reach.was).toBe(`${TOWERS.norah.range} px`);
+    expect(reach.value).toBe(`${longerThread.range} px`);
+    expect(reach.changed).toBe(true);
+    expect(rows.get('Damage')!.changed).toBeUndefined();
+    expect(rows.get('Rate')!.was).toBeUndefined();
+  });
+
+  it('shows a stat the plain panel would have had no row for at all', () => {
+    const tripleKnit = UPGRADES.norah.capstones.find((c) => c.stat.multiShot)!;
+    const rows = rowsBy(previewStats(TOWERS.norah, tripleKnit.stat));
+    const picks = rows.get('Picks');
+    expect(picks?.changed).toBe(true);
+    expect(picks?.value).toContain(`${tripleKnit.stat.multiShot}`);
+    expect(rowsBy(describeStats(TOWERS.norah)).has('Picks')).toBe(false);
+  });
+
+  it('leaves every row alone when nothing is hovered', () => {
+    expect(previewStats(TOWERS.norah, {})).toEqual(describeStats(TOWERS.norah));
+  });
+
+  it('resolves a hovered card back to the stats it would apply', () => {
+    const t = tower({ def: 'norah', upgradeA: 1, upgradeB: 2 });
+    expect(hoveredStat(t, 'pathA')).toBe(UPGRADES.norah.pathA[1].stat);
+    expect(hoveredStat(t, 'pathB')).toBeNull();
+    expect(hoveredStat(t, 'doubleEspresso')).toBeNull();
+    expect(hoveredStat(t, null)).toBeNull();
+
+    const clara = tower({ def: 'clara' });
+    expect(hoveredStat(clara, 'doubleEspresso')).toBe(
+      UPGRADES.clara.capstones.find((c) => c.id === 'doubleEspresso')!.stat,
+    );
   });
 });
 
