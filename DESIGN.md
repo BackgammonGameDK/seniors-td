@@ -227,3 +227,42 @@ first. The round keeps its word, since 1/20 on its own could be anything. Each
 readout shows the number and then its picture, so the counts line up down the
 row instead of starting at whatever width the icon before them happened to
 be.
+
+## Balance: the difficulty the game is aimed at
+
+Measured with `npm run campaign -- --all-builds`, which plays whole twenty-round
+runs on a real purse against the six named boards in `src/sim/builds.ts`.
+`npm run sim` answers a different question -- how hard is one round with a given
+board -- and cannot answer this one, because a round is only ever as hard as
+what the player could afford by the time it arrived.
+
+The curve is graded rather than flat-then-vertical:
+
+| Rounds | What they are for |
+|---|---|
+| 1-8 | Teaching. Each troublemaker arrives in a quiet round of its own, and those rounds are deliberately discounted below the curve. A clumsy board keeps most of its points. |
+| 9-16 | The decisions. Saving against spending, a second tower against a better one. Points start leaving. |
+| 17-20 | The wall. It wants a committed, upgraded board, and it is meant to be lost sometimes. |
+
+The three numbers worth holding on to, all enforced by `tests/balance.test.ts`:
+
+- **More than one board finishes.** At least three of the six clear round twenty
+  at least half the time. One build clearing is a solved game, not a balanced one.
+- **Nobody finishes untouched.** A clear leaves at most about seventy per cent of
+  the starting points. A board that never felt the wall was never tested by it.
+- **The end is the hard part.** Every build is alive at round eleven and has lost
+  ground by round twenty, so the difficulty is a slope and not a spike.
+
+Two findings from the pass are worth not re-learning the hard way.
+
+**Arrival windows matter more than hit points.** Rounds used to arrive in six to
+thirteen seconds. A burst that short is indivisible: a board either out-shoots it
+and takes nothing, or it does not and takes everything, which is why the old
+curve was flat for thirteen rounds and then vertical. Windows now run from about
+eight seconds to half a minute, and boards that are not quite enough now bleed
+instead of collapsing.
+
+**Armour is not hit points.** Damage is flat subtraction, so armour costs the
+towers a share of every shot rather than costing the round a pool of health. An
+armoured round is far harder than its hit-point total suggests, and any attempt
+to author rounds against raw totals puts a cliff wherever the armour is.

@@ -18,7 +18,7 @@ export const TOWERS: Record<TowerId, TowerDef> = {
   norah: {
     id: 'norah',
     mode: 'projectile',
-    cost: 40,
+    cost: 50,
     damage: 7,
     range: 95,
     cooldown: 26,
@@ -49,7 +49,13 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     id: 'pete',
     mode: 'pulse',
     cost: 60,
-    damage: 0,
+    // A shout that does nothing but stun is a tower that can never finish
+    // anything, and a board made of them measured as unable to reach round
+    // eight -- it stalls the street and then starves, because nothing dies and
+    // nothing pays. Five is deliberately small: Pete is still bought for the
+    // pause he causes, not the damage, but a crowd standing in his shout now
+    // wears down instead of merely waiting.
+    damage: 5,
     range: 88,
     cooldown: 132,
     // A pulse splashes over its own range; the field is kept for the renderer
@@ -64,7 +70,7 @@ export const TOWERS: Record<TowerId, TowerDef> = {
   bill: {
     id: 'bill',
     mode: 'projectile',
-    cost: 110,
+    cost: 95,
     damage: 40,
     range: 225,
     cooldown: 110,

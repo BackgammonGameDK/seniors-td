@@ -67,15 +67,43 @@ function render(spec: BuildSpec): string {
     .join(' ');
 }
 
-/** Place every slot in order, then walk back over them upgrading tier by tier. */
-function placeThenUpgrade(slots: Slot[], capstones: (string | null)[]): Step[] {
-  const order: Step[] = slots.map((_, slot) => ({ slot }));
-  for (const tier of [1, 2] as const) {
-    for (let slot = 0; slot < slots.length; slot++) {
-      order.push({ slot, a: tier });
-      order.push({ slot, a: tier, b: tier });
+/**
+ * Spend wide and deep by turns: put a tower down, improve the least improved
+ * one already standing, repeat, and once the board is full keep improving.
+ *
+ * Placing everything before upgrading anything is what a plan does when it has
+ * no opinion, and it is a bad opinion -- five unimproved binoculars cost more
+ * than two good ones and shoot worse. Alternating is roughly what a player
+ * does, and more to the point it keeps every build spending steadily instead
+ * of running out of plan with a full purse.
+ */
+function grow(slots: Slot[], capstones: (string | null)[]): Step[] {
+  const order: Step[] = [];
+  const tiers = slots.map(() => ({ a: 0 as 0 | 1 | 2, b: 0 as 0 | 1 | 2 }));
+  const placed: number[] = [];
+
+  const improve = (): boolean => {
+    // Least improved first, so no one tower runs away with the whole purse.
+    const next = [...placed].sort(
+      (x, y) => tiers[x]!.a + tiers[x]!.b - (tiers[y]!.a + tiers[y]!.b) || x - y,
+    );
+    for (const slot of next) {
+      const t = tiers[slot]!;
+      if (t.a <= t.b && t.a < 2) t.a = (t.a + 1) as 1 | 2;
+      else if (t.b < 2) t.b = (t.b + 1) as 1 | 2;
+      else continue;
+      order.push({ slot, a: t.a || undefined, b: t.b || undefined });
+      return true;
     }
+    return false;
+  };
+
+  for (let slot = 0; slot < slots.length; slot++) {
+    order.push({ slot });
+    placed.push(slot);
+    improve();
   }
+  while (improve());
   capstones.forEach((cap, slot) => {
     if (cap) order.push({ slot, a: 2, b: 2, capstone: cap });
   });
@@ -85,47 +113,45 @@ function placeThenUpgrade(slots: Slot[], capstones: (string | null)[]): Step[] {
 const SPECS: Record<string, BuildSpec> = {
   /** Nine cheap knitters. Lots of small hits, which armour eats. */
   swarm: (() => {
-    const slots: Slot[] = [260, 520, 700, 900, 1100, 1300, 1500, 1700, 1900].map((at) => ({
-      def: 'norah' as TowerId,
-      at,
-    }));
+    const slots: Slot[] = [
+      260, 520, 700, 900, 1100, 1300, 1500, 1700, 1900, 340, 620, 820, 1020, 1220,
+    ].map((at) => ({ def: 'norah' as TowerId, at }));
     return {
       blurb: 'nine knitters, volume over size',
       slots,
-      order: placeThenUpgrade(slots, [
-        'tripleKnit',
-        null,
-        'tripleKnit',
-        null,
-        'tripleKnit',
-        null,
-        'tripleKnit',
-        null,
-        'tripleKnit',
-      ]),
+      order: grow(
+        slots,
+        slots.map((_, i) => (i % 2 === 0 ? 'tripleKnit' : null)),
+      ),
     };
   })(),
 
   /** Three binoculars covering the whole street. Few, enormous hits. */
   sniper: (() => {
     const slots: Slot[] = [
-      { def: 'bill', at: 420 },
       { def: 'norah', at: 260 },
+      { def: 'bill', at: 420 },
+      { def: 'norah', at: 700 },
       { def: 'bill', at: 1080 },
-      { def: 'norah', at: 1400 },
-      { def: 'bill', at: 1780 },
       { def: 'clara', at: 1100 },
+      { def: 'bill', at: 1400 },
+      { def: 'norah', at: 1600 },
+      { def: 'bill', at: 1780 },
+      { def: 'bill', at: 960 },
     ];
     return {
       blurb: 'three binoculars, one coffee, two knitters to hold the gaps',
       slots,
-      order: placeThenUpgrade(slots, [
+      order: grow(slots, [
+        null,
         'piercingShot',
         null,
         'piercingShot',
+        'doubleEspresso',
+        'deadeye',
         null,
         'deadeye',
-        'doubleEspresso',
+        'piercingShot',
       ]),
     };
   })(),
@@ -133,20 +159,28 @@ const SPECS: Record<string, BuildSpec> = {
   /** Cinnamon rolls at the bends, where a crowd bunches up. */
   area: (() => {
     const slots: Slot[] = [
-      { def: 'barbara', at: 240 },
+      { def: 'norah', at: 240 },
       { def: 'barbara', at: 480 },
       { def: 'norah', at: 700 },
       { def: 'barbara', at: 1000 },
-      { def: 'barbara', at: 1600 },
-      { def: 'norah', at: 1840 },
+      { def: 'barbara', at: 1300 },
+      { def: 'norah', at: 1600 },
+      { def: 'barbara', at: 1840 },
+      { def: 'barbara', at: 380 },
+      { def: 'barbara', at: 1120 },
+      { def: 'norah', at: 1450 },
     ];
     return {
       blurb: 'cinnamon rolls at the four hairpins',
       slots,
-      order: placeThenUpgrade(slots, [
-        'bigBatch',
-        'freshBatch',
+      order: grow(slots, [
         null,
+        'bigBatch',
+        null,
+        'freshBatch',
+        'bigBatch',
+        null,
+        'freshBatch',
         'bigBatch',
         'freshBatch',
         null,
@@ -157,26 +191,43 @@ const SPECS: Record<string, BuildSpec> = {
   /** Stun and blockades. Buys time rather than dealing damage. */
   control: (() => {
     const slots: Slot[] = [
-      { def: 'pete', at: 300 },
-      { def: 'walter', at: 420 },
-      { def: 'norah', at: 560 },
-      { def: 'pete', at: 1000 },
-      { def: 'walter', at: 1180 },
-      { def: 'pete', at: 1600 },
-      { def: 'walter', at: 1720 },
-      { def: 'norah', at: 1500 },
+      // Spread along the whole street before doubling up anywhere. An earlier
+      // version of this build put its first four towers within 120px of each
+      // other and starved: it covered one corner beautifully and let the rest
+      // of the road walk past, which cost it the kills it needed to pay for
+      // the rest of itself. Coverage first is most of what a plan decides.
+      { def: 'barbara', at: 300 },
+      { def: 'norah', at: 800 },
+      { def: 'barbara', at: 1300 },
+      { def: 'pete', at: 450 },
+      { def: 'norah', at: 1750 },
+      { def: 'walter', at: 700 },
+      { def: 'barbara', at: 1000 },
+      { def: 'pete', at: 1450 },
+      { def: 'norah', at: 550 },
+      { def: 'walter', at: 1300 },
+      { def: 'barbara', at: 1600 },
+      { def: 'pete', at: 1900 },
+      { def: 'barbara', at: 900 },
+      { def: 'norah', at: 1150 },
     ];
     return {
-      blurb: 'megaphones and garden walls, holding rather than killing',
+      blurb: 'megaphones and garden walls, holding while a thin gun line works',
       slots,
-      order: placeThenUpgrade(slots, [
+      order: grow(slots, [
+        null,
+        'bigBatch',
         'megaphone',
         'stoneWall',
+        'freshBatch',
         null,
         'bullhorn',
         'rally',
+        'bigBatch',
+        null,
         'megaphone',
-        'stoneWall',
+        'bullhorn',
+        'freshBatch',
         null,
       ]),
     };
@@ -192,11 +243,15 @@ const SPECS: Record<string, BuildSpec> = {
       { def: 'bill', at: 1140 },
       { def: 'clara', at: 1200 },
       { def: 'norah', at: 1700 },
+      { def: 'norah', at: 260 },
+      { def: 'bill', at: 1260 },
+      { def: 'clara', at: 1740 },
+      { def: 'norah', at: 1640 },
     ];
     return {
       blurb: 'three coffees, everything nearby firing far too fast',
       slots,
-      order: placeThenUpgrade(slots, [
+      order: grow(slots, [
         'tripleKnit',
         'doubleEspresso',
         'tripleKnit',
@@ -204,6 +259,10 @@ const SPECS: Record<string, BuildSpec> = {
         'deadeye',
         'secondRound',
         null,
+        'tripleKnit',
+        'piercingShot',
+        'doubleEspresso',
+        'tripleKnit',
       ]),
     };
   })(),
@@ -218,11 +277,14 @@ const SPECS: Record<string, BuildSpec> = {
       { def: 'pete', at: 1300 },
       { def: 'clara', at: 1360 },
       { def: 'norah', at: 1800 },
+      { def: 'barbara', at: 900 },
+      { def: 'norah', at: 620 },
+      { def: 'bill', at: 1560 },
     ];
     return {
       blurb: 'one of most things, the obvious first board',
       slots,
-      order: placeThenUpgrade(slots, [
+      order: grow(slots, [
         'tripleKnit',
         'bigBatch',
         'stoneWall',
@@ -230,6 +292,9 @@ const SPECS: Record<string, BuildSpec> = {
         'megaphone',
         'doubleEspresso',
         'tripleKnit',
+        'freshBatch',
+        'tripleKnit',
+        'piercingShot',
       ]),
     };
   })(),
