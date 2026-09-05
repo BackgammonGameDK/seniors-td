@@ -639,6 +639,21 @@ function fireTowers(w: World): void {
   for (const t of w.towers) {
     const d = effectiveDef(t);
     if (d.mode === 'support' || d.mode === 'blocker') continue;
+
+    // Who this tower is aimed at, kept current even while it is on cooldown or
+    // asleep -- the renderer turns the character to face this, and a tower
+    // that snapped back to upright between shots would look broken. A pulse
+    // tower shouts at everyone at once, so it has no one to face.
+    //
+    // Nothing here changes what gets shot: the shot still comes from
+    // `findTarget` below. The held target is only dropped once it is dead or
+    // out of range, so the common case costs a lookup rather than a sweep.
+    if (d.mode !== 'pulse') {
+      const facingRange = d.range * t.rangeMult;
+      const held = t.targetId === null ? undefined : w.enemies.find((e) => e.id === t.targetId);
+      const keep = held !== undefined && held.alive && within(held.x, held.y, t.x, t.y, facingRange);
+      if (!keep) t.targetId = findTarget(w, t, facingRange)?.id ?? null;
+    }
     // A disabled tower does nothing at all, cooldown included, so Tina costs
     // real shots rather than merely delaying them.
     if (t.disabled) continue;
@@ -664,7 +679,8 @@ function fireTowers(w: World): void {
     const multiShot = d.multiShot ?? 1;
     const targets = multiShot > 1 ? findTargets(w, t, range, multiShot) : [findTarget(w, t, range)];
     const live = targets.filter((e): e is Enemy => e !== null);
-    if (live.length === 0) continue;
+    const primary = live[0];
+    if (primary === undefined) continue;
     for (const target of live) {
       w.projectiles.push({
         id: w.nextId++,
@@ -681,6 +697,9 @@ function fireTowers(w: World): void {
         from: t.def,
       });
     }
+    // The primary is what the character is turned towards; a multi-shot tower
+    // faces the enemy furthest down the street, same as a single-shot one.
+    t.targetId = primary.id;
     t.cooldown = effectiveCooldown(t);
   }
 }
