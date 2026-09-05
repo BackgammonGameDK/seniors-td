@@ -18,7 +18,7 @@ import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
-import { hudReadouts, roundReadout } from './decisions.ts';
+import { easeAngle, facingAngle, hudReadouts, roundReadout } from './decisions.ts';
 import type { Readout } from './decisions.ts';
 import { enemySprite, iconGlyph, iconSprite, shotSprite, towerSprite } from './sprites.ts';
 
@@ -37,6 +37,13 @@ const ROLL_SIZE = 15;
  * person on the pavement rather than a tile that has been filled in.
  */
 const SPRITE_SIZE = 42;
+/**
+ * How much of the turn towards a new target a tower covers each frame.
+ *
+ * Low enough that the swing is visible rather than instant, high enough that
+ * the character is looking the right way well before the shot lands.
+ */
+const TURN_RATE = 0.2;
 
 /** The readout panel on the board: where it sits and how it is spaced. */
 const HUD = {
@@ -270,6 +277,16 @@ export class Renderer {
    */
   private lastCooldown = new Map<number, number>();
   private recoil = new Map<number, number>();
+  /**
+   * Which way each tower is currently turned, in radians, eased towards its
+   * target rather than snapped -- two enemies trading places at the front of
+   * the queue would otherwise flick the character back and forth every tick.
+   *
+   * A tower with nothing in range keeps the angle it had, so a street that has
+   * just been cleared is left facing where the last shot went instead of all
+   * springing back to attention at once.
+   */
+  private facing = new Map<number, number>();
   private floor: HTMLCanvasElement | null = null;
 
   /**
@@ -391,7 +408,10 @@ export class Renderer {
     }
 
     this.drawAuras(world);
-    for (const t of world.towers) this.drawTower(t, opts.inspected?.id === t.id);
+    // Built once rather than scanned per tower: every shooting tower needs to
+    // find the enemy it is facing, and the lane can hold a lot of bodies.
+    const byId = new Map(world.enemies.map((e) => [e.id, e]));
+    for (const t of world.towers) this.drawTower(t, opts.inspected?.id === t.id, byId);
     for (const e of world.enemies) this.drawEnemy(e);
     this.drawProjectiles(world);
     this.drawEffects();
@@ -597,7 +617,7 @@ export class Renderer {
     }
   }
 
-  private drawTower(t: Tower, isInspected: boolean): void {
+  private drawTower(t: Tower, isInspected: boolean, byId: Map<number, Enemy>): void {
     const g = this.g;
     const d = TOWERS[t.def];
     const look = TOWER_LOOK[t.def];
@@ -608,6 +628,14 @@ export class Renderer {
     const kick = this.recoil.get(t.id) ?? 0;
     if (kick > 0) this.recoil.set(t.id, kick - 1);
     const lift = kick * 0.5;
+
+    // The simulation says who the tower is aimed at; the angle is worked out
+    // here, because it is a drawing and not a decision the game turns on.
+    const target = t.targetId === null ? undefined : byId.get(t.targetId);
+    const held = this.facing.get(t.id) ?? 0;
+    const angle =
+      target === undefined ? held : easeAngle(held, facingAngle(t.x, t.y, target.x, target.y), TURN_RATE);
+    this.facing.set(t.id, angle);
 
     g.save();
     g.translate(t.x, t.y - lift);
@@ -626,6 +654,12 @@ export class Renderer {
     // top of the artwork was saying it twice and covering the picture to do
     // it. The disc below still brightens its own outline, because there the
     // outline is the only thing there is.
+    // Only the character turns. The shadow below it and the badges, ring and
+    // health bar around it are read the same way whichever way it is looking,
+    // and a `☕` lying on its side reads as a bug.
+    g.save();
+    g.rotate(angle);
+
     const sprite = towerSprite(t.def);
     if (sprite !== null) {
       g.globalAlpha = t.disabled ? 0.45 : 1;
@@ -652,6 +686,8 @@ export class Renderer {
       g.font = '18px serif';
       g.fillText(look.glyph, 0, 1);
     }
+
+    g.restore();
 
     g.textAlign = 'center';
     g.textBaseline = 'middle';

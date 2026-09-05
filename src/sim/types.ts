@@ -190,13 +190,16 @@ export interface Tower {
   /** Blocker only: the tick Second Wind gets it back up, or none pending. */
   reviveAt: number | null;
   /**
-   * Id of the enemy this tower is currently aimed at, or null when it has
-   * none in range. Unused for now -- `findTarget` picks a target fresh each
-   * tick and discards it once a shot is fired, so nothing currently writes
-   * this field. It exists so a future facing/rotation feature (the tower
-   * turning to face what it shoots, purely cosmetic -- this game has no aim
-   * mechanic) has somewhere to read a target from between shots, without
-   * `src/render/` needing to re-run targeting logic itself.
+   * Id of the enemy this tower is currently aimed at, or null when it has none
+   * in range. Written by `fireTowers` every tick, including ticks where the
+   * tower is on cooldown or disabled, and held until the enemy dies or leaves
+   * range.
+   *
+   * Purely cosmetic: it exists so `src/render/` can turn the character to face
+   * what it is shooting without re-running the targeting logic itself. This
+   * game has no aim mechanic, and nothing in the simulation reads this field.
+   * Always null for support, blocker and pulse towers, which have no single
+   * enemy to face.
    */
   targetId: number | null;
 }

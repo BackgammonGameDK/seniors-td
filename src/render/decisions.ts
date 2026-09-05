@@ -504,3 +504,41 @@ export function pathTierLocked(tierIndex: 0 | 1, boughtTier: 0 | 1 | 2): boolean
 export function capstoneLocked(upgradeA: 0 | 1 | 2, upgradeB: 0 | 1 | 2): boolean {
   return upgradeA < 2 || upgradeB < 2;
 }
+
+/**
+ * How much of a turn to add so a sprite drawn head-on ends up looking at the
+ * thing it is aimed at.
+ *
+ * The character pictures are drawn facing the viewer, which on the board is
+ * straight down the screen -- the `+y` direction, an angle of `PI / 2`. So an
+ * angle measured with `atan2` has to be turned back by that much before it can
+ * be handed to `rotate`. Naming it means that if the artwork is ever redrawn
+ * facing some other way, this one number is the whole fix.
+ */
+export const SPRITE_FRONT = Math.PI / 2;
+
+/**
+ * The angle to rotate a tower by so its front points at (`toX`, `toY`).
+ *
+ * Purely cosmetic: this game has no aim mechanic, and a tower hits whatever
+ * `findTarget` picked whichever way it happens to be facing.
+ */
+export function facingAngle(fromX: number, fromY: number, toX: number, toY: number): number {
+  return Math.atan2(toY - fromY, toX - fromX) - SPRITE_FRONT;
+}
+
+/**
+ * A step of `current` towards `desired`, taking whichever way round is
+ * shorter.
+ *
+ * Without the wrap, a tower whose target crossed from just under `PI` to just
+ * over `-PI` would spin almost the whole way round to travel a couple of
+ * degrees. `rate` is the fraction of the remaining turn covered per frame, so
+ * the turn starts quickly and settles.
+ */
+export function easeAngle(current: number, desired: number, rate: number): number {
+  let diff = desired - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * rate;
+}

@@ -576,3 +576,50 @@ describe('upgrades', () => {
     expect(clara.rangeMult).toBe(1);
   });
 });
+
+describe('facing', () => {
+  it('remembers the troublemaker a tower shot at, so the renderer can turn it', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    const sam = spawnEnemy(w, 'sam', 300);
+    step(w);
+    expect(norah.targetId).toBe(sam.id);
+  });
+
+  it('keeps the target while the tower waits out its cooldown', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    const sam = spawnEnemy(w, 'sam', 300);
+    step(w);
+    expect(norah.cooldown).toBeGreaterThan(0);
+    step(w);
+    expect(norah.cooldown).toBeGreaterThan(0);
+    expect(norah.targetId).toBe(sam.id);
+  });
+
+  it('lets the target go once it is dead', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    const sam = spawnEnemy(w, 'sam', 300);
+    step(w);
+    expect(norah.targetId).toBe(sam.id);
+
+    sam.alive = false;
+    step(w);
+    expect(norah.targetId).toBeNull();
+  });
+
+  it('gives no target to towers that face nobody in particular', () => {
+    const w = rich();
+    // Pete shouts at everyone at once, Clara only makes her neighbours better,
+    // and Walter stands in the road -- none of them has one enemy to look at.
+    const pete = put(w, 'pete', buildCellNear(300));
+    const clara = put(w, 'clara', buildCellNear(340));
+    const walter = put(w, 'walter', roadCellNear(300));
+    for (let i = 0; i < 4; i++) spawnEnemy(w, 'sam', 300 + i * 5);
+    for (let i = 0; i < 10; i++) step(w);
+    expect(pete.targetId).toBeNull();
+    expect(clara.targetId).toBeNull();
+    expect(walter.targetId).toBeNull();
+  });
+});

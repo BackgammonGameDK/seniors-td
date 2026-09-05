@@ -8,10 +8,12 @@ import {
   capstoneLocked,
   cardState,
   describeStats,
+  easeAngle,
   hoveredStat,
   previewStats,
   endOverlay,
   enemyReadout,
+  facingAngle,
   hudReadouts,
   roundReadout,
   runButton,
@@ -529,5 +531,30 @@ describe('both upgrade paths stay on show', () => {
     for (const bought of [0, 1, 2] as const) {
       expect(pathCard(bought).tierIndex).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe('which way a tower looks', () => {
+  // The sprites are drawn facing the viewer, which is straight down the
+  // screen, so a target below the tower needs no turn at all.
+  it('turns a head-on sprite towards the target', () => {
+    expect(facingAngle(100, 100, 100, 200)).toBeCloseTo(0);
+    // Half a turn, expressed as the negative half -- `rotate` cannot tell the
+    // two apart, and `easeAngle` wraps either into the shorter route.
+    expect(facingAngle(100, 100, 100, 0)).toBeCloseTo(-Math.PI);
+    expect(facingAngle(100, 100, 200, 100)).toBeCloseTo(-Math.PI / 2);
+    expect(facingAngle(100, 100, 0, 100)).toBeCloseTo(Math.PI / 2);
+  });
+
+  it('eases part of the way, not all of it', () => {
+    expect(easeAngle(0, 1, 0.25)).toBeCloseTo(0.25);
+    expect(easeAngle(0, 0, 0.25)).toBeCloseTo(0);
+  });
+
+  it('takes the short way round when the turn crosses the half circle', () => {
+    // Just under half a turn one way to just over it the other is a couple of
+    // degrees of travel, not most of a circle.
+    const stepped = easeAngle(Math.PI - 0.1, -Math.PI + 0.1, 0.5);
+    expect(stepped).toBeGreaterThan(Math.PI - 0.1);
   });
 });
