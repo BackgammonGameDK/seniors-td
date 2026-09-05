@@ -39,6 +39,19 @@ const HIT_RADIUS = 9;
 const FLASH_TICKS = 8;
 /** No amount of glaze stops a troublemaker dead. Stun does that, briefly. */
 const MAX_SLOW = 0.7;
+/**
+ * The most a tower's rate of fire can be multiplied, however much coffee is
+ * standing near it.
+ *
+ * Encouragement stacks by multiplying, so three maxed Claras were 2.0 cubed --
+ * an eightfold rate, which drove Norah's cooldown onto its one-tick floor and
+ * made stacking coffee the only build worth playing. It measured as the sole
+ * build that could finish a campaign, which is the failure this project cares
+ * about most. Capped rather than made additive because a cap keeps the first
+ * Clara worth her full price and only makes the third one a poor buy, which is
+ * the shape support is meant to have: a force multiplier, not a win condition.
+ */
+const MAX_RATE_MULT = 2.5;
 /** How far short of a blockade an enemy halts, so it stands beside it. */
 const BLOCKER_STOP_GAP = 14;
 /** Ticks between one swing at a blockade and the next. */
@@ -339,7 +352,7 @@ function advanceAuras(w: World): void {
     if (d.mode !== 'support') continue;
     for (const t of w.towers) {
       if (t === src || !within(t.x, t.y, src.x, src.y, d.range)) continue;
-      t.rateMult *= d.buffRate;
+      t.rateMult = Math.min(MAX_RATE_MULT, t.rateMult * d.buffRate);
       t.rangeMult *= 1 + (d.rangeBuffBonus ?? 0);
     }
   }

@@ -40,8 +40,8 @@ export const UPGRADES: Record<TowerId, TowerUpgrades> = {
       { cost: 40, stat: { range: 140 } },
     ],
     capstones: [
-      { id: 'longYarn', cost: 130, stat: { cooldown: 7, range: 175 } },
-      { id: 'tripleKnit', cost: 100, stat: { multiShot: 3 } },
+      { id: 'longYarn', cost: 155, stat: { cooldown: 9, range: 175 } },
+      { id: 'tripleKnit', cost: 165, stat: { multiShot: 3 } },
     ],
   },
   barbara: {
@@ -74,15 +74,15 @@ export const UPGRADES: Record<TowerId, TowerUpgrades> = {
   },
   bill: {
     pathA: [
-      { cost: 45, stat: { damage: 52 } },
-      { cost: 70, stat: { damage: 65 } },
+      { cost: 45, stat: { damage: 58 } },
+      { cost: 70, stat: { damage: 74 } },
     ],
     pathB: [
       { cost: 45, stat: { range: 260 } },
       { cost: 70, stat: { range: 300 } },
     ],
     capstones: [
-      { id: 'deadeye', cost: 150, stat: { damage: 85, range: 340 } },
+      { id: 'deadeye', cost: 130, stat: { damage: 95, range: 340 } },
       { id: 'piercingShot', cost: 140, stat: { pierce: 1 } },
     ],
   },
@@ -110,7 +110,7 @@ export const UPGRADES: Record<TowerId, TowerUpgrades> = {
       { cost: 50, stat: { range: 130 } },
     ],
     capstones: [
-      { id: 'doubleEspresso', cost: 110, stat: { buffRate: 2.0 } },
+      { id: 'doubleEspresso', cost: 135, stat: { buffRate: 1.8 } },
       { id: 'secondRound', cost: 100, stat: { range: 155, rangeBuffBonus: 0.15 } },
     ],
   },
