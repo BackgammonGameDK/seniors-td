@@ -18,7 +18,7 @@ export const TOWERS: Record<TowerId, TowerDef> = {
   norah: {
     id: 'norah',
     mode: 'projectile',
-    cost: 'fifty',
+    cost: 50,
     damage: 7,
     range: 95,
     cooldown: 26,
