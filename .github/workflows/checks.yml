@@ -12,8 +12,12 @@ on:
 permissions:
   contents: read
 
+# A branch with an open pull request fires both triggers above for one commit.
+# head_ref (the pull request) and ref_name (the push) are the same branch name,
+# so both runs land in one group and the older is cancelled -- one commit gets
+# one answer, not two identical ones.
 concurrency:
-  group: checks-${{ github.ref }}
+  group: checks-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
