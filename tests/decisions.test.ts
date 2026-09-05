@@ -25,6 +25,8 @@ import {
   upgradeCardState,
   waveLabel,
 } from '../src/render/decisions.ts';
+import type { StatRow } from '../src/render/decisions.ts';
+import { cooldownAt } from '../src/sim/world.ts';
 import type { Stats, Tower } from '../src/sim/types.ts';
 
 const noStats: Stats = {
@@ -207,6 +209,23 @@ describe('build cards', () => {
 
     const clara = describeStats(TOWERS.clara);
     expect(clara.some((r) => /faster/.test(r.value))).toBe(true);
+  });
+
+  it('shows a neighbour\'s coffee in the rate, not just on the board', () => {
+    const plain = describeStats(TOWERS.norah);
+    const buffed = describeStats(TOWERS.norah, { rateMult: TOWERS.clara.buffRate });
+    const rateOf = (rows: StatRow[]) => rows.find((r) => r.label === 'Rate')!.value;
+    expect(rateOf(buffed)).not.toBe(rateOf(plain));
+    expect(rateOf(buffed)).toContain(rate(cooldownAt(TOWERS.norah.cooldown, TOWERS.clara.buffRate)));
+    expect(rateOf(buffed)).toContain(rateOf(plain));
+  });
+
+  it('shows a widened reach, and leaves an unbuffed one alone', () => {
+    const reachOf = (rows: StatRow[]) => rows.find((r) => r.label === 'Reach')!.value;
+    expect(reachOf(describeStats(TOWERS.norah, { rangeMult: 1.15 }))).toContain(
+      `${Math.round(TOWERS.norah.range * 1.15)} px`,
+    );
+    expect(reachOf(describeStats(TOWERS.norah))).toBe(`${TOWERS.norah.range} px`);
   });
 });
 

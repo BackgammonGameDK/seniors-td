@@ -231,7 +231,18 @@ export function purchaseUpgrade(
  * rather than recomputing the fold and drifting from what the sim does.
  */
 export function effectiveCooldown(t: Tower): number {
-  return Math.max(1, Math.round(effectiveDef(t).cooldown / t.rateMult));
+  return cooldownAt(effectiveDef(t).cooldown, t.rateMult);
+}
+
+/**
+ * The same fold, over loose numbers.
+ *
+ * The inspect panel knows a cooldown and a rate multiplier but has no Tower to
+ * hand, and a second copy of this rounding in the interface is exactly how a
+ * panel starts lying about what the sim does.
+ */
+export function cooldownAt(cooldown: number, rateMult: number): number {
+  return Math.max(1, Math.round(cooldown / rateMult));
 }
 
 // --- rounds -----------------------------------------------------------------
