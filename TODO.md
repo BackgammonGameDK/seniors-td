@@ -21,7 +21,8 @@ Not yet scheduled. Notes to self so these aren't lost.
 
 ## Tower stats
 
-1. **Show a placed tower's kill count.** Should be visible somewhere in the
-   UI while the game is running -- e.g. in the tower inspection panel next
-   to its other stats -- so a player can see how much work a specific
-   defender has done.
+1. ~~**Show a placed tower's kill count.**~~ Done -- tapping a placed tower
+   shows a "Sent home" row counting the troublemakers it has finished off,
+   updating live as the round runs. Lifetime since it was placed, not per
+   round. Left off Clara and Walter, who never deal damage and would sit at
+   zero forever.

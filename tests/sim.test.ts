@@ -19,6 +19,7 @@ import {
   createWorld,
   placeTower,
   purchaseUpgrade,
+  sellTower,
   spawnEnemy,
   startWave,
   step,
@@ -621,5 +622,89 @@ describe('facing', () => {
     expect(pete.targetId).toBeNull();
     expect(clara.targetId).toBeNull();
     expect(walter.targetId).toBeNull();
+  });
+});
+
+describe('credit for sending a troublemaker home', () => {
+  /**
+   * On their last legs, so one hit finishes them. What is under test is who
+   * gets the credit, not whether a given tower out-damages a given enemy
+   * before it walks out of reach -- that would make these tests fail on a
+   * balance change that has nothing to do with counting.
+   */
+  function nearlyDone(w: World, def: EnemyId, dist: number) {
+    const e = spawnEnemy(w, def, dist);
+    e.hp = 1;
+    return e;
+  }
+
+  it('counts the troublemakers a tower finishes off', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    nearlyDone(w, 'sam', 300);
+    expect(norah.sentHome).toBe(0);
+
+    for (let i = 0; i < 600 && w.enemies.length > 0; i++) step(w);
+    expect(w.enemies).toHaveLength(0);
+    expect(norah.sentHome).toBe(1);
+  });
+
+  it('credits the tower that fired, not the one standing nearest', () => {
+    const w = rich();
+    // Bill hits for 40 and kills a Sam outright; Norah hits for 7 and is left
+    // holding nothing, even though she is on the board the whole time.
+    const bill = put(w, 'bill', buildCellNear(300));
+    const norah = put(w, 'norah', buildCellNear(900));
+    spawnEnemy(w, 'sam', 300);
+
+    for (let i = 0; i < 600 && w.enemies.length > 0; i++) step(w);
+    expect(bill.sentHome).toBe(1);
+    expect(norah.sentHome).toBe(0);
+  });
+
+  it('gives a splash every troublemaker it caught, not just the one aimed at', () => {
+    const w = rich();
+    const barbara = put(w, 'barbara', buildCellNear(300));
+    // Close enough together that Barbara's 42px burst reaches all three.
+    for (let i = 0; i < 3; i++) nearlyDone(w, 'sam', 300 + i * 8);
+
+    for (let i = 0; i < 900 && w.enemies.length > 0; i++) step(w);
+    expect(w.enemies).toHaveLength(0);
+    expect(barbara.sentHome).toBe(3);
+  });
+
+  it('credits nobody for a troublemaker who simply walks off the end', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    // Spawned past Norah's reach and left to leak.
+    spawnEnemy(w, 'sam', PATH_LENGTH - 30);
+
+    for (let i = 0; i < 600 && w.enemies.length > 0; i++) step(w);
+    expect(w.stats.leaks).toBeGreaterThan(0);
+    expect(norah.sentHome).toBe(0);
+  });
+
+  it('starts a replacement at nothing when its predecessor is sold', () => {
+    const w = rich();
+    const at = buildCellNear(300);
+    const first = put(w, 'norah', at);
+    nearlyDone(w, 'sam', 300);
+    for (let i = 0; i < 600 && w.enemies.length > 0; i++) step(w);
+    expect(first.sentHome).toBe(1);
+
+    sellTower(w, first);
+    const second = put(w, 'norah', at);
+    expect(second.sentHome).toBe(0);
+  });
+
+  it('keeps counting across rounds, so the total is for the tower not the wave', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    nearlyDone(w, 'sam', 300);
+    for (let i = 0; i < 600 && w.enemies.length > 0; i++) step(w);
+    expect(norah.sentHome).toBe(1);
+
+    startWave(w);
+    expect(norah.sentHome).toBe(1);
   });
 });

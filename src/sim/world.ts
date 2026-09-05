@@ -93,6 +93,8 @@ export interface World {
     damage: number;
     effect: Pick<TowerDef, 'slowTicks' | 'slowFactor' | 'stunTicks'>;
     pierceRemaining: number;
+    /** Which tower gets the credit if this one finishes an enemy off. */
+    sourceId: number;
   }[];
   stats: Stats;
   /** Cleared at the top of every step. The renderer reads these for feedback. */
@@ -180,6 +182,7 @@ export function placeTower(w: World, def: TowerId, col: number, row: number): bo
     revivesUsed: 0,
     reviveAt: null,
     targetId: null,
+    sentHome: 0,
   });
   return true;
 }
@@ -536,6 +539,7 @@ export function applyHit(
   e: Enemy,
   damage: number,
   effect: Pick<TowerDef, 'slowTicks' | 'slowFactor' | 'stunTicks'>,
+  sourceId?: number,
 ): void {
   if (!e.alive) return;
   const d = ENEMIES[e.def];
@@ -562,15 +566,21 @@ export function applyHit(
     e.stunTicks = Math.max(e.stunTicks, effect.stunTicks);
   }
 
-  if (e.hp <= 0) kill(w, e);
+  if (e.hp <= 0) kill(w, e, sourceId);
 }
 
-function kill(w: World, e: Enemy): void {
+function kill(w: World, e: Enemy, sourceId?: number): void {
   const d = ENEMIES[e.def];
   e.alive = false;
   e.blockedBy = null;
   award(w, d.bounty);
   w.stats.kills++;
+  if (sourceId !== undefined) {
+    // Nothing if the tower has since been sold or fallen: a shot outlives the
+    // senior who fired it, and there is no one left to credit.
+    const source = w.towers.find((t) => t.id === sourceId);
+    if (source) source.sentHome++;
+  }
   emit(w, 'kill', e.x, e.y, `+${d.bounty}`);
 
   if (d.splitsInto && d.splitCount > 0) {
@@ -668,7 +678,7 @@ function fireTowers(w: World): void {
       for (const e of w.enemies) {
         if (!e.alive || !within(e.x, e.y, t.x, t.y, range)) continue;
         shouted = true;
-        applyHit(w, e, d.damage, d);
+        applyHit(w, e, d.damage, d, t.id);
       }
       if (!shouted) continue;
       emit(w, 'stun', t.x, t.y);
@@ -695,6 +705,7 @@ function fireTowers(w: World): void {
         stunTicks: d.stunTicks,
         pierceRemaining: d.pierce ?? 0,
         from: t.def,
+        sourceId: t.id,
       });
     }
     // The primary is what the character is turned towards; a multi-shot tower
@@ -715,9 +726,9 @@ function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy |
     // splash, which is exactly the bug that let one shot cascade through a
     // whole family in the previous project.
     const caught = w.enemies.filter((e) => e.alive && within(e.x, e.y, x, y, p.splash));
-    for (const e of caught) applyHit(w, e, p.damage, effect);
+    for (const e of caught) applyHit(w, e, p.damage, effect, p.sourceId);
   } else if (direct) {
-    applyHit(w, direct, p.damage, effect);
+    applyHit(w, direct, p.damage, effect, p.sourceId);
     if (p.pierceRemaining > 0) {
       const next = findPierceTarget(w, direct);
       if (next) {
@@ -726,6 +737,7 @@ function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy |
           damage: p.damage,
           effect,
           pierceRemaining: p.pierceRemaining - 1,
+          sourceId: p.sourceId,
         });
       }
     }
@@ -740,7 +752,7 @@ function flushPierceHits(w: World): void {
   for (const h of queued) {
     const e = w.enemies.find((x) => x.id === h.enemyId && x.alive);
     if (!e) continue;
-    applyHit(w, e, h.damage, h.effect);
+    applyHit(w, e, h.damage, h.effect, h.sourceId);
     if (h.pierceRemaining > 0) {
       const next = findPierceTarget(w, e);
       if (next) {
@@ -749,6 +761,7 @@ function flushPierceHits(w: World): void {
           damage: h.damage,
           effect: h.effect,
           pierceRemaining: h.pierceRemaining - 1,
+          sourceId: h.sourceId,
         });
       }
     }

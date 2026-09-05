@@ -202,6 +202,17 @@ export interface Tower {
    * enemy to face.
    */
   targetId: number | null;
+  /**
+   * How many troublemakers this tower has finished off since it was placed.
+   * Counts the hit that took an enemy to zero, so a splash that clears four
+   * at once scores four. Never reset: selling the tower is what clears it,
+   * and ids are never reused, so a replacement starts from nothing.
+   *
+   * Leaks are not counted -- an enemy that reaches the end never goes through
+   * `kill` -- and support and blocker towers can never score, since neither
+   * ever deals damage.
+   */
+  sentHome: number;
 }
 
 export interface Projectile {
@@ -220,6 +231,13 @@ export interface Projectile {
   pierceRemaining: number;
   /** Only so the renderer can draw the right sprite. Not read by the sim. */
   from: TowerId;
+  /**
+   * Id of the `Tower` that fired this, as opposed to `from`, which is the
+   * kind of tower it was. Only this one identifies the piece on the board,
+   * and it is what a kill is credited to. The tower may be gone by the time
+   * the shot lands, in which case nothing is credited.
+   */
+  sourceId: number;
 }
 
 export type SimEventType = 'hit' | 'kill' | 'leak' | 'split' | 'blockerDown' | 'stun';

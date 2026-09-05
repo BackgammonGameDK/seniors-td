@@ -23,6 +23,7 @@ import {
   panelKey,
   pathCard,
   previewStats,
+  sentHomeRow,
   roundPreview,
   runButton,
   towerCard,
@@ -75,8 +76,9 @@ export class Ui {
   /** Which upgrade card the pointer is on, so the stat rows can show what
    *  buying it would do. `null` whenever the pointer is anywhere else. */
   private hoverChoice: string | null = null;
-  /** `panelKey` plus the hovered card: what the stat rows were last drawn
-   *  from, so they are rewritten only when one of the two moves. */
+  /** `panelKey`, the running total and the hovered card: what the stat rows
+   *  were last drawn from, so they are rewritten only when one of the three
+   *  moves. */
   private lastStats = '';
 
   /** What the range would become if the tier currently under the pointer
@@ -238,7 +240,11 @@ export class Ui {
    * rewritten on every frame.
    */
   private paintStats(t: Tower): void {
-    const key = `${panelKey(t)}|${this.hoverChoice ?? ''}`;
+    // The running total is kept out of `panelKey` on purpose. A changed
+    // panelKey rebuilds the whole panel, which would re-measure the reserved
+    // height and tear down the upgrade card under the pointer on every kill.
+    // Only this key needs it, because only `inspectBody` shows the total.
+    const key = `${panelKey(t)}|${t.sentHome}|${this.hoverChoice ?? ''}`;
     if (key === this.lastStats) return;
     this.lastStats = key;
     this.inspectBody.innerHTML = this.statRowsHtml(t, this.hoverChoice);
@@ -254,6 +260,8 @@ export class Ui {
     if (TOWERS[t.def].mode === 'blocker') {
       rows.push({ label: 'Still standing', value: `${Math.max(0, Math.ceil(t.hp))}` });
     }
+    const scored = sentHomeRow(t);
+    if (scored) rows.push(scored);
     return rows
       .map((r) => {
         const was = r.was !== undefined ? `<s>${r.was}</s> ` : '';
