@@ -16,6 +16,7 @@ import type { EnemyId, TowerId } from '../sim/types.ts';
 
 import barbaraPng from '../assets/barbara.png';
 import coinPng from '../assets/coin.png';
+import heartPng from '../assets/heart.png';
 import norahPng from '../assets/norah.png';
 import petePng from '../assets/pete.png';
 import samPng from '../assets/sam.png';
@@ -40,6 +41,7 @@ export type IconId = 'coin' | 'heart';
 
 const ICON_ART: Partial<Record<IconId, string>> = {
   coin: coinPng,
+  heart: heartPng,
 };
 
 /**
