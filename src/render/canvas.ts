@@ -546,7 +546,11 @@ export class Renderer {
   private drawAuras(world: World): void {
     const g = this.g;
     for (const t of world.towers) {
-      const d = TOWERS[t.def];
+      // The bought range, not the base one: `advanceAuras` reaches with
+      // `effectiveDef(src).range`, so a ring drawn from `TOWERS` would show
+      // the wrong circle the moment a Reach tier is bought. Deliberately no
+      // `rangeMult` here -- the sim does not apply one to an aura's reach.
+      const d = effectiveDef(t);
       if (d.mode !== 'support') continue;
       g.beginPath();
       g.arc(t.x, t.y, d.range, 0, Math.PI * 2);

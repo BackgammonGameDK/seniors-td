@@ -21,7 +21,6 @@ import { parseLoadout } from '../src/sim/loadout.ts';
 
 const SEEDS = 8;
 const results = BUILDS.map((b) => measureBuild(b.name, b.blurb, parseLoadout(b.loadout), SEEDS));
-const by = (name: string) => results.find((r) => r.name === name)!;
 
 describe('the shape of a campaign', () => {
   it('lets every build learn the game before it asks anything of them', () => {

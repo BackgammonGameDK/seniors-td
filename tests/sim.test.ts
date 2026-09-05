@@ -305,6 +305,32 @@ describe("Walker Walter's Second Wind", () => {
     expect(walter.revivesUsed).toBe(0);
   });
 
+  it('is patched up to full when the round is cleared', () => {
+    const w = rich();
+    const walter = put(w, 'walter', roadCellNear(300));
+    walter.upgradeA = 1; // Sturdy I, so the restore has to read the bought max
+    expect(startWave(w)).toBe(true);
+    w.spawnQueue = [];
+    w.enemies = [];
+    walter.hp = 5;
+    step(w);
+    expect(w.status).toBe('idle');
+    expect(walter.hp).toBe(effectiveDef(walter).maxHp);
+  });
+
+  it('brings a blocker felled by the last enemy back up, rather than leaving him counting down', () => {
+    const w = rich();
+    const walter = put(w, 'walter', roadCellNear(300));
+    expect(startWave(w)).toBe(true);
+    w.spawnQueue = [];
+    w.enemies = [];
+    walter.hp = 0;
+    walter.reviveAt = w.tick + 100;
+    step(w);
+    expect(walter.reviveAt).toBeNull();
+    expect(walter.hp).toBe(TOWERS.walter.maxHp);
+  });
+
   it('only regenerates while standing, and never past max HP', () => {
     const w = rich();
     const walter = put(w, 'walter', roadCellNear(300));
