@@ -18,3 +18,10 @@ Not yet scheduled. Notes to self so these aren't lost.
    open card per path.
 4. **Start/pause/speed controls need a home that doesn't require
    scrolling.** They currently sit below the fold on a normal viewport.
+
+## Tower stats
+
+1. **Show a placed tower's kill count.** Should be visible somewhere in the
+   UI while the game is running -- e.g. in the tower inspection panel next
+   to its other stats -- so a player can see how much work a specific
+   defender has done.
