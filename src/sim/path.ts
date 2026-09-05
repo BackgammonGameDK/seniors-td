@@ -143,3 +143,39 @@ export function distanceAlong(p: Point): number {
   }
   return bestDist;
 }
+
+/**
+ * The buildable cell nearest a point some distance along the street.
+ *
+ * Both harnesses name their boards the same way -- "a tower about here, in
+ * front of the second hairpin" -- and a board picked by two different rules
+ * would make their two measurements incomparable. One rule, in the one place
+ * that already knows the shape of the street.
+ *
+ * `taken` is the cells already claimed by earlier picks, so a build that wants
+ * three towers along the same stretch does not stack them all on one square.
+ */
+export function nearestCell(
+  dist: number,
+  kind: 'build' | 'blocker' = 'build',
+  taken: readonly { col: number; row: number }[] = [],
+): { col: number; row: number } {
+  const p = pointAt(dist);
+  const legal = kind === 'blocker' ? isBlockerCell : isBuildableCell;
+  let best = { col: 0, row: 0 };
+  let bestD = Infinity;
+  for (let col = 0; col < BOARD.cols; col++) {
+    for (let row = 0; row < BOARD.rows; row++) {
+      if (!legal(col, row)) continue;
+      if (taken.some((t) => t.col === col && t.row === row)) continue;
+      const c = cellCentre(col, row);
+      const d = Math.hypot(c.x - p.x, c.y - p.y);
+      if (d < bestD) {
+        bestD = d;
+        best = { col, row };
+      }
+    }
+  }
+  if (bestD === Infinity) throw new Error(`no free ${kind} cell near distance ${dist}`);
+  return best;
+}

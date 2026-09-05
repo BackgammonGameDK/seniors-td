@@ -11,6 +11,7 @@
     "test:fast": "vitest run --exclude '**/node_modules/**'",
     "typecheck": "tsc --noEmit",
     "sim": "node src/headless.ts",
+    "campaign": "node src/campaign.ts",
     "coverage": "vitest run --coverage"
   },
   "devDependencies": {

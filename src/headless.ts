@@ -17,7 +17,7 @@ import { parseArgs } from 'node:util';
 import { ECONOMY } from './sim/economy.ts';
 import { describePlacement, parseLoadout } from './sim/loadout.ts';
 import type { Placement } from './sim/loadout.ts';
-import { BOARD, cellCentre, isBlockerCell, isBuildableCell, pointAt } from './sim/path.ts';
+import { isBlockerCell, isBuildableCell, nearestCell } from './sim/path.ts';
 import { TOWERS } from './sim/towers.ts';
 import { ENEMY_IDS } from './sim/types.ts';
 import type { EnemyId } from './sim/types.ts';
@@ -48,35 +48,23 @@ function emptyLeaks(): Record<EnemyId, number> {
  * Deliberately mixed rather than good: three cheap shooters spread along the
  * street, one of them with reach. A default that was a strong build would make
  * every round look easy.
+ *
+ * It costs 265 coins against a 120-coin start, so it is not a board anyone
+ * could field on round one. That is fine here -- this harness buys free and
+ * asks only how hard a round is -- but it is the reason a board that looks
+ * comfortable in this table can still lose a campaign. `npm run campaign` is
+ * where affordability is measured.
  */
 const NO_UPGRADES = { upgradeA: 0, upgradeB: 0, capstone: null } as const;
 
 function defaultPlan(): Placement[] {
-  const spots = [200, 700, 1200, 1700].map((d) => nearestBuildCell(d));
+  const spots = [200, 700, 1200, 1700].map((d) => nearestCell(d));
   return [
     { def: 'norah', ...spots[0]!, ...NO_UPGRADES },
     { def: 'bill', ...spots[1]!, ...NO_UPGRADES },
     { def: 'barbara', ...spots[2]!, ...NO_UPGRADES },
     { def: 'norah', ...spots[3]!, ...NO_UPGRADES },
   ];
-}
-
-function nearestBuildCell(dist: number): { col: number; row: number } {
-  const p = pointAt(dist);
-  let best = { col: 0, row: 0 };
-  let bestD = Infinity;
-  for (let col = 0; col < BOARD.cols; col++) {
-    for (let row = 0; row < BOARD.rows; row++) {
-      if (!isBuildableCell(col, row)) continue;
-      const c = cellCentre(col, row);
-      const d = Math.hypot(c.x - p.x, c.y - p.y);
-      if (d < bestD) {
-        bestD = d;
-        best = { col, row };
-      }
-    }
-  }
-  return best;
 }
 
 function runWave(waveIndex: number, plan: Placement[], seed: number) {
