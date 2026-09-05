@@ -12,6 +12,7 @@ import {
   enemyReadout,
   hudReadouts,
   roundReadout,
+  runButton,
   panelKey,
   pathCard,
   pathTierLocked,
@@ -367,6 +368,39 @@ describe('the troublemaker read-out teaches the mechanic', () => {
 
   it('has nothing special to say about the plain ones', () => {
     expect(enemyReadout({ def: 'sam', hp: 22, scale: 1 }).lines).toHaveLength(1);
+  });
+});
+
+describe('the one button that runs the game', () => {
+  it('starts the round when nothing is running', () => {
+    const b = runButton({ status: 'idle', paused: false });
+    expect(b).toEqual({ label: 'Start round', action: 'start', disabled: false });
+  });
+
+  it('pauses a running round, and resumes a paused one', () => {
+    // The same button, because it is the same question: should time be
+    // passing? Two buttons meant one of them was always greyed out.
+    expect(runButton({ status: 'running', paused: false })).toEqual({
+      label: 'Pause',
+      action: 'toggle',
+      disabled: false,
+    });
+    expect(runButton({ status: 'running', paused: true })).toEqual({
+      label: 'Resume',
+      action: 'toggle',
+      disabled: false,
+    });
+  });
+
+  it('goes dead once the game is over', () => {
+    // The overlay is up and there is no round left to start or pause. It
+    // still reads "Start round" rather than going blank, so the button does
+    // not change shape underneath the overlay.
+    for (const status of ['won', 'lost']) {
+      const b = runButton({ status, paused: false });
+      expect(b.disabled).toBe(true);
+      expect(b.label).toBe('Start round');
+    }
   });
 });
 

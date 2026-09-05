@@ -22,9 +22,11 @@ import {
   panelKey,
   pathCard,
   roundPreview,
+  runButton,
   towerCard,
   upgradeCardState,
 } from './decisions.ts';
+import { towerArtUrl } from './sprites.ts';
 import type { Speed } from './clock.ts';
 
 function el<T extends HTMLElement>(id: string): T {
@@ -55,14 +57,15 @@ export class Ui {
   private inspectBody = el<HTMLElement>('inspectBody');
   private upgrades = el<HTMLElement>('upgrades');
   private sell = el<HTMLButtonElement>('sell');
-  private startBtn = el<HTMLButtonElement>('startWave');
-  private pauseBtn = el<HTMLButtonElement>('pause');
+  private runBtn = el<HTMLButtonElement>('run');
   private speedBtn = el<HTMLButtonElement>('speed');
   private overlay = el<HTMLElement>('overlay');
   private overlayTitle = el<HTMLElement>('overlayTitle');
   private overlayBody = el<HTMLElement>('overlayBody');
 
   private cards = new Map<TowerId, HTMLButtonElement>();
+  /** What the run button was last told, so a click knows what it means. */
+  private runState = { status: 'idle', paused: false };
   private lastPanel = '';
   private lastPreview = -1;
   private inspected: Tower | null = null;
@@ -76,8 +79,10 @@ export class Ui {
 
   constructor(private handlers: UiHandlers) {
     this.buildTowerMenu();
-    this.startBtn.addEventListener('click', () => handlers.onStartWave());
-    this.pauseBtn.addEventListener('click', () => handlers.onTogglePause());
+    this.runBtn.addEventListener('click', () => {
+      if (runButton(this.runState).action === 'start') handlers.onStartWave();
+      else handlers.onTogglePause();
+    });
     this.speedBtn.addEventListener('click', () => handlers.onCycleSpeed());
     el('inspectClose').addEventListener('click', () => handlers.onCloseInspect());
     el('restart').addEventListener('click', () => handlers.onRestart());
@@ -107,12 +112,25 @@ export class Ui {
   private buildTowerMenu(): void {
     for (const id of TOWER_IDS) {
       const card = towerCard(id);
+      const art = towerArtUrl(id);
+      // The picture is the drawn one where there is one, and the emoji blown
+      // up where there is not -- the same fallback the board itself uses, so
+      // a neighbour whose portrait has not been painted still folds out.
+      const portrait =
+        art !== null
+          ? `<img src="${art}" alt="${card.name}">`
+          : `<span class="big">${TOWER_LOOK[id].glyph}</span>`;
+      const rows = card.rows
+        .map((r) => `<div class="statrow"><i>${r.label}</i><span>${r.value}</span></div>`)
+        .join('');
+
       const btn = document.createElement('button');
       btn.className = 'card';
       btn.innerHTML =
         `<span class="g">${TOWER_LOOK[id].glyph}</span>` +
         `<span><span class="n">${card.name}</span><br><span class="b">${card.blurb}</span></span>` +
-        `<span class="c">${TOWERS[id].cost}</span>`;
+        `<span class="c">${TOWERS[id].cost}</span>` +
+        `<span class="fold">${portrait}<span class="rows">${rows}</span></span>`;
       btn.addEventListener('click', () => this.handlers.onSelect(id));
       this.towerList.appendChild(btn);
       this.cards.set(id, btn);
@@ -141,9 +159,10 @@ export class Ui {
         : '<span>Nothing left to come.</span>';
     }
 
-    this.startBtn.disabled = world.status !== 'idle';
-    this.startBtn.textContent = world.status === 'running' ? 'Round running' : 'Start round';
-    this.pauseBtn.textContent = state.paused ? 'Resume' : 'Pause';
+    this.runState = { status: world.status, paused: state.paused };
+    const run = runButton(this.runState);
+    this.runBtn.textContent = run.label;
+    this.runBtn.disabled = run.disabled;
     this.speedBtn.innerHTML = `${state.speed || 1}&times;`;
 
     this.hint.textContent = state.selected

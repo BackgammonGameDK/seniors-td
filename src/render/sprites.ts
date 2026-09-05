@@ -80,6 +80,14 @@ function ready(url: string | undefined): HTMLImageElement | null {
   return img.complete && img.naturalWidth > 0 ? img : null;
 }
 
+/**
+ * The address of a tower's picture, for the places that want an `<img>`
+ * rather than something to draw on a canvas -- `null` if it has none yet.
+ */
+export function towerArtUrl(id: TowerId): string | null {
+  return TOWER_ART[id] ?? null;
+}
+
 /** The tower's picture, or `null` while it loads or if it was never drawn. */
 export function towerSprite(id: TowerId): HTMLImageElement | null {
   return ready(TOWER_ART[id]);

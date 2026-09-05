@@ -137,6 +137,39 @@ export function roundReadout(waveIndex: number): Readout {
   return { value: waveLabel(waveIndex), label: 'round', icon: null };
 }
 
+export interface RunButton {
+  label: string;
+  /** `start` begins the round; `toggle` pauses or resumes the one running. */
+  action: 'start' | 'toggle';
+  disabled: boolean;
+}
+
+/**
+ * The one button that runs the game.
+ *
+ * There used to be two, and one of them was always disabled: "Start round"
+ * greyed out for the whole round, "Pause" greyed out between rounds. They are
+ * the same question -- should time be passing? -- so they are one button that
+ * says what it will do next.
+ *
+ * Speed stays its own control. Folding it in here would hide which speed is
+ * set and put it out of reach while paused.
+ */
+export function runButton(opts: { status: string; paused: boolean }): RunButton {
+  if (opts.status === 'idle') {
+    return { label: 'Start round', action: 'start', disabled: false };
+  }
+  if (opts.status === 'running') {
+    return {
+      label: opts.paused ? 'Resume' : 'Pause',
+      action: 'toggle',
+      disabled: false,
+    };
+  }
+  // Won or lost: the overlay is up and there is nothing left to run.
+  return { label: 'Start round', action: 'start', disabled: true };
+}
+
 export interface PreviewRow {
   enemy: EnemyId;
   name: string;
