@@ -492,6 +492,52 @@ describe('the authored rounds', () => {
 });
 
 describe('upgrades', () => {
+  // `effectiveDef` keeps every fold it has been asked for, keyed on the tower
+  // kind and the three things bought on it. These are the guarantees that key
+  // has to make good on: it has to notice a purchase, and it must never hand
+  // one tower another tower's numbers.
+  it('follows a tower as it buys, rather than answering with the fold it gave first', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    const fresh = effectiveDef(norah).cooldown;
+
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(true);
+    const afterA = effectiveDef(norah).cooldown;
+    expect(afterA).toBeLessThan(fresh);
+
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(true);
+    expect(effectiveDef(norah).cooldown).toBeLessThan(afterA);
+  });
+
+  it('gives two towers with the same purchases the same numbers, and different ones different', () => {
+    const w = rich();
+    const plain = put(w, 'norah', buildCellNear(300));
+    const same = put(w, 'norah', buildCellNear(700));
+    const upgraded = put(w, 'norah', buildCellNear(1100));
+    expect(purchaseUpgrade(w, upgraded.id, 'pathB')).toBe(true);
+
+    expect(effectiveDef(same)).toEqual(effectiveDef(plain));
+    expect(effectiveDef(upgraded).range).not.toBe(effectiveDef(plain).range);
+    // A different kind of tower never shares a fold, whatever it has bought.
+    expect(effectiveDef(put(w, 'bill', buildCellNear(1500))).range).not.toBe(
+      effectiveDef(plain).range,
+    );
+  });
+
+  it('hands out a fold nothing can quietly edit for every other tower', () => {
+    // The fold is shared, so a caller that wrote to it would be rewriting the
+    // stats of every tower with those upgrades. Frozen, so that is a throw in
+    // strict mode rather than a slow, silent corruption of the board.
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    const d = effectiveDef(norah);
+    expect(Object.isFrozen(d)).toBe(true);
+    expect(() => {
+      (d as { damage: number }).damage = 9999;
+    }).toThrow();
+    expect(effectiveDef(norah).damage).toBe(TOWERS.norah.damage);
+  });
+
   it("Triple Knit fires at up to three distinct targets in one shot", () => {
     const w = rich();
     const norah = put(w, 'norah', buildCellNear(300));
