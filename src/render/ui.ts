@@ -17,6 +17,7 @@ import {
   capstoneLocked,
   cardState,
   describeStats,
+  hintText,
   hoveredStat,
   endOverlay,
   enemyReadout,
@@ -31,6 +32,9 @@ import {
 } from './decisions.ts';
 import { towerArtUrl } from './sprites.ts';
 import type { Speed } from './clock.ts';
+
+/** How long the absorbed-hit explanation stays up after the last such hit. */
+const ABSORB_HINT_TICKS = 180;
 
 function el<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -52,6 +56,8 @@ export interface UiHandlers {
 
 export class Ui {
   private hint = el<HTMLElement>('hint');
+  /** Frames left showing the absorbed-hit explanation. */
+  private absorbTicks = 0;
   private preview = el<HTMLElement>('preview');
   private towerPanel = el<HTMLElement>('towerPanel');
   private towerList = el<HTMLElement>('towerList');
@@ -186,13 +192,18 @@ export class Ui {
     this.runBtn.disabled = run.disabled;
     this.speedBtn.innerHTML = `${state.speed || 1}&times;`;
 
-    this.hint.textContent = state.selected
-      ? TOWERS[state.selected].mode === 'blocker'
-        ? 'Tap the road itself -- Walter stands in the way.'
-        : 'Tap a green square beside the road. Tap the card again to change your mind.'
-      : world.status === 'idle'
-        ? 'Place a neighbour, then start the round.'
-        : 'Tap anyone on the board to see what they are.';
+    // Held for a few seconds after the last one: absorbed hits arrive in ones
+    // and twos, and a line that blinked out between them would be unreadable.
+    if (world.events.some((e) => e.type === 'hit' && e.text === 'absorbed')) {
+      this.absorbTicks = ABSORB_HINT_TICKS;
+    } else if (this.absorbTicks > 0) {
+      this.absorbTicks--;
+    }
+    this.hint.textContent = hintText({
+      selected: state.selected,
+      idle: world.status === 'idle',
+      absorbing: this.absorbTicks > 0,
+    });
 
     this.syncInspect(state.inspected, world.gold);
     this.syncOverlay(world);

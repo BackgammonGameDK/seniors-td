@@ -9,6 +9,7 @@ import {
   cardState,
   describeStats,
   easeAngle,
+  hintText,
   hoveredStat,
   previewStats,
   endOverlay,
@@ -456,23 +457,23 @@ describe('a capstone choice cannot be undone', () => {
 
 describe('the troublemaker read-out teaches the mechanic', () => {
   it('says what armour does rather than naming it', () => {
-    const r = enemyReadout({ def: 'mike', hp: 90, scale: 1 });
+    const r = enemyReadout({ def: 'mike', hp: 90, scale: 1, shield: 0 });
     expect(r.lines.join(' ')).toMatch(/every hit lands/);
     expect(r.lines.join(' ')).toMatch(/cannot be stopped/i);
   });
 
   it('warns that the Gang comes back', () => {
-    expect(enemyReadout({ def: 'gang', hp: 70, scale: 1 }).lines.join(' ')).toMatch(/Breaks into/);
+    expect(enemyReadout({ def: 'gang', hp: 70, scale: 1, shield: 0 }).lines.join(' ')).toMatch(/Breaks into/);
   });
 
   it('says in words that slowing barely works on Skye', () => {
-    const line = enemyReadout({ def: 'skye', hp: 70, scale: 1 }).lines.join(' ');
+    const line = enemyReadout({ def: 'skye', hp: 70, scale: 1, shield: 0 }).lines.join(' ');
     expect(line).toMatch(/slowing works 75% less/);
     expect(line).not.toMatch(/slowResist/);
   });
 
   it('has nothing special to say about the plain ones', () => {
-    expect(enemyReadout({ def: 'sam', hp: 22, scale: 1 }).lines).toHaveLength(1);
+    expect(enemyReadout({ def: 'sam', hp: 22, scale: 1, shield: 0 }).lines).toHaveLength(1);
   });
 });
 
@@ -596,5 +597,34 @@ describe('which way a tower looks', () => {
     // degrees of travel, not most of a circle.
     const stepped = easeAngle(Math.PI - 0.1, -Math.PI + 0.1, 0.5);
     expect(stepped).toBeGreaterThan(Math.PI - 0.1);
+  });
+});
+
+describe('the game explains why a hit did nothing', () => {
+  it('tells the player to hit harder while shots are being soaked up', () => {
+    const line = hintText({ selected: null, idle: false, absorbing: true });
+    expect(line).toMatch(/every single hit/);
+    expect(line).toMatch(/hits harder/);
+  });
+
+  it('goes back to the ordinary line once hits are landing again', () => {
+    expect(hintText({ selected: null, idle: false, absorbing: false })).toMatch(/Tap anyone/);
+  });
+
+  it('never talks over the placement instructions', () => {
+    // Mid-placement the player has a job in hand; the explanation can wait.
+    expect(hintText({ selected: 'norah', idle: false, absorbing: true })).toMatch(/green square/);
+  });
+
+  it('shows the shield a troublemaker is carrying right now', () => {
+    const lines = enemyReadout({ def: 'mike', hp: 90, scale: 1, shield: 4 }).lines.join(' ');
+    expect(lines).toMatch(/Shielded right now: 4/);
+    // 3 armour + 4 shield, so 7 does nothing and 8 is the first that counts.
+    expect(lines).toMatch(/under 8 damage does nothing/);
+  });
+
+  it('says nothing about shields when none is on them', () => {
+    const lines = enemyReadout({ def: 'sam', hp: 22, scale: 1, shield: 0 }).lines.join(' ');
+    expect(lines).not.toMatch(/Shielded/);
   });
 });

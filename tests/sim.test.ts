@@ -708,3 +708,85 @@ describe('credit for sending a troublemaker home', () => {
     expect(norah.sentHome).toBe(1);
   });
 });
+
+describe('shouting wears off', () => {
+  const STUN = { slowTicks: 0, slowFactor: 0, stunTicks: 60 };
+
+  it('shortens each stun landed on the same troublemaker', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 300);
+    const lengths: number[] = [];
+    for (let i = 0; i < 4; i++) {
+      sam.stunTicks = 0;
+      applyHit(w, sam, 0, STUN);
+      lengths.push(sam.stunTicks);
+    }
+    // Each one strictly shorter than the last, so a second shout is worth
+    // less than the first rather than simply refreshing it.
+    for (let i = 1; i < lengths.length; i++) {
+      expect(lengths[i]!).toBeLessThan(lengths[i - 1]!);
+    }
+    expect(lengths[0]).toBe(60);
+  });
+
+  it('never shortens a stun away to nothing', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 300);
+    for (let i = 0; i < 30; i++) {
+      sam.stunTicks = 0;
+      applyHit(w, sam, 0, STUN);
+    }
+    expect(sam.stunTicks).toBeGreaterThan(0);
+  });
+
+  it('forgets the shouting again after a quiet spell', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 300);
+    applyHit(w, sam, 0, STUN);
+    applyHit(w, sam, 0, STUN);
+    const tired = sam.stunFatigue;
+    expect(tired).toBeGreaterThan(0);
+
+    sam.stunTicks = 0;
+    for (let i = 0; i < 400; i++) step(w);
+    expect(sam.stunFatigue).toBeLessThan(tired);
+  });
+
+  it('leaves a lone Pete as loud as he ever was', () => {
+    // The nerf is aimed at stacked coffee, not at Pete himself: his own gap
+    // between shouts is longer than the recovery, so he sheds fatigue as fast
+    // as he causes it.
+    const w = rich();
+    const pete = put(w, 'pete', buildCellNear(300));
+    const sam = spawnEnemy(w, 'sam', 300);
+    sam.hp = 1e9;
+    let stunned = 0;
+    for (let i = 0; i < 1200; i++) {
+      step(w);
+      sam.hp = 1e9;
+      sam.dist = 300;
+      if (sam.stunTicks > 0) stunned++;
+    }
+    expect(pete.disabled).toBe(false);
+    expect(stunned / 1200).toBeGreaterThan(0.3);
+  });
+
+  it('stops coffee from freezing the street for ever', () => {
+    const w = rich();
+    put(w, 'pete', buildCellNear(300));
+    const clara = put(w, 'clara', buildCellNear(308));
+    purchaseUpgrade(w, clara.id, 'pathA');
+    purchaseUpgrade(w, clara.id, 'pathA');
+    const sam = spawnEnemy(w, 'sam', 300);
+    sam.hp = 1e9;
+    let stunned = 0;
+    for (let i = 0; i < 1800; i++) {
+      step(w);
+      sam.hp = 1e9;
+      sam.dist = 300;
+      if (sam.stunTicks > 0) stunned++;
+    }
+    // Was 89% before fatigue existed, and 100% with a capstone.
+    expect(stunned / 1800).toBeLessThan(0.7);
+  });
+});
