@@ -68,15 +68,13 @@ export const UPGRADES: Record<TowerId, TowerUpgrades> = {
       { cost: 50, stat: { cooldown: 85 } },
     ],
     capstones: [
-      { id: 'megaphone', cost: 110, stat: { range: 155, stunTicks: 65 } },
-      // The cooldown must stay clear of the stun it grants -- at 60 and 60 this
-      // shouted exactly as often as the stun lasted, which held a street still
-      // for ever on its own before fatigue could open a gap. 80 keeps a real
-      // 20-tick margin on the fresh hit and a 55-tick one once fatigue has
-      // floored the stun at its minimum, while still shouting faster than a
-      // maxed pathB Pete (85) -- a shorter shout to go with the longer stun,
-      // not a slower one.
-      { id: 'bullhorn', cost: 100, stat: { cooldown: 80, stunTicks: 60 } },
+      { id: 'megaphone', cost: 110, stat: { range: 155, stunTicks: 36 } },
+      // The cooldown must stay clear of the stun it grants, so it can never
+      // shout exactly as often as the stun lasts -- see the comment on
+      // STUN_FALLOFF in world.ts for what happens when it does. 80 leaves a
+      // 44-tick margin on the fresh hit, while still shouting faster than a
+      // maxed pathB Pete (85).
+      { id: 'bullhorn', cost: 100, stat: { cooldown: 80, stunTicks: 36 } },
     ],
   },
   bill: {
