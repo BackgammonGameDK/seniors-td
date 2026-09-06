@@ -82,10 +82,16 @@ export function cardState(opts: { gold: number; cost: number; isSelected: boolea
 }
 
 /**
- * A key that changes whenever the inspect panel would need redrawing.
+ * A key that changes whenever a tower's inspect panel would need rebuilding.
  *
  * The panel is rebuilt only when this changes, which is what stops it showing
  * the tower that was clicked before this one.
+ *
+ * Health is deliberately absent, as the running total is. Both change while
+ * the panel sits open -- a blockade takes hits, a Walter regenerates six times
+ * a second -- and a rebuild re-measures the reserved height and tears down the
+ * upgrade card under the pointer. They belong to the stat rows, which redraw
+ * on their own key in `paintStats`.
  */
 export function panelKey(t: Tower | null): string {
   if (!t) return 'none';
@@ -94,13 +100,72 @@ export function panelKey(t: Tower | null): string {
   return [
     t.id,
     t.def,
-    Math.ceil(t.hp),
     t.upgradeA,
     t.upgradeB,
     t.capstone ?? '',
     t.rateMult,
     t.rangeMult,
   ].join(':');
+}
+
+/**
+ * What the inspect panel is open on, as an identity rather than a reference.
+ *
+ * An id survives a frame boundary; an object reference does not. A tower can
+ * be sold or knocked down and a troublemaker sent home between one frame and
+ * the next, and holding the thing itself means holding something that is no
+ * longer on the board. Everything the panel shows is looked up from the world
+ * each frame, from this.
+ */
+export type Focus = { kind: 'tower'; id: number } | { kind: 'enemy'; id: number } | null;
+
+/** The focused tower's id, or null when the focus is a troublemaker or empty. */
+export function focusedTowerId(focus: Focus): number | null {
+  return focus?.kind === 'tower' ? focus.id : null;
+}
+
+/**
+ * What a tap on the board leaves the panel open on.
+ *
+ * A troublemaker under the finger wins over the cell beneath it: it is drawn
+ * on top, so it is what was aimed at. Everything else follows the `BoardAction`
+ * already decided for that cell, and the actions that are not about the panel
+ * -- placing, unarming, a tap on nothing -- leave it exactly as it was.
+ */
+export function focusAfterTap(opts: {
+  /** The troublemaker under the tap, from `pickEnemy`. */
+  enemyHit: number | null;
+  /** The tower standing on the tapped cell, if any. */
+  towerId: number | null;
+  action: BoardAction;
+  current: Focus;
+}): Focus {
+  if (opts.enemyHit !== null) return { kind: 'enemy', id: opts.enemyHit };
+  if (opts.action === 'inspect' && opts.towerId !== null) {
+    return { kind: 'tower', id: opts.towerId };
+  }
+  if (opts.action === 'close') return null;
+  return opts.current;
+}
+
+/** A focus resolved against the world it names, ready to be drawn. */
+export type FocusView =
+  | { kind: 'tower'; tower: Tower }
+  | { kind: 'enemy'; enemy: Pick<Enemy, 'id' | 'def' | 'hp' | 'scale' | 'shield'> }
+  | null;
+
+/**
+ * The rebuild key for whatever the panel is open on.
+ *
+ * The troublemaker half keys on the words `enemyReadout` would produce, so the
+ * readout is rewritten exactly when it would read differently -- health coming
+ * down, a shield arriving as it walks past a Ben -- and not once a frame.
+ */
+export function focusKey(view: FocusView): string {
+  if (!view) return 'none';
+  if (view.kind === 'tower') return `tower:${panelKey(view.tower)}`;
+  const r = enemyReadout(view.enemy);
+  return `enemy:${view.enemy.id}:${r.name}:${r.lines.join('|')}`;
 }
 
 export function waveLabel(waveIndex: number): string {

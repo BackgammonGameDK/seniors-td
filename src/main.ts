@@ -10,6 +10,8 @@ import { createClock, nextSpeed, ticksFor, TICK_MS } from './render/clock.ts';
 import type { Speed } from './render/clock.ts';
 import {
   boardAction,
+  focusAfterTap,
+  focusedTowerId,
   pickEnemy,
   recordingOf,
   runKeyAction,
@@ -17,13 +19,14 @@ import {
   towerForKey,
   armTower,
 } from './render/decisions.ts';
+import type { Focus, FocusView } from './render/decisions.ts';
 import type { Placement } from './sim/loadout.ts';
 import { Renderer } from './render/canvas.ts';
 import { Ui } from './render/ui.ts';
 import type { UiHandlers } from './render/ui.ts';
 import { BOARD, isBlockerCell, isBuildableCell } from './sim/path.ts';
 import { TOWERS } from './sim/towers.ts';
-import type { Tower, TowerId } from './sim/types.ts';
+import type { TowerId } from './sim/types.ts';
 import {
   createWorld,
   placeTower,
@@ -41,7 +44,12 @@ const renderer = new Renderer(canvas);
 
 let world = createWorld(Date.now() % 100000);
 let selected: TowerId | null = null;
-let inspected: Tower | null = null;
+/**
+ * What the inspect panel is open on. An id rather than the thing itself, so
+ * that a tower sold or knocked down, and a troublemaker sent home, close the
+ * panel by simply failing to resolve -- see `viewOf`.
+ */
+let focus: Focus = null;
 let hover: { col: number; row: number } | null = null;
 let paused = false;
 let speed: Speed = 1;
@@ -53,6 +61,24 @@ let speed: Speed = 1;
 const bought: Placement[] = [];
 /** Sells, which a loadout cannot express. See `recordingOf`. */
 let sold = 0;
+
+/**
+ * The focus, looked up in the world as it stands this frame.
+ *
+ * The single place the panel's contents come from. Nothing else may write what
+ * the panel shows: that was the bug this replaced, where `Ui` kept its own
+ * copy and the next frame overwrote it.
+ */
+function viewOf(): FocusView {
+  const f = focus;
+  if (!f) return null;
+  if (f.kind === 'tower') {
+    const t = world.towers.find((x) => x.id === f.id);
+    return t ? { kind: 'tower', tower: t } : null;
+  }
+  const e = world.enemies.find((x) => x.id === f.id && x.alive);
+  return e ? { kind: 'enemy', enemy: e } : null;
+}
 
 function cellFrom(ev: { clientX: number; clientY: number }): { col: number; row: number } {
   const p = renderer.toBoard(ev);
@@ -85,16 +111,16 @@ const handlers: UiHandlers = {
   onRestart() {
     world = createWorld(Date.now() % 100000);
     selected = null;
-    inspected = null;
+    focus = null;
     bought.length = 0;
     sold = 0;
   },
   onCloseInspect() {
-    inspected = null;
+    focus = null;
   },
   onSell(t) {
     if (sellTower(world, t)) sold++;
-    inspected = null;
+    focus = null;
   },
   onBuyUpgrade(t, choice) {
     // The return value decides whether this is recorded, so a purchase the sim
@@ -135,23 +161,29 @@ canvas.addEventListener('pointerdown', (ev) => {
     })),
     point,
   );
-  if (hitEnemy !== null) {
-    const e = world.enemies.find((x) => x.id === hitEnemy);
-    if (e) {
-      inspected = null;
-      ui.showEnemy(e);
-      return;
-    }
-  }
 
   const existing = towerAt(world, cell.col, cell.row);
+  const focusedTower = focusedTowerId(focus);
   const action = boardAction({
     selected,
     occupied: existing !== undefined,
     legal: selected ? legalFor(selected, cell.col, cell.row) : false,
-    inspectingSame: existing !== undefined && inspected?.id === existing.id,
-    hasInspected: inspected !== null,
+    inspectingSame: existing !== undefined && focusedTower === existing.id,
+    hasInspected: focus !== null,
   });
+
+  // Decided before the action is carried out, because `place` reads the tower
+  // list as it was: what the tap focuses is a separate question from what it
+  // spends.
+  focus = focusAfterTap({
+    enemyHit: hitEnemy,
+    towerId: existing?.id ?? null,
+    action,
+    current: focus,
+  });
+  // A troublemaker under the finger is the whole meaning of the tap. It must
+  // not also arm, place or sell anything on the cell it happens to be over.
+  if (hitEnemy !== null) return;
 
   if (action === 'place' && selected) {
     if (placeTower(world, selected, cell.col, cell.row)) {
@@ -161,12 +193,10 @@ canvas.addEventListener('pointerdown', (ev) => {
       bought.push(stepOf(world.towers[world.towers.length - 1]!));
     }
   } else if (action === 'inspect') {
-    inspected = existing ?? null;
     // Tapping a placed tower means "look at this one", not "place my armed
     // tower here" -- so the build-card selection it interrupted has to go too.
     selected = null;
   } else if (action === 'close') {
-    inspected = null;
     selected = null;
   } else if (action === 'unarm') {
     selected = null;
@@ -191,7 +221,7 @@ window.addEventListener('keydown', (ev) => {
   }
   if (ev.key === 'Escape') {
     selected = null;
-    inspected = null;
+    focus = null;
   } else if (ev.key.toLowerCase() === 'f') {
     speed = nextSpeed(speed);
   } else if (ev.key.toLowerCase() === 'l') {
@@ -233,12 +263,13 @@ function frame(now: number): void {
   for (let i = 0; i < ticks; i++) {
     step(world);
     renderer.ingest(world.events);
-    // A tower can be knocked down mid-round, so the inspected reference has to
-    // be dropped rather than left pointing at something off the board.
-    if (inspected && !world.towers.includes(inspected)) inspected = null;
   }
+  // Resolved once, after the ticks: a tower knocked down or a troublemaker
+  // sent home during them simply stops resolving, and the panel closes itself.
+  const view = viewOf();
+  const inspected = view?.kind === 'tower' ? view.tower : null;
   renderer.draw(world, { selected, hover, inspected, previewRange: ui.previewRange });
-  ui.sync(world, { selected, inspected, paused, speed });
+  ui.sync(world, { selected, focus: view, paused, speed });
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
