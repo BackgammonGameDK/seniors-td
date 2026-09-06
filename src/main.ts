@@ -8,9 +8,16 @@
  */
 import { createClock, nextSpeed, ticksFor, TICK_MS } from './render/clock.ts';
 import type { Speed } from './render/clock.ts';
-import { boardAction, pickEnemy, towerForKey, armTower } from './render/decisions.ts';
+import {
+  boardAction,
+  pickEnemy,
+  runKeyAction,
+  towerForKey,
+  armTower,
+} from './render/decisions.ts';
 import { Renderer } from './render/canvas.ts';
 import { Ui } from './render/ui.ts';
+import type { UiHandlers } from './render/ui.ts';
 import { BOARD, isBlockerCell, isBuildableCell } from './sim/path.ts';
 import { TOWERS } from './sim/towers.ts';
 import type { Tower, TowerId } from './sim/types.ts';
@@ -49,11 +56,20 @@ function legalFor(def: TowerId, col: number, row: number): boolean {
   return TOWERS[def].mode === 'blocker' ? isBlockerCell(col, row) : isBuildableCell(col, row);
 }
 
-const ui = new Ui({
+// Named rather than passed straight in, so the keyboard can reach the same
+// handlers the buttons call. A key that repeated their bodies instead would be
+// free to drift out of step with them, which is exactly what had happened to
+// the old space and `p` bindings.
+const handlers: UiHandlers = {
   onSelect(id) {
     selected = armTower(selected, id);
   },
   onStartWave() {
+    // Putting the round in motion puts the build menu down. Otherwise a card
+    // armed and then thought better of is still armed, and the next tap on the
+    // board spends the coins. The inspected tower is deliberately left alone:
+    // reading an upgrade panel is not a decision the round starting cancels.
+    selected = null;
     startWave(world);
   },
   onRestart() {
@@ -77,7 +93,9 @@ const ui = new Ui({
   onCycleSpeed() {
     speed = nextSpeed(speed);
   },
-});
+};
+
+const ui = new Ui(handlers);
 
 canvas.addEventListener('pointermove', (ev) => {
   hover = cellFrom(ev);
@@ -143,16 +161,21 @@ window.addEventListener('keydown', (ev) => {
     selected = armTower(selected, t);
     return;
   }
+  const run = runKeyAction(ev.key, { status: world.status, paused });
+  if (run) {
+    // Space scrolls the page, and activates #run natively whenever that button
+    // has focus -- which it does immediately after being clicked. Without this
+    // the shortcut would fire twice and a pause would undo itself.
+    ev.preventDefault();
+    if (run === 'start') handlers.onStartWave();
+    else handlers.onTogglePause();
+    return;
+  }
   if (ev.key === 'Escape') {
     selected = null;
     inspected = null;
-  } else if (ev.key.toLowerCase() === 'p') {
-    paused = !paused;
   } else if (ev.key.toLowerCase() === 'f') {
     speed = nextSpeed(speed);
-  } else if (ev.key === ' ') {
-    ev.preventDefault();
-    startWave(world);
   }
 });
 

@@ -18,6 +18,7 @@ import {
   hudReadouts,
   roundReadout,
   runButton,
+  runKeyAction,
   panelKey,
   sentHomeRow,
   pathCard,
@@ -626,5 +627,38 @@ describe('the game explains why a hit did nothing', () => {
   it('says nothing about shields when none is on them', () => {
     const lines = enemyReadout({ def: 'sam', hp: 22, scale: 1, shield: 0 }).lines.join(' ');
     expect(lines).not.toMatch(/Shielded/);
+  });
+});
+
+describe('space does whatever the run button says', () => {
+  it('starts a round that has not begun', () => {
+    expect(runKeyAction(' ', { status: 'idle', paused: false })).toBe('start');
+  });
+
+  it('pauses a running round and resumes a paused one', () => {
+    expect(runKeyAction(' ', { status: 'running', paused: false })).toBe('toggle');
+    expect(runKeyAction(' ', { status: 'running', paused: true })).toBe('toggle');
+  });
+
+  it('is as dead as the button once the game is over', () => {
+    // The button is disabled on won and lost, and the key has to agree with
+    // it -- a shortcut that still fired there was the old bug.
+    for (const status of ['won', 'lost']) {
+      expect(runKeyAction(' ', { status, paused: false })).toBeNull();
+      expect(runButton({ status, paused: false }).disabled).toBe(true);
+    }
+  });
+
+  it('no longer answers to p, which used to pause on its own', () => {
+    // p flipped the pause flag without asking the button, so it "paused" a
+    // round that had not started yet.
+    expect(runKeyAction('p', { status: 'idle', paused: false })).toBeNull();
+    expect(runKeyAction('P', { status: 'running', paused: false })).toBeNull();
+  });
+
+  it('ignores everything else, so a handler can pass every key through', () => {
+    for (const k of ['a', 'Escape', 'f', '1', '']) {
+      expect(runKeyAction(k, { status: 'running', paused: false })).toBeNull();
+    }
   });
 });
