@@ -194,8 +194,34 @@ window.addEventListener('keydown', (ev) => {
     inspected = null;
   } else if (ev.key.toLowerCase() === 'f') {
     speed = nextSpeed(speed);
+  } else if (ev.key.toLowerCase() === 'l') {
+    showRecording();
   }
 });
+
+/**
+ * Puts the board you have played on the clipboard, as a loadout.
+ *
+ * A key rather than a console command, because reaching this through the
+ * browser's developer tools is not a thing to ask of somebody who is here to
+ * play the game. The box that opens is the fallback: a clipboard write can be
+ * refused, and text sitting in a prompt can always be selected and copied by
+ * hand.
+ */
+function showRecording(): void {
+  const recorded = recordingOf(bought, sold);
+  if (recorded.loadout === '') {
+    window.alert('Nothing bought yet, so there is no board to copy.');
+    return;
+  }
+  // Fire and forget: if the browser refuses, the box below still has the text.
+  void navigator.clipboard?.writeText(recorded.loadout).catch(() => {});
+  window.prompt(
+    (recorded.warning ?? 'Copied. Paste it wherever you need it.') +
+      '\n\nYour board so far, as a loadout:',
+    recorded.loadout,
+  );
+}
 
 const clock = createClock();
 let last = 0;
