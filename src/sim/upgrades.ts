@@ -69,11 +69,14 @@ export const UPGRADES: Record<TowerId, TowerUpgrades> = {
     ],
     capstones: [
       { id: 'megaphone', cost: 110, stat: { range: 155, stunTicks: 65 } },
-      // The cooldown must stay clear of the stun it grants. At 60 and 60 this
+      // The cooldown must stay clear of the stun it grants -- at 60 and 60 this
       // shouted exactly as often as the stun lasted, which held a street still
-      // for ever on its own -- fatigue shortens a repeat but cannot open a gap
-      // that was never there.
-      { id: 'bullhorn', cost: 100, stat: { cooldown: 110, stunTicks: 60 } },
+      // for ever on its own before fatigue could open a gap. 80 keeps a real
+      // 20-tick margin on the fresh hit and a 55-tick one once fatigue has
+      // floored the stun at its minimum, while still shouting faster than a
+      // maxed pathB Pete (85) -- a shorter shout to go with the longer stun,
+      // not a slower one.
+      { id: 'bullhorn', cost: 100, stat: { cooldown: 80, stunTicks: 60 } },
     ],
   },
   bill: {
@@ -106,15 +109,15 @@ export const UPGRADES: Record<TowerId, TowerUpgrades> = {
   },
   clara: {
     pathA: [
-      { cost: 30, stat: { buffRate: 1.5 } },
-      { cost: 50, stat: { buffRate: 1.7 } },
+      { cost: 30, stat: { buffRate: 1.35 } },
+      { cost: 50, stat: { buffRate: 1.45 } },
     ],
     pathB: [
       { cost: 30, stat: { range: 110 } },
       { cost: 50, stat: { range: 130 } },
     ],
     capstones: [
-      { id: 'doubleEspresso', cost: 135, stat: { buffRate: 1.8 } },
+      { id: 'doubleEspresso', cost: 135, stat: { buffRate: 1.6 } },
       { id: 'secondRound', cost: 100, stat: { range: 155, rangeBuffBonus: 0.15 } },
     ],
   },

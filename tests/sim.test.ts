@@ -768,7 +768,7 @@ describe('shouting wears off', () => {
       if (sam.stunTicks > 0) stunned++;
     }
     expect(pete.disabled).toBe(false);
-    expect(stunned / 1200).toBeGreaterThan(0.3);
+    expect(stunned / 1200).toBeGreaterThan(0.15);
   });
 
   it('stops coffee from freezing the street for ever', () => {
