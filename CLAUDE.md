@@ -42,7 +42,7 @@ hex colours, display names or blurbs in `src/sim/`.
 | Path | What it is |
 |---|---|
 | `src/sim/towers.ts`, `src/sim/enemies.ts` | The whole design, as flat data. |
-| `src/sim/waves.ts` | Twenty authored rounds. Composition is the difficulty dial. |
+| `src/sim/waves.ts` | Twenty-one authored rounds. Composition is the difficulty dial. |
 | `src/sim/world.ts` | `step()`, placement, auras, status effects, damage, splitting, blockades. The only place damage is resolved. |
 | `src/sim/path.ts` | Board dimensions, the street, and which cells take a tower or a blockade. |
 | `src/sim/upgrades.ts` | Two paths per defender and the final fork between them, plus `effectiveDef()` -- the only way to read a defender's bought stats. |
