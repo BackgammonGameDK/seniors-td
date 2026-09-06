@@ -561,10 +561,12 @@ function advanceEnemies(w: World): void {
     if (stepPx <= 0) continue;
     let next = e.dist + stepPx;
 
-    const block = blockerStopAhead(w, e.dist);
-    if (block !== null && next >= block.stop) {
-      next = block.stop;
-      e.blockedBy = block.id;
+    if (!ENEMIES[e.def].ignoresBlockers) {
+      const block = blockerStopAhead(w, e.dist);
+      if (block !== null && next >= block.stop) {
+        next = block.stop;
+        e.blockedBy = block.id;
+      }
     }
 
     e.dist = next;

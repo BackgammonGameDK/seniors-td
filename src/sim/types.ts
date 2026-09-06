@@ -116,6 +116,8 @@ export interface EnemyDef {
   dropInterval: number;
   /** Damage per second dealt to a blocker standing in the way. */
   blockerDps: number;
+  /** True if it walks straight through a blockade instead of stopping at it. */
+  ignoresBlockers: boolean;
 }
 
 export interface Enemy {
