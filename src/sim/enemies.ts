@@ -131,7 +131,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   duke: {
     id: 'duke',
-    hp: 260,
+    hp: 1000,
     speed: 0.55,
     armour: 4,
     bounty: 10,
