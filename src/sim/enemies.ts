@@ -35,6 +35,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropsInto: null,
     dropInterval: 0,
     blockerDps: 12,
+    ignoresBlockers: false,
   },
   mike: {
     id: 'mike',
@@ -54,6 +55,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropsInto: null,
     dropInterval: 0,
     blockerDps: 30,
+    ignoresBlockers: false,
   },
   ben: {
     id: 'ben',
@@ -72,6 +74,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropsInto: null,
     dropInterval: 0,
     blockerDps: 18,
+    ignoresBlockers: false,
   },
   tina: {
     id: 'tina',
@@ -90,6 +93,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropsInto: null,
     dropInterval: 0,
     blockerDps: 14,
+    ignoresBlockers: false,
   },
   gang: {
     id: 'gang',
@@ -108,6 +112,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropsInto: null,
     dropInterval: 0,
     blockerDps: 20,
+    ignoresBlockers: false,
   },
   skye: {
     id: 'skye',
@@ -128,6 +133,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropsInto: null,
     dropInterval: 0,
     blockerDps: 16,
+    ignoresBlockers: false,
   },
   duke: {
     id: 'duke',
@@ -139,7 +145,10 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     // Matches Mike's precedent, and also stops a stun-lock from trivially
     // neutering the drop mechanic below.
     stunImmune: true,
-    slowResist: 0,
+    // A bus does not slow down for a shout, a glaze, or a bystander standing
+    // in the road -- full slow resistance and a blockade walked straight
+    // through are the same idea as the stun immunity above.
+    slowResist: 1,
     shieldAura: 0,
     disablesTowers: false,
     auraRange: 0,
@@ -148,6 +157,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropsInto: 'walker',
     dropInterval: 240,
     blockerDps: 40,
+    ignoresBlockers: true,
   },
   walker: {
     id: 'walker',
@@ -166,5 +176,6 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropsInto: null,
     dropInterval: 0,
     blockerDps: 8,
+    ignoresBlockers: false,
   },
 };
