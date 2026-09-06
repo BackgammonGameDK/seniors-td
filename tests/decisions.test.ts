@@ -40,7 +40,7 @@ import type { Stats, Tower } from '../src/sim/types.ts';
 const noStats: Stats = {
   kills: 3,
   leaks: 2,
-  leaksByEnemy: { sam: 0, mike: 0, ben: 0, tina: 0, gang: 0, skye: 0, walker: 0 },
+  leaksByEnemy: { sam: 0, mike: 0, ben: 0, tina: 0, gang: 0, skye: 0, duke: 0, walker: 0 },
   livesLost: 2,
   goldEarned: 40,
   blockersLost: 0,

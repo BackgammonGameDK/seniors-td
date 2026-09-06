@@ -472,7 +472,7 @@ describe('the authored rounds', () => {
     const seen = new Set<EnemyId>();
     for (const wave of WAVES) for (const g of wave.groups) seen.add(g.enemy);
     // `walker` only ever arrives by splitting, so it is never in the table.
-    expect([...seen].sort()).toEqual(['ben', 'gang', 'mike', 'sam', 'skye', 'tina']);
+    expect([...seen].sort()).toEqual(['ben', 'duke', 'gang', 'mike', 'sam', 'skye', 'tina']);
   });
 
   it('introduce each one on its own before burying it in a crowd', () => {
@@ -481,8 +481,13 @@ describe('the authored rounds', () => {
       for (const g of wave.groups) if (!firstSeen.has(g.enemy)) firstSeen.set(g.enemy, i);
     });
     // Nothing new turns up for the first time in the last third of the run,
-    // where a player has no quiet round left to learn it in.
-    for (const [, round] of firstSeen) expect(round).toBeLessThan(WAVES.length * 0.7);
+    // where a player has no quiet round left to learn it in -- except Duke,
+    // deliberately debuting inside the wall itself as a boss round rather
+    // than a teaching one, with three rounds still left to have met him.
+    for (const [enemy, round] of firstSeen) {
+      if (enemy === 'duke') continue;
+      expect(round).toBeLessThan(WAVES.length * 0.7);
+    }
   });
 });
 

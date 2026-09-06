@@ -333,6 +333,7 @@ export function spawnEnemy(w: World, def: EnemyId, dist: number, scale = 1): Ene
     stunTicks: 0,
     stunFatigue: 0,
     stunRecovery: 0,
+    dropCooldown: d.dropInterval,
     speedMult: 1,
     shield: 0,
     blockedBy: null,
@@ -401,6 +402,30 @@ function advanceAuras(w: World): void {
         if (within(t.x, t.y, src.x, src.y, d.auraRange)) t.disabled = true;
       }
     }
+  }
+}
+
+/**
+ * A living spawner's own clock. Auras above are recomputed from nothing every
+ * tick; a drop has to remember how long until the next one, so it gets a
+ * counter of its own on the enemy. A no-op for every enemy but Duke.
+ */
+function advanceDrops(w: World): void {
+  for (const e of w.enemies) {
+    if (!e.alive) continue;
+    const d = ENEMIES[e.def];
+    if (!d.dropsInto) continue;
+    if (e.dropCooldown > 0) {
+      e.dropCooldown--;
+      continue;
+    }
+    e.dropCooldown = d.dropInterval;
+    emit(w, 'drop', e.x, e.y);
+    w.pendingSpawns.push({
+      enemy: d.dropsInto,
+      dist: Math.max(0, e.dist - 16),
+      scale: e.scale,
+    });
   }
 }
 
@@ -846,6 +871,7 @@ export function step(w: World): void {
   advanceEffects(w);
   advanceBlockers(w);
   advanceEnemies(w);
+  advanceDrops(w);
   fireTowers(w);
   advanceProjectiles(w);
   flushPierceHits(w);

@@ -82,6 +82,7 @@ const EVENT_COLOR: Record<SimEvent['type'], string> = {
   kill: '#ffd54f',
   leak: '#e53935',
   split: '#ffb300',
+  drop: '#ffb300',
   blockerDown: '#8d6e63',
   stun: '#7986cb',
 };

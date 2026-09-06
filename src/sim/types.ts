@@ -10,10 +10,10 @@
 
 export type TowerId = 'norah' | 'barbara' | 'pete' | 'bill' | 'walter' | 'clara';
 
-export type EnemyId = 'sam' | 'mike' | 'ben' | 'tina' | 'gang' | 'skye' | 'walker';
+export type EnemyId = 'sam' | 'mike' | 'ben' | 'tina' | 'gang' | 'skye' | 'duke' | 'walker';
 
 export const TOWER_IDS: TowerId[] = ['norah', 'barbara', 'pete', 'bill', 'walter', 'clara'];
-export const ENEMY_IDS: EnemyId[] = ['sam', 'mike', 'ben', 'tina', 'gang', 'skye', 'walker'];
+export const ENEMY_IDS: EnemyId[] = ['sam', 'mike', 'ben', 'tina', 'gang', 'skye', 'duke', 'walker'];
 
 /**
  * How a tower acts on its turn.
@@ -110,6 +110,10 @@ export interface EnemyDef {
   /** What it leaves behind when it dies, and how many. */
   splitsInto: EnemyId | null;
   splitCount: number;
+  /** What this spawns while it's still alive, or null if it never does. */
+  dropsInto: EnemyId | null;
+  /** Ticks between one drop and the next while alive. Ignored when `dropsInto` is null. */
+  dropInterval: number;
   /** Damage per second dealt to a blocker standing in the way. */
   blockerDps: number;
 }
@@ -159,6 +163,14 @@ export interface Enemy {
   stunFatigue: number;
   /** Ticks until `stunFatigue` eases by one. */
   stunRecovery: number;
+  /**
+   * Countdown to this enemy's next drop, for whichever enemy has one.
+   *
+   * Maintained wherever `dropCooldown` is written, which is `spawnEnemy` and
+   * `advanceDrops` and nowhere else -- the same discipline `dist` gets above,
+   * kept on a field that only Duke ever uses.
+   */
+  dropCooldown: number;
   /** Derived from the two above every tick. Never written directly. */
   speedMult: number;
   /** Derived from nearby shield carriers every tick. Never written directly. */
@@ -253,7 +265,7 @@ export interface Projectile {
   sourceId: number;
 }
 
-export type SimEventType = 'hit' | 'kill' | 'leak' | 'split' | 'blockerDown' | 'stun';
+export type SimEventType = 'hit' | 'kill' | 'leak' | 'split' | 'drop' | 'blockerDown' | 'stun';
 
 export interface SimEvent {
   type: SimEventType;
