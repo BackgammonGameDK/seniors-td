@@ -870,8 +870,12 @@ export class Renderer {
       g.fillStyle = f.color;
       g.strokeStyle = 'rgba(0,0,0,.5)';
       g.lineWidth = 3;
-      g.strokeText(f.text, f.x, f.y - 14 - t * 20);
-      g.fillText(f.text, f.x, f.y - 14 - t * 20);
+      // Centred on the troublemaker, but kept on the board: one of these
+      // beside the kerb used to have its first letters cut off by the edge.
+      const half = g.measureText(f.text).width / 2 + 2;
+      const x = Math.min(BOARD.width - half, Math.max(half, f.x));
+      g.strokeText(f.text, x, f.y - 14 - t * 20);
+      g.fillText(f.text, x, f.y - 14 - t * 20);
       g.globalAlpha = 1;
       f.life--;
     }

@@ -40,6 +40,30 @@ const FLASH_TICKS = 8;
 /** No amount of glaze stops a troublemaker dead. Stun does that, briefly. */
 const MAX_SLOW = 0.7;
 /**
+ * How much shorter each successive stun on the same troublemaker is.
+ *
+ * `MAX_SLOW` stops a slow from ever halting someone outright; this is the same
+ * guarantee for stun, which needs one because a stun *does* halt them. Clara
+ * multiplies how often a tower acts but not how long its stun lasts, so at
+ * enough coffee the stuns simply overlapped and the street froze -- measured at
+ * 89% of the time for a Pete with no upgrades at all, and 100% with either
+ * capstone. Shortening the repeat rather than refusing it keeps Pete's job
+ * intact: he still stops people, he just cannot hold them for ever.
+ */
+const STUN_FALLOFF = 0.8;
+/** Fatigue stops here, so a repeated stun never shortens to nothing. */
+const MAX_STUN_FATIGUE = 4;
+/**
+ * Ticks of quiet that shrug off one step of fatigue.
+ *
+ * Short on purpose, and this is the whole trick: it is shorter than the gap
+ * a lone Pete leaves between shouts, so he sheds fatigue as fast as he causes
+ * it and is left exactly as he was. A Pete hurried along by coffee never gets
+ * a gap this long, so his fatigue stays high -- which is what stops more
+ * coffee from adding up to a permanent freeze.
+ */
+const STUN_RECOVERY_TICKS = 60;
+/**
  * The most a tower's rate of fire can be multiplied, however much coffee is
  * standing near it.
  *
@@ -307,6 +331,8 @@ export function spawnEnemy(w: World, def: EnemyId, dist: number, scale = 1): Ene
     slowTicks: 0,
     slowFactor: 0,
     stunTicks: 0,
+    stunFatigue: 0,
+    stunRecovery: 0,
     speedMult: 1,
     shield: 0,
     blockedBy: null,
@@ -397,6 +423,15 @@ function advanceEffects(w: World): void {
       if (e.slowTicks === 0) e.slowFactor = 0;
     }
     if (e.stunTicks > 0) e.stunTicks--;
+    // Only counts while nobody is shouting, so fatigue eases off during a lull
+    // rather than during the stun it is already shortening.
+    if (e.stunTicks === 0 && e.stunFatigue > 0) {
+      e.stunRecovery--;
+      if (e.stunRecovery <= 0) {
+        e.stunFatigue--;
+        e.stunRecovery = STUN_RECOVERY_TICKS;
+      }
+    }
     e.speedMult = e.stunTicks > 0 ? 0 : 1 - Math.min(MAX_SLOW, e.slowFactor);
   }
 }
@@ -550,7 +585,7 @@ export function applyHit(
     e.flash = FLASH_TICKS;
     emit(w, 'hit', e.x, e.y);
   } else if (damage > 0) {
-    emit(w, 'hit', e.x, e.y, 'blocked');
+    emit(w, 'hit', e.x, e.y, 'absorbed');
   }
 
   // Status lands even when the damage does not, so Pete works at zero damage
@@ -563,7 +598,10 @@ export function applyHit(
     }
   }
   if (effect.stunTicks > 0 && !d.stunImmune) {
-    e.stunTicks = Math.max(e.stunTicks, effect.stunTicks);
+    const shortened = Math.round(effect.stunTicks * STUN_FALLOFF ** e.stunFatigue);
+    e.stunTicks = Math.max(e.stunTicks, shortened);
+    e.stunFatigue = Math.min(MAX_STUN_FATIGUE, e.stunFatigue + 1);
+    e.stunRecovery = STUN_RECOVERY_TICKS;
   }
 
   if (e.hp <= 0) kill(w, e, sourceId);

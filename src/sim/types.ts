@@ -146,6 +146,19 @@ export interface Enemy {
   slowTicks: number;
   slowFactor: number;
   stunTicks: number;
+  /**
+   * How used to being shouted at this troublemaker has got.
+   *
+   * Every stun that lands raises it, and each step of it shortens the *next*
+   * stun. Without this, a tower whose stun lasts as long as its own cooldown
+   * freezes the street outright -- and because Clara multiplies how often a
+   * tower acts but not how long its stun lasts, enough coffee did that to any
+   * Pete, capstone or not. It fades again while nobody is shouting, so it
+   * wears a stun down rather than granting immunity to one.
+   */
+  stunFatigue: number;
+  /** Ticks until `stunFatigue` eases by one. */
+  stunRecovery: number;
   /** Derived from the two above every tick. Never written directly. */
   speedMult: number;
   /** Derived from nearby shield carriers every tick. Never written directly. */

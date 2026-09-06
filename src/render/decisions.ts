@@ -416,16 +416,54 @@ export function hoveredStat(t: Tower, choice: string | null): Partial<TowerDef> 
   return tree.capstones.find((c) => c.id === choice)?.stat ?? null;
 }
 
+/**
+ * The line under the board.
+ *
+ * A decision rather than a string built in an event handler, so the one case
+ * that matters can be tested: when hits are being soaked up entirely, the
+ * player is told why. That is the moment the game looks broken -- shots visibly
+ * landing, nothing dying -- and without a word here the reasonable conclusion
+ * is that the defenders are faulty rather than too light.
+ */
+export function hintText(opts: {
+  selected: TowerId | null;
+  idle: boolean;
+  absorbing: boolean;
+}): string {
+  if (opts.selected) {
+    return TOWERS[opts.selected].mode === 'blocker'
+      ? 'Tap the road itself -- Walter stands in the way.'
+      : 'Tap a green square beside the road. Tap the card again to change your mind.';
+  }
+  // Ahead of the idle line on purpose: between rounds it is the more useful
+  // of the two, because it is when a board can still be changed.
+  if (opts.absorbing) {
+    return 'Armour and shields take a fixed bite out of every single hit, so light hits vanish entirely. Bring one that hits harder.';
+  }
+  if (opts.idle) return 'Place a neighbour, then start the round.';
+  return 'Tap anyone on the board to see what they are.';
+}
+
 export interface EnemyReadout {
   name: string;
   lines: string[];
 }
 
 /** What an enemy is, in words a first-time player can act on. */
-export function enemyReadout(e: Pick<Enemy, 'def' | 'hp' | 'scale'>): EnemyReadout {
+export function enemyReadout(e: Pick<Enemy, 'def' | 'hp' | 'scale' | 'shield'>): EnemyReadout {
   const d = ENEMIES[e.def];
   const lines: string[] = [`${Math.max(0, Math.ceil(e.hp))} health left`];
   if (d.armour > 0) lines.push(`Armour ${d.armour}: every hit lands ${d.armour} lighter.`);
+  // The one number here that changes minute to minute. Without it a player
+  // watching "absorbed" come up has no way to see that the reason is standing
+  // next to the thing they are shooting.
+  if (e.shield > 0) {
+    lines.push(`Shielded right now: ${e.shield} more off every hit, from a Ben nearby.`);
+  }
+  const soak = d.armour + e.shield;
+  if (soak > 0) {
+    lines.push(`So a hit under ${soak + 1} damage does nothing. Hit harder, not more often.`);
+  }
   if (d.stunImmune) lines.push('Cannot be stopped by shouting.');
   if (d.slowResist > 0) {
     lines.push(`Rolls on: slowing works ${Math.round(d.slowResist * 100)}% less on her.`);

@@ -103,6 +103,26 @@ exactly the enemies they are meant to answer.
 Moped Mike ignores stuns entirely. That is the one hard immunity in the game,
 and it exists so that Pete cannot be the whole answer to a round.
 
+**A repeated stun gets shorter.** Each one that lands on the same troublemaker
+is 20% shorter than the last, down to a floor, and the fatigue fades again
+after a short lull. This exists because Clara multiplies how *often* a tower
+acts but not how *long* its stun lasts, so past a certain rate the stuns simply
+overlapped and the street stopped moving: measured at 89% of the time for a
+Pete with no upgrades at all and two Claras beside him, and 100% with either of
+his capstones. `bullhorn` was the worst of it at 60 ticks of stun on a 60-tick
+cooldown -- permanent on its own, before any coffee -- and its cooldown is now
+110 so that a gap exists at all for fatigue to work with.
+
+The recovery is deliberately quicker than the gap a lone Pete leaves between
+shouts. He therefore sheds fatigue as fast as he causes it and is left exactly
+as strong as he was, measured at 37% either way; it is only the hurried,
+coffee-fed Pete who never gets his lull. That is the shape support is supposed
+to have here -- a force multiplier with diminishing returns, not a win
+condition -- and it is the same reason `MAX_RATE_MULT` exists at all.
+
+Fatigue shortens a stun and never refuses one, so this adds no second hard
+immunity: Mike's remains the only one.
+
 ## The street is the decision
 
 The lane is a polyline with four hairpins, and that is not decoration. A corner

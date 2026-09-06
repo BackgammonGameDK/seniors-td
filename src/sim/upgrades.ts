@@ -69,7 +69,11 @@ export const UPGRADES: Record<TowerId, TowerUpgrades> = {
     ],
     capstones: [
       { id: 'megaphone', cost: 110, stat: { range: 155, stunTicks: 65 } },
-      { id: 'bullhorn', cost: 100, stat: { cooldown: 60, stunTicks: 60 } },
+      // The cooldown must stay clear of the stun it grants. At 60 and 60 this
+      // shouted exactly as often as the stun lasted, which held a street still
+      // for ever on its own -- fatigue shortens a repeat but cannot open a gap
+      // that was never there.
+      { id: 'bullhorn', cost: 100, stat: { cooldown: 110, stunTicks: 60 } },
     ],
   },
   bill: {
