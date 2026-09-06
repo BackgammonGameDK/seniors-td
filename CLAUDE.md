@@ -47,7 +47,7 @@ hex colours, display names or blurbs in `src/sim/`.
 | `src/sim/path.ts` | Board dimensions, the street, and which cells take a tower or a blockade. |
 | `src/sim/upgrades.ts` | Two paths per defender and the final fork between them, plus `effectiveDef()` -- the only way to read a defender's bought stats. |
 | `src/sim/economy.ts` | Bounties, the round clear bonus, and what selling returns. |
-| `src/sim/builds.ts` | Six named boards -- swarm, sniper, area, control, support, mixed -- that the campaign harness plays. |
+| `src/sim/builds.ts` | Seven named boards the campaign harness plays: six archetypes, plus `corner`, a board played by hand and kept verbatim. |
 | `src/sim/loadout.ts` | The `towerId@col,row` grammar the harnesses parse. |
 | `src/shared/display.ts` | Names, colours, radii, emoji. Both layers may read it. |
 | `src/shared/upgrades.ts` | The words and pictures for the upgrades. Presentational half of `src/sim/upgrades.ts`. |
@@ -66,7 +66,7 @@ npm run typecheck  # tsc --noEmit
 npm run sim -- --all-waves                   # difficulty for every round
 npm run sim -- --wave 7 --runs 60 --json     # machine-readable
 npm run sim -- --wave 12 --loadout "norah@4,2 bill@10,8"
-npm run campaign -- --all-builds             # all six boards, twenty-one rounds
+npm run campaign -- --all-builds             # all seven boards, twenty-one rounds
 npm run campaign -- --build sniper --runs 40 --json
 ```
 

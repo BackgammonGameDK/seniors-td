@@ -179,3 +179,73 @@ export function nearestCell(
   if (bestD === Infinity) throw new Error(`no free ${kind} cell near distance ${dist}`);
   return best;
 }
+
+/**
+ * How much of the street a tower standing here could actually see, in pixels
+ * of lane.
+ *
+ * This is the number the board's four hairpins exist to make interesting. A
+ * cell out on a straight sees one stretch of road; a cell inside a bend sees
+ * the road going away and coming back, and is worth two towers for the price
+ * of one. At Norah's reach the best cells see 288px against a median of 120,
+ * and at Bill's, 944px against 448 -- so where a tower stands is worth more
+ * than a tier of upgrades, which is what "placement is most of the decision"
+ * was always supposed to mean.
+ *
+ * Sampled rather than integrated: the step is small against every tower's
+ * range, and a sampled answer is deterministic, which an approximation used by
+ * the harnesses has to be.
+ */
+const COVERAGE_STEP = 8;
+
+export function laneCoverage(p: Point, range: number): number {
+  let seen = 0;
+  for (let d = 0; d < PATH_LENGTH; d += COVERAGE_STEP) {
+    const q = pointAt(d);
+    if (Math.hypot(q.x - p.x, q.y - p.y) <= range) seen += COVERAGE_STEP;
+  }
+  return seen;
+}
+
+/**
+ * A knot of cells around one spot on the street, best-seeing first.
+ *
+ * The other half of `nearestCell`, and the half that was missing. Spacing a
+ * board out evenly along the lane -- which is what picking cells by distance
+ * does -- gives every tower one stretch of road and no two towers the same
+ * crowd, and a board built that way loses. Concentrating them lets one Clara
+ * hurry six guns at once and one Barbara catch what they are all shooting at.
+ *
+ * `within` keeps the knot tight enough for a support tower to reach across it.
+ * `taken` is the cells already claimed, so a build asking twice gets two
+ * different squares.
+ */
+export function clusterCells(
+  anchor: number,
+  count: number,
+  range: number,
+  within = 150,
+  taken: readonly { col: number; row: number }[] = [],
+): { col: number; row: number }[] {
+  const centre = pointAt(anchor);
+  const near: { col: number; row: number; cover: number; away: number }[] = [];
+  for (let col = 0; col < BOARD.cols; col++) {
+    for (let row = 0; row < BOARD.rows; row++) {
+      if (!isBuildableCell(col, row)) continue;
+      if (taken.some((t) => t.col === col && t.row === row)) continue;
+      const c = cellCentre(col, row);
+      const away = Math.hypot(c.x - centre.x, c.y - centre.y);
+      if (away > within) continue;
+      near.push({ col, row, cover: laneCoverage(c, range), away });
+    }
+  }
+  // Most road first, and the tighter cell as the tie-break, so a knot stays a
+  // knot instead of creeping outwards.
+  near.sort((a, b) => b.cover - a.cover || a.away - b.away);
+  if (near.length < count) {
+    throw new Error(
+      `only ${near.length} free cells within ${within}px of lane distance ${anchor}, needed ${count}`,
+    );
+  }
+  return near.slice(0, count).map(({ col, row }) => ({ col, row }));
+}
