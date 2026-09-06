@@ -11,10 +11,13 @@ import type { Speed } from './render/clock.ts';
 import {
   boardAction,
   pickEnemy,
+  recordingOf,
   runKeyAction,
+  stepOf,
   towerForKey,
   armTower,
 } from './render/decisions.ts';
+import type { Placement } from './sim/loadout.ts';
 import { Renderer } from './render/canvas.ts';
 import { Ui } from './render/ui.ts';
 import type { UiHandlers } from './render/ui.ts';
@@ -22,7 +25,6 @@ import { BOARD, isBlockerCell, isBuildableCell } from './sim/path.ts';
 import { TOWERS } from './sim/towers.ts';
 import type { Tower, TowerId } from './sim/types.ts';
 import {
-  canPlace,
   createWorld,
   placeTower,
   purchaseUpgrade,
@@ -43,6 +45,14 @@ let inspected: Tower | null = null;
 let hover: { col: number; row: number } | null = null;
 let paused = false;
 let speed: Speed = 1;
+/**
+ * Everything bought this run, in the order it was bought, so a board that was
+ * played can be handed to the harnesses as a loadout. Read by `street.loadout`
+ * at the bottom of this file.
+ */
+const bought: Placement[] = [];
+/** Sells, which a loadout cannot express. See `recordingOf`. */
+let sold = 0;
 
 function cellFrom(ev: { clientX: number; clientY: number }): { col: number; row: number } {
   const p = renderer.toBoard(ev);
@@ -76,16 +86,21 @@ const handlers: UiHandlers = {
     world = createWorld(Date.now() % 100000);
     selected = null;
     inspected = null;
+    bought.length = 0;
+    sold = 0;
   },
   onCloseInspect() {
     inspected = null;
   },
   onSell(t) {
-    sellTower(world, t);
+    if (sellTower(world, t)) sold++;
     inspected = null;
   },
   onBuyUpgrade(t, choice) {
-    purchaseUpgrade(world, t.id, choice);
+    // The return value decides whether this is recorded, so a purchase the sim
+    // refused -- too poor, path already maxed, capstone already chosen -- never
+    // reaches the plan.
+    if (purchaseUpgrade(world, t.id, choice)) bought.push(stepOf(t));
   },
   onTogglePause() {
     paused = !paused;
@@ -139,8 +154,11 @@ canvas.addEventListener('pointerdown', (ev) => {
   });
 
   if (action === 'place' && selected) {
-    if (canPlace(world, selected, cell.col, cell.row)) {
-      placeTower(world, selected, cell.col, cell.row);
+    if (placeTower(world, selected, cell.col, cell.row)) {
+      // `placeTower` re-runs `canPlace` itself and returns whether it took, so
+      // asking first and then placing was checking twice and recording on the
+      // wrong answer if the two ever disagreed.
+      bought.push(stepOf(world.towers[world.towers.length - 1]!));
     }
   } else if (action === 'inspect') {
     inspected = existing ?? null;
@@ -176,8 +194,34 @@ window.addEventListener('keydown', (ev) => {
     inspected = null;
   } else if (ev.key.toLowerCase() === 'f') {
     speed = nextSpeed(speed);
+  } else if (ev.key.toLowerCase() === 'l') {
+    showRecording();
   }
 });
+
+/**
+ * Puts the board you have played on the clipboard, as a loadout.
+ *
+ * A key rather than a console command, because reaching this through the
+ * browser's developer tools is not a thing to ask of somebody who is here to
+ * play the game. The box that opens is the fallback: a clipboard write can be
+ * refused, and text sitting in a prompt can always be selected and copied by
+ * hand.
+ */
+function showRecording(): void {
+  const recorded = recordingOf(bought, sold);
+  if (recorded.loadout === '') {
+    window.alert('Nothing bought yet, so there is no board to copy.');
+    return;
+  }
+  // Fire and forget: if the browser refuses, the box below still has the text.
+  void navigator.clipboard?.writeText(recorded.loadout).catch(() => {});
+  window.prompt(
+    (recorded.warning ?? 'Copied. Paste it wherever you need it.') +
+      '\n\nYour board so far, as a loadout:',
+    recorded.loadout,
+  );
+}
 
 const clock = createClock();
 let last = 0;
@@ -210,5 +254,16 @@ Object.defineProperty(window, 'street', {
       for (let i = 0; i < n; i++) step(world);
     },
     tickMs: TICK_MS,
+    /**
+     * The board you just played, written as a loadout.
+     *
+     * Paste `loadout` into `src/sim/builds.ts`, or straight at a harness:
+     *
+     *   npm run campaign -- --loadout "<the string>" --runs 20
+     *
+     * Check `warning` first. It is null when the recording can be trusted.
+     */
+    loadout: () => recordingOf(bought, sold),
+    plan: () => bought.slice(),
   },
 });

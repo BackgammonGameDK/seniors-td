@@ -13,6 +13,8 @@
  * named after what it protects. If it is a *drawing*, it belongs in canvas.ts.
  */
 import { ENEMIES } from '../sim/enemies.ts';
+import { describePlacement } from '../sim/loadout.ts';
+import type { Placement } from '../sim/loadout.ts';
 import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
 import type { Enemy, EnemyId, Stats, Tower, TowerDef, TowerId } from '../sim/types.ts';
@@ -627,4 +629,73 @@ export function easeAngle(current: number, desired: number, rate: number): numbe
   while (diff > Math.PI) diff -= Math.PI * 2;
   while (diff < -Math.PI) diff += Math.PI * 2;
   return current + diff * rate;
+}
+
+// --- recording a played board ---------------------------------------------
+
+/**
+ * Turning what somebody actually played into something the harnesses can run.
+ *
+ * `loadout.ts` states the rule this serves: a build that cannot be typed at the
+ * command line cannot be reproduced, and a measurement nobody can reproduce is
+ * a rumour. Until now that cut one way only -- a written plan could be played,
+ * but a played board could not be written down, so the six boards in
+ * `builds.ts` were all generated rather than observed, and none of them had
+ * ever been near a human.
+ *
+ * That mattered more than it looked. Every one of those generated boards
+ * failed a campaign while the game was being finished by hand, which says the
+ * boards had stopped representing anybody rather than that the game was
+ * unwinnable. This is how a real one gets into the measurement.
+ *
+ * Here rather than in an event handler for the usual reason: it is a pure
+ * function of what was bought, so it can have a test, and the round trip
+ * through `parseLoadout` is exactly the guarantee worth testing.
+ */
+
+/**
+ * One purchase, as the state of the tower just after it was made.
+ *
+ * A `Placement` rather than a type of its own: that is already what both
+ * harnesses read a plan into, so a recorded step and a written one are the
+ * same thing by construction and cannot come to disagree.
+ */
+export function stepOf(t: Tower): Placement {
+  return {
+    def: t.def,
+    col: t.col,
+    row: t.row,
+    upgradeA: t.upgradeA,
+    upgradeB: t.upgradeB,
+    capstone: t.capstone,
+  };
+}
+
+export interface Recording {
+  /** The plan, in the grammar `parseLoadout` reads. */
+  loadout: string;
+  /** Why this recording cannot be trusted, or null when it can. */
+  warning: string | null;
+}
+
+/**
+ * Everything bought this run, in the order it was bought.
+ *
+ * `sold` is counted rather than represented because the grammar has no way to
+ * say "and then this one was sent home": the plan is append-only, so a board
+ * that was sold off records as though everything bought is still standing. A
+ * recording like that is wrong in a way that would be invisible once it was
+ * pasted into `builds.ts`, so it says so about itself rather than being
+ * quietly confident.
+ */
+export function recordingOf(steps: Placement[], sold: number): Recording {
+  return {
+    loadout: steps.map(describePlacement).join(' '),
+    warning:
+      sold === 0
+        ? null
+        : `${sold} tower${sold === 1 ? ' was' : 's were'} sent home during this run, and a ` +
+          `loadout cannot say that -- this plan buys them and never sells them, so it is ` +
+          `not what was played. Record again without selling.`,
+  };
 }

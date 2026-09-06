@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { runCampaign } from '../src/campaign.ts';
+import { parseLoadout } from '../src/sim/loadout.ts';
+import type { Placement } from '../src/sim/loadout.ts';
 import { TOWERS } from '../src/sim/towers.ts';
+import { createWorld, placeTower, purchaseUpgrade } from '../src/sim/world.ts';
 import { TOWER_IDS } from '../src/sim/types.ts';
 import { AUTHORED_ROUNDS } from '../src/sim/waves.ts';
 import {
@@ -17,8 +21,10 @@ import {
   facingAngle,
   hudReadouts,
   roundReadout,
+  recordingOf,
   runButton,
   runKeyAction,
+  stepOf,
   panelKey,
   sentHomeRow,
   pathCard,
@@ -660,5 +666,70 @@ describe('space does whatever the run button says', () => {
     for (const k of ['a', 'Escape', 'f', '1', '']) {
       expect(runKeyAction(k, { status: 'running', paused: false })).toBeNull();
     }
+  });
+});
+
+describe('recording a played board', () => {
+  // The point of the recorder is that a board somebody played can be measured.
+  // The round trip is therefore the whole guarantee: whatever comes out has to
+  // go back through `parseLoadout` unchanged, and be something the campaign
+  // harness will actually spend money on.
+  const at = (col: number, row: number, extra: Partial<Placement> = {}): Placement => ({
+    def: 'norah',
+    col,
+    row,
+    upgradeA: 0,
+    upgradeB: 0,
+    capstone: null,
+    ...extra,
+  });
+
+  it('writes each purchase as the tower stood after it', () => {
+    const steps = [at(4, 4), at(4, 4, { upgradeA: 1 }), at(4, 4, { upgradeA: 2 })];
+    expect(recordingOf(steps, 0).loadout).toBe('norah@4,4 norah@4,4+a1 norah@4,4+a2');
+  });
+
+  it('comes back out of parseLoadout as exactly what went in', () => {
+    const steps = [
+      at(4, 4),
+      at(4, 4, { upgradeA: 1 }),
+      at(10, 2, { def: 'bill' }),
+      at(10, 2, { def: 'bill', upgradeA: 2, upgradeB: 2 }),
+      at(10, 2, { def: 'bill', upgradeA: 2, upgradeB: 2, capstone: 'deadeye' }),
+    ];
+    expect(parseLoadout(recordingOf(steps, 0).loadout)).toEqual(steps);
+  });
+
+  it('reads a tower off the board rather than being told what it is', () => {
+    const w = createWorld(1);
+    w.gold = 100000;
+    expect(placeTower(w, 'barbara', 10, 2)).toBe(true);
+    const t = w.towers[0]!;
+    expect(stepOf(t)).toEqual(at(10, 2, { def: 'barbara' }));
+    expect(purchaseUpgrade(w, t.id, 'pathB')).toBe(true);
+    expect(stepOf(t)).toEqual(at(10, 2, { def: 'barbara', upgradeB: 1 }));
+  });
+
+  it('says so when a sell has made the recording a lie', () => {
+    // A loadout can only buy. A run that sold something records as though it
+    // never did, which is wrong in a way nobody would spot once the string had
+    // been pasted into builds.ts -- so it has to announce itself.
+    expect(recordingOf([at(4, 4)], 0).warning).toBeNull();
+    expect(recordingOf([at(4, 4)], 1).warning).toContain('1 tower was sent home');
+    expect(recordingOf([at(4, 4)], 2).warning).toContain('2 towers were sent home');
+  });
+
+  it('produces a plan the campaign harness will actually spend on', () => {
+    // The real consumer, not just the parser: `costOf` prices an entry and
+    // `apply` carries it out, and either can reject a plan the parser accepted.
+    const w = createWorld(1);
+    w.gold = 100000;
+    placeTower(w, 'norah', 4, 4);
+    const t = w.towers[0]!;
+    purchaseUpgrade(w, t.id, 'pathA');
+    const recorded = recordingOf([stepOf(t)], 0).loadout;
+
+    const run = runCampaign(parseLoadout(recorded), 1);
+    expect(run.planBought).toBeGreaterThan(0);
   });
 });
