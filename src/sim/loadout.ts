@@ -1,5 +1,6 @@
 import { TOWER_IDS } from './types.ts';
 import type { TowerId } from './types.ts';
+import { UPGRADES } from './upgrades.ts';
 
 /**
  * The loadout grammar shared by every harness.
@@ -53,7 +54,20 @@ export function parseLoadout(raw: string): Placement[] {
         }
         if (s[1]) upgradeA = Number(s[1]) as 0 | 1 | 2;
         if (s[2]) upgradeB = Number(s[2]) as 0 | 1 | 2;
-        if (s[3]) capstone = s[3];
+        if (s[3]) {
+          // Checked here rather than left to `costOf`, which only prices an
+          // entry the purse actually reaches -- so a capstone belonging to
+          // some other tower would sit unnoticed in a plan until the build
+          // got rich enough to buy it, and then throw mid-campaign. The
+          // grammar is where a name is either known or it is not.
+          if (!UPGRADES[def].capstones.some((c) => c.id === s[3])) {
+            throw new Error(
+              `unknown capstone "${s[3]}" for ${def} -- known: ` +
+                UPGRADES[def].capstones.map((c) => c.id).join(', '),
+            );
+          }
+          capstone = s[3];
+        }
       }
       return { def, col: Number(m[2]), row: Number(m[3]), upgradeA, upgradeB, capstone };
     });

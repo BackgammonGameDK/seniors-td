@@ -288,6 +288,30 @@ describe("Walker Walter's Second Wind", () => {
     expect(walter.hp).toBeLessThanOrEqual(revived);
   });
 
+  it('lets the queue behind him walk on while he is down, rather than freezing it', () => {
+    // He used to hold everyone already queued behind him for the whole revive
+    // delay, while they could not damage him and he could not be walked
+    // around -- and meanwhile `blockerStopAhead` skipped him, so troublemakers
+    // arriving during the count strolled past the ones standing still. Down
+    // means down, for everybody.
+    const w = rich();
+    const walter = put(w, 'walter', roadCellNear(300));
+    const mikes = [0, 5, 10, 15].map((back) => spawnEnemy(w, 'mike', walter.laneDist - 30 - back));
+
+    for (let i = 0; i < 400 && walter.reviveAt === null; i++) step(w);
+    expect(walter.reviveAt, 'Walter should have been knocked down').not.toBeNull();
+    expect(walter.hp).toBe(0);
+
+    // Nobody is held by a blocker who is lying in the road.
+    expect(mikes.map((m) => m.blockedBy)).toEqual([null, null, null, null]);
+
+    const held = mikes.map((m) => m.dist);
+    for (let i = 0; i < 60; i++) step(w);
+    for (const [i, m] of mikes.entries()) {
+      expect(m.dist, `mike ${i} should have kept walking`).toBeGreaterThan(held[i]!);
+    }
+  });
+
   it('stays down on the second knockdown of the round', () => {
     const w = rich();
     const walter = put(w, 'walter', roadCellNear(300));
@@ -492,6 +516,52 @@ describe('the authored rounds', () => {
 });
 
 describe('upgrades', () => {
+  // `effectiveDef` keeps every fold it has been asked for, keyed on the tower
+  // kind and the three things bought on it. These are the guarantees that key
+  // has to make good on: it has to notice a purchase, and it must never hand
+  // one tower another tower's numbers.
+  it('follows a tower as it buys, rather than answering with the fold it gave first', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    const fresh = effectiveDef(norah).cooldown;
+
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(true);
+    const afterA = effectiveDef(norah).cooldown;
+    expect(afterA).toBeLessThan(fresh);
+
+    expect(purchaseUpgrade(w, norah.id, 'pathA')).toBe(true);
+    expect(effectiveDef(norah).cooldown).toBeLessThan(afterA);
+  });
+
+  it('gives two towers with the same purchases the same numbers, and different ones different', () => {
+    const w = rich();
+    const plain = put(w, 'norah', buildCellNear(300));
+    const same = put(w, 'norah', buildCellNear(700));
+    const upgraded = put(w, 'norah', buildCellNear(1100));
+    expect(purchaseUpgrade(w, upgraded.id, 'pathB')).toBe(true);
+
+    expect(effectiveDef(same)).toEqual(effectiveDef(plain));
+    expect(effectiveDef(upgraded).range).not.toBe(effectiveDef(plain).range);
+    // A different kind of tower never shares a fold, whatever it has bought.
+    expect(effectiveDef(put(w, 'bill', buildCellNear(1500))).range).not.toBe(
+      effectiveDef(plain).range,
+    );
+  });
+
+  it('hands out a fold nothing can quietly edit for every other tower', () => {
+    // The fold is shared, so a caller that wrote to it would be rewriting the
+    // stats of every tower with those upgrades. Frozen, so that is a throw in
+    // strict mode rather than a slow, silent corruption of the board.
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    const d = effectiveDef(norah);
+    expect(Object.isFrozen(d)).toBe(true);
+    expect(() => {
+      (d as { damage: number }).damage = 9999;
+    }).toThrow();
+    expect(effectiveDef(norah).damage).toBe(TOWERS.norah.damage);
+  });
+
   it("Triple Knit fires at up to three distinct targets in one shot", () => {
     const w = rich();
     const norah = put(w, 'norah', buildCellNear(300));

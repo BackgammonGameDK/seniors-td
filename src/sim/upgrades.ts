@@ -132,15 +132,39 @@ const EXTRAS_DEFAULT = {
 } satisfies Partial<TowerDef>;
 
 /**
+ * Every fold that has been asked for, kept by the four things it depends on.
+ *
+ * This function used to say it was computed on read because "the board never
+ * holds enough towers for that to matter". A CPU profile of round twenty says
+ * otherwise: it was a quarter of all simulation time, being called about seven
+ * times a tick from world.ts alone and allocating three or four objects each
+ * time. Memoising it took the balance sweep from 22.5s to 6.6s, which is
+ * essentially the whole of `npm test`.
+ *
+ * The other half of that old comment -- that a cache is one more place an
+ * upgrade could drift from what actually fired -- is answered by the key
+ * rather than dismissed. A fold depends on exactly the tower kind and the
+ * three things bought on it, and the key is exactly those four, so there is no
+ * state an entry could be stale with respect to. At six towers and three
+ * possible values each it holds at most 162 entries.
+ */
+const folded = new Map<string, TowerDef>();
+
+/**
  * A tower's stats with its bought tiers and capstone folded in.
  *
- * Computed on read rather than cached -- the board never holds enough towers
- * for that to matter, and a cache is one more place an upgrade could drift
- * from what actually fired. pathA folds first, then pathB, then the capstone,
- * which is the only ordering that matters since every tier sets an absolute
- * value rather than a delta.
+ * pathA folds first, then pathB, then the capstone, which is the only ordering
+ * that matters since every tier sets an absolute value rather than a delta.
+ *
+ * The result is shared between every tower with the same upgrades, so it is
+ * frozen: all ten callers only read it today, and freezing is what keeps that
+ * true rather than leaving it as something to remember.
  */
 export function effectiveDef(t: Tower): TowerDef {
+  const key = `${t.def}:${t.upgradeA}:${t.upgradeB}:${t.capstone ?? ''}`;
+  const hit = folded.get(key);
+  if (hit !== undefined) return hit;
+
   const tree = UPGRADES[t.def];
   let def: TowerDef = { ...EXTRAS_DEFAULT, ...TOWERS[t.def] };
   for (const tier of tree.pathA.slice(0, t.upgradeA)) def = { ...def, ...tier.stat };
@@ -149,5 +173,8 @@ export function effectiveDef(t: Tower): TowerDef {
     const cap = tree.capstones.find((c) => c.id === t.capstone);
     if (cap) def = { ...def, ...cap.stat };
   }
-  return def;
+
+  const shared = Object.freeze(def);
+  folded.set(key, shared);
+  return shared;
 }
