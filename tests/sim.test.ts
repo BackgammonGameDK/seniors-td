@@ -288,6 +288,30 @@ describe("Walker Walter's Second Wind", () => {
     expect(walter.hp).toBeLessThanOrEqual(revived);
   });
 
+  it('lets the queue behind him walk on while he is down, rather than freezing it', () => {
+    // He used to hold everyone already queued behind him for the whole revive
+    // delay, while they could not damage him and he could not be walked
+    // around -- and meanwhile `blockerStopAhead` skipped him, so troublemakers
+    // arriving during the count strolled past the ones standing still. Down
+    // means down, for everybody.
+    const w = rich();
+    const walter = put(w, 'walter', roadCellNear(300));
+    const mikes = [0, 5, 10, 15].map((back) => spawnEnemy(w, 'mike', walter.laneDist - 30 - back));
+
+    for (let i = 0; i < 400 && walter.reviveAt === null; i++) step(w);
+    expect(walter.reviveAt, 'Walter should have been knocked down').not.toBeNull();
+    expect(walter.hp).toBe(0);
+
+    // Nobody is held by a blocker who is lying in the road.
+    expect(mikes.map((m) => m.blockedBy)).toEqual([null, null, null, null]);
+
+    const held = mikes.map((m) => m.dist);
+    for (let i = 0; i < 60; i++) step(w);
+    for (const [i, m] of mikes.entries()) {
+      expect(m.dist, `mike ${i} should have kept walking`).toBeGreaterThan(held[i]!);
+    }
+  });
+
   it('stays down on the second knockdown of the round', () => {
     const w = rich();
     const walter = put(w, 'walter', roadCellNear(300));

@@ -487,11 +487,20 @@ function hitBlocker(w: World, e: Enemy, t: Tower): void {
   t.hp -= (ENEMIES[e.def].blockerDps * ATTACK_COOLDOWN) / 60;
   if (t.hp <= 0) {
     if (t.revivesUsed === 0) {
-      // Second Wind, once a round: stays at zero HP (blockerStopAhead
-      // already skips hp <= 0, so the road is still held) until it comes
-      // back up in advanceBlockers.
+      // Second Wind, once a round: he stays on the board at zero HP until
+      // advanceBlockers gets him back up, but he holds nobody while he is
+      // down. `blockerStopAhead` already skips hp <= 0, so anyone arriving
+      // during the count walks past him; releasing the queue is what makes
+      // the troublemakers already behind him behave the same way.
+      //
+      // Without this they froze -- stuck on a blocker they could not damage
+      // (the early return above) and which could not be walked around, for
+      // the whole six seconds. Four Mikes stood still for 360 ticks while
+      // newer arrivals strolled by them. Second Wind buys the position back,
+      // it does not keep holding it in the meantime.
       t.hp = 0;
       t.reviveAt = w.tick + (effectiveDef(t).reviveDelayTicks ?? 0);
+      releaseBlocked(w, t.id);
       return;
     }
     w.stats.blockersLost++;
