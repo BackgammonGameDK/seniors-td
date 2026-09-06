@@ -226,17 +226,27 @@ const SPECS: Record<string, BuildSpec> = {
 
   /** Stun and a blockade, holding the road while a thin gun line works. */
   control: {
-    blurb: 'megaphones and a garden wall, holding while a thin gun line works',
-    anchor: 700,
+    // Three Protest Petes and no Binocular Bill was not a control board, it was
+    // a board that could not finish anything: Pete deals 5 and buys time, so a
+    // plan full of him stalls the street and then starves. One Pete, a wall,
+    // and a gun line for the holding to be worth something.
+    //
+    // The old version also leaned on a bug rather than on Walter -- everything
+    // queued behind a fallen blockade used to freeze for the whole six seconds
+    // of Second Wind, taking and dealing no damage. With that fixed, this shape
+    // still clears and the old one collapses, which says the build was living
+    // on the freeze rather than on the blockade.
+    blurb: 'a garden wall and a megaphone, holding while the gun line works',
+    anchor: 1180,
     slots: [
-      s('pete', 'megaphone'),
+      s('norah', 'longYarn'),
       s('barbara', 'bigBatch'),
       s('walter', 'stoneWall'),
-      s('pete', 'bullhorn'),
       s('norah', 'longYarn'),
-      s('barbara', 'freshBatch'),
-      s('pete', 'megaphone'),
+      s('pete', 'bullhorn'),
       s('clara', 'doubleEspresso'),
+      s('barbara', 'bigBatch'),
+      s('bill', 'piercingShot'),
       s('norah', 'longYarn'),
       s('barbara', 'bigBatch'),
     ],
