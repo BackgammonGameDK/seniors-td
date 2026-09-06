@@ -63,7 +63,7 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     splash: 88,
     slowTicks: 0,
     slowFactor: 0,
-    stunTicks: 48,
+    stunTicks: 24,
     buffRate: 1,
     maxHp: 0,
   },
@@ -113,7 +113,7 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     slowTicks: 0,
     slowFactor: 0,
     stunTicks: 0,
-    buffRate: 1.35,
+    buffRate: 1.25,
     maxHp: 0,
   },
 };
