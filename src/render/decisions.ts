@@ -183,6 +183,28 @@ export function runButton(opts: { status: string; paused: boolean }): RunButton 
   return { label: 'Start round', action: 'start', disabled: true };
 }
 
+/**
+ * What a keypress means for the run button, or nothing if it means nothing.
+ *
+ * Space is the whole of it, and it deliberately asks `runButton` rather than
+ * deciding for itself, so the key cannot come to disagree with the button it
+ * stands for. It used to: space called `startWave` straight off, and a
+ * separate `p` flipped the pause flag on its own -- which paused a round that
+ * had not started and still fired once the game was won, both of them things
+ * the button itself refuses to do.
+ *
+ * Returns null for every other key, the same way `towerForKey` does, so one
+ * handler can pass every keystroke through both.
+ */
+export function runKeyAction(
+  key: string,
+  opts: { status: string; paused: boolean },
+): 'start' | 'toggle' | null {
+  if (key !== ' ') return null;
+  const run = runButton(opts);
+  return run.disabled ? null : run.action;
+}
+
 export interface PreviewRow {
   enemy: EnemyId;
   name: string;
