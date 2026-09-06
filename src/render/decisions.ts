@@ -350,6 +350,32 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
 }
 
 /**
+ * How many troublemakers this particular senior has seen off.
+ *
+ * Deliberately not part of `describeStats`, which reads a `TowerDef` and so
+ * describes a *kind* of tower rather than the one on the board. Putting it
+ * there would also drag it through `previewStats`, which diffs two
+ * `describeStats` calls by label and would show a running total struck
+ * through as though an upgrade were about to change it.
+ *
+ * Null for support and blockers, who never deal damage: a row frozen at zero
+ * reads as a tower doing badly rather than one that works another way.
+ *
+ * The value carries the word "troublemakers" because the sell button says
+ * "Send home" about the senior. Without it the row could be read as how many
+ * times this tower has been sold.
+ */
+export function sentHomeRow(t: Tower): StatRow | null {
+  const mode = TOWERS[t.def].mode;
+  if (mode === 'support' || mode === 'blocker') return null;
+  const value =
+    t.sentHome === 0
+      ? 'none yet'
+      : `${t.sentHome} troublemaker${t.sentHome === 1 ? '' : 's'}`;
+  return { label: 'Sent home', value };
+}
+
+/**
  * The same rows, as they would read after buying one upgrade.
  *
  * The formatting is not repeated here: both sides go through `describeStats`,

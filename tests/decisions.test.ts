@@ -18,6 +18,7 @@ import {
   roundReadout,
   runButton,
   panelKey,
+  sentHomeRow,
   pathCard,
   pathTierLocked,
   pickEnemy,
@@ -62,6 +63,7 @@ const tower = (over: Partial<Tower> = {}): Tower => ({
   revivesUsed: 0,
   reviveAt: null,
   targetId: null,
+  sentHome: 0,
   ...over,
 });
 
@@ -163,6 +165,44 @@ describe('the inspect panel never shows the previous tower', () => {
 
   it('is stable when nothing has changed, so the panel is not rebuilt each frame', () => {
     expect(panelKey(tower())).toBe(panelKey(tower()));
+  });
+
+  it('ignores the running total, which only the stat rows redraw for', () => {
+    // Deliberate. A kill must not rebuild the whole panel: that would
+    // re-measure the reserved height and tear down the upgrade card under the
+    // pointer mid-hover. `paintStats` keys on the total separately.
+    expect(panelKey(tower({ sentHome: 0 }))).toBe(panelKey(tower({ sentHome: 9 })));
+  });
+});
+
+describe('a tower shows how many troublemakers it has seen off', () => {
+  it('counts them in words a first-time player can read', () => {
+    expect(sentHomeRow(tower({ def: 'norah', sentHome: 7 }))).toEqual({
+      label: 'Sent home',
+      value: '7 troublemakers',
+    });
+  });
+
+  it('does not say "1 troublemakers"', () => {
+    expect(sentHomeRow(tower({ def: 'norah', sentHome: 1 }))?.value).toBe('1 troublemaker');
+  });
+
+  it('says none yet rather than a bare zero', () => {
+    expect(sentHomeRow(tower({ def: 'norah', sentHome: 0 }))?.value).toBe('none yet');
+  });
+
+  it('leaves the row off towers that never deal damage', () => {
+    // Clara only makes her neighbours better and Walter only stands in the
+    // way. A row stuck at zero would read as either of them doing badly.
+    expect(sentHomeRow(tower({ def: 'clara' }))).toBeNull();
+    expect(sentHomeRow(tower({ def: 'walter' }))).toBeNull();
+  });
+
+  it('is never struck through by an upgrade preview', () => {
+    // It is not one of `describeStats`' rows, so `previewStats` cannot pair it
+    // with a "was" value and show a total as though an upgrade would change it.
+    const labels = previewStats(TOWERS.norah, { damage: 99 }).map((r) => r.label);
+    expect(labels).not.toContain('Sent home');
   });
 });
 
