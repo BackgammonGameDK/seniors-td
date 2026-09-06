@@ -77,6 +77,7 @@ export const ENEMY_LOOK: Record<EnemyId, EnemyLook> = {
   tina: { name: 'TikTok Tina', color: '#f06292', radius: 11, glyph: '📱' },
   gang: { name: 'E-Scooter Gang', color: '#ffd54f', radius: 14, glyph: '🛴' },
   skye: { name: 'Skateboard Skye', color: '#ff8a65', radius: 10, glyph: '🛹' },
+  duke: { name: 'Party Bus Duke', color: '#c62828', radius: 18, glyph: '🚌' },
   walker: { name: 'Runaway', color: '#aed581', radius: 8, glyph: '🏃' },
 };
 

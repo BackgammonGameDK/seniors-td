@@ -1,5 +1,5 @@
 /**
- * The campaign harness: twenty rounds, one purse, lives that do not come back.
+ * The campaign harness: twenty-one rounds, one purse, lives that do not come back.
  *
  *   npm run campaign -- --all-builds
  *   npm run campaign -- --build sniper --runs 40
@@ -11,7 +11,7 @@
  * because of what the player could afford by the time it arrived. This harness
  * measures that: it starts with `ECONOMY.startGold`, earns what the rounds
  * pay, spends it on a written plan, and carries its losses forward until
- * either round twenty is cleared or the street is lost.
+ * either round twenty-one is cleared or the street is lost.
  *
  * The spender is deliberately stupid. It walks the plan front to back, buys
  * the next entry when it can afford the whole of it, and otherwise saves.
@@ -46,7 +46,7 @@ export interface RoundRecord {
 
 export interface CampaignRun {
   seed: number;
-  /** True if round twenty was cleared. */
+  /** True if round twenty-one was cleared. */
   cleared: boolean;
   /** Rounds actually finished. Equal to `AUTHORED_ROUNDS` on a clear. */
   reached: number;
@@ -175,7 +175,7 @@ export interface BuildResult {
   name: string;
   blurb: string;
   runs: number;
-  /** Fraction of seeds that finished round twenty. */
+  /** Fraction of seeds that finished round twenty-one. */
   clearRate: number;
   /** Mean furthest round reached, cleared or not. */
   avgReached: number;

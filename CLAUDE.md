@@ -54,7 +54,7 @@ hex colours, display names or blurbs in `src/sim/`.
 | `src/render/decisions.ts` | What the interface decides, without the interface. Pure and tested. |
 | `src/render/canvas.ts` | Drawing. Read-only over the sim. |
 | `src/headless.ts` | One round in isolation, behind `npm run sim`. |
-| `src/campaign.ts` | Whole twenty-round runs on a real purse, behind `npm run campaign`. |
+| `src/campaign.ts` | Whole twenty-one-round runs on a real purse, behind `npm run campaign`. |
 
 ## Commands
 
@@ -66,7 +66,7 @@ npm run typecheck  # tsc --noEmit
 npm run sim -- --all-waves                   # difficulty for every round
 npm run sim -- --wave 7 --runs 60 --json     # machine-readable
 npm run sim -- --wave 12 --loadout "norah@4,2 bill@10,8"
-npm run campaign -- --all-builds             # all six boards, twenty rounds
+npm run campaign -- --all-builds             # all six boards, twenty-one rounds
 npm run campaign -- --build sniper --runs 40 --json
 ```
 
@@ -76,7 +76,7 @@ other.
 `npm run sim` places towers free and refreshes lives each round, so it measures
 one round's pressure in isolation.
 
-`npm run campaign` plays whole twenty-round runs on a real purse, so it measures
+`npm run campaign` plays whole twenty-one-round runs on a real purse, so it measures
 what a player could actually afford by the time a round arrived. **This is the
 one that decides whether the game is balanced**, because a round is only ever as
 hard as the board that money could buy. Its builds live in `src/sim/builds.ts`

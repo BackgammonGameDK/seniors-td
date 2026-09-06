@@ -1,7 +1,7 @@
 import type { EnemyId } from './types.ts';
 
 /**
- * The twenty authored rounds.
+ * The twenty-one authored rounds.
  *
  * Composition is the difficulty dial, and it is deliberately not "the same
  * round but more of it". Each new troublemaker arrives in a quiet round of its
@@ -72,19 +72,22 @@ export const WAVES: Wave[] = [
   { groups: [g('gang', 19, 115), g('mike', 11, 200, 434), g('skye', 9, 200, 807)], scale: 1.63 },
   // 17: the armour round, with Tinas turning off whatever is handling it.
   { groups: [g('ben', 13, 181), g('mike', 22, 103, 451), g('tina', 10, 200, 842)], scale: 1.67 },
-  // 18: mass. Mikes and Gangs, arriving for half a minute without a gap.
-  { groups: [g('mike', 26, 91), g('gang', 21, 113, 468)], scale: 1.72 },
-  // 19: the swarm again, much larger, with everything awkward mixed in.
+  // 18: Duke, who keeps dropping Runaways for as long as he's up.
+  { groups: [g('sam', 14, 110), g('duke', 1, 0, 700)], scale: 1.70 },
+  // 19: mass. Mikes and Gangs, arriving for half a minute without a gap.
+  { groups: [g('mike', 26, 91), g('gang', 21, 113, 468), g('duke', 1, 0, 1600)], scale: 1.72 },
+  // 20: the swarm again, much larger, with everything awkward mixed in.
   {
     groups: [
       g('sam', 88, 27),
       g('ben', 16, 158, 486),
       g('gang', 25, 99, 911),
       g('tina', 12, 200, 1337),
+      g('duke', 2, 800, 1900),
     ],
     scale: 1.76,
   },
-  // 20: everything, for half a minute. Nothing new -- the last round is the
+  // 21: everything, for half a minute. Nothing new -- the last round is the
   // whole game at once rather than a surprise.
   {
     groups: [
@@ -93,6 +96,7 @@ export const WAVES: Wave[] = [
       g('tina', 10, 200, 946),
       g('gang', 18, 145, 1388),
       g('skye', 13, 200, 1831),
+      g('duke', 2, 700, 2400),
     ],
     scale: 1.8,
   },

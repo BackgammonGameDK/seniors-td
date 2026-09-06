@@ -10,7 +10,7 @@ import { parseLoadout } from '../src/sim/loadout.ts';
  * These are not assertions about whether the game is winnable -- `npm run sim`
  * answers that one round at a time. They are assertions about the *shape* of a
  * campaign, which is the thing that quietly rots when a tower's cost changes
- * and nobody replays twenty rounds afterwards. Each one is written to a number
+ * and nobody replays twenty-one rounds afterwards. Each one is written to a number
  * that was measured, with enough slack that ordinary drift does not trip it and
  * a real regression does.
  *
@@ -69,7 +69,7 @@ describe('the shape of a campaign', () => {
     // The wall belongs at the end. If boards are dying in the middle, the ramp
     // has a spike in it rather than a slope.
     for (const r of results) {
-      expect(r.livesCurve[10]!, `${r.name} after round 11`).toBeGreaterThan(r.livesCurve[19]!);
+      expect(r.livesCurve[10]!, `${r.name} after round 11`).toBeGreaterThan(r.livesCurve[20]!);
       expect(r.livesCurve[10]!, `${r.name} still alive at round 11`).toBeGreaterThan(0);
     }
   });
