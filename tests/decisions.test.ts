@@ -19,6 +19,9 @@ import {
   endOverlay,
   enemyReadout,
   facingAngle,
+  focusAfterTap,
+  focusKey,
+  focusedTowerId,
   hudReadouts,
   roundReadout,
   recordingOf,
@@ -165,8 +168,11 @@ describe('the inspect panel never shows the previous tower', () => {
     expect(panelKey(tower({ id: 1 }))).not.toBe(panelKey(tower({ id: 2 })));
   });
 
-  it('changes its key when a blockade takes damage', () => {
-    expect(panelKey(tower({ def: 'walter', hp: 220 }))).not.toBe(
+  it('ignores health, which only the stat rows redraw for', () => {
+    // Same reason as the running total below. A regenerating Walter's health
+    // moves six times a second, and rebuilding the panel that often would tear
+    // down the upgrade card under the pointer on every tick of it.
+    expect(panelKey(tower({ def: 'walter', hp: 220 }))).toBe(
       panelKey(tower({ def: 'walter', hp: 100 })),
     );
   });
@@ -731,5 +737,84 @@ describe('recording a played board', () => {
 
     const run = runCampaign(parseLoadout(recorded), 1);
     expect(run.planBought).toBeGreaterThan(0);
+  });
+});
+
+describe('a tapped troublemaker stays on screen after the frame it was tapped in', () => {
+  // The bug this is named after: `Ui` kept its own copy of what the panel was
+  // showing, `showEnemy` wrote into that copy, and the next frame -- driven by
+  // main's state, which knew nothing of it -- decided the panel should close.
+  // The panel now has one owner, and its key is a pure function of what is on
+  // screen, so a frame that changes nothing cannot decide to close it.
+  const walking = { id: 7, def: 'mike', hp: 90, scale: 1, shield: 0 } as const;
+
+  it('keeps the same key frame after frame while nothing about it changes', () => {
+    const first = focusKey({ kind: 'enemy', enemy: walking });
+    const second = focusKey({ kind: 'enemy', enemy: { ...walking } });
+    expect(second).toBe(first);
+    expect(second).not.toBe(focusKey(null));
+  });
+
+  it('redraws when the health comes down', () => {
+    expect(focusKey({ kind: 'enemy', enemy: { ...walking, hp: 40 } })).not.toBe(
+      focusKey({ kind: 'enemy', enemy: walking }),
+    );
+  });
+
+  it('redraws when a Ben starts shielding it', () => {
+    expect(focusKey({ kind: 'enemy', enemy: { ...walking, shield: 4 } })).not.toBe(
+      focusKey({ kind: 'enemy', enemy: walking }),
+    );
+  });
+
+  it('tells two troublemakers apart even when they read identically', () => {
+    expect(focusKey({ kind: 'enemy', enemy: { ...walking, id: 8 } })).not.toBe(
+      focusKey({ kind: 'enemy', enemy: walking }),
+    );
+  });
+
+  it('never collides with a defender panel', () => {
+    expect(focusKey({ kind: 'enemy', enemy: walking })).not.toBe(
+      focusKey({ kind: 'tower', tower: tower({ id: 7 }) }),
+    );
+  });
+});
+
+describe('what a tap on the board leaves the panel open on', () => {
+  it('shows the troublemaker under the finger, not the cell beneath it', () => {
+    expect(
+      focusAfterTap({ enemyHit: 3, towerId: 9, action: 'inspect', current: null }),
+    ).toEqual({ kind: 'enemy', id: 3 });
+  });
+
+  it('opens the tapped defender', () => {
+    expect(
+      focusAfterTap({ enemyHit: null, towerId: 9, action: 'inspect', current: null }),
+    ).toEqual({ kind: 'tower', id: 9 });
+  });
+
+  it('closes on the tap that means close', () => {
+    expect(
+      focusAfterTap({
+        enemyHit: null,
+        towerId: null,
+        action: 'close',
+        current: { kind: 'tower', id: 9 },
+      }),
+    ).toBeNull();
+  });
+
+  it('leaves the panel alone while a tower is being placed', () => {
+    // Buying a defender is not a decision about what you were reading.
+    const open = { kind: 'enemy', id: 3 } as const;
+    for (const action of ['place', 'unarm', 'nothing'] as const) {
+      expect(focusAfterTap({ enemyHit: null, towerId: null, action, current: open })).toBe(open);
+    }
+  });
+
+  it('names the focused defender, and nothing else', () => {
+    expect(focusedTowerId({ kind: 'tower', id: 9 })).toBe(9);
+    expect(focusedTowerId({ kind: 'enemy', id: 9 })).toBeNull();
+    expect(focusedTowerId(null)).toBeNull();
   });
 });

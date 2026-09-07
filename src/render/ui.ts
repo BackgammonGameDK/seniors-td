@@ -21,6 +21,7 @@ import {
   hoveredStat,
   endOverlay,
   enemyReadout,
+  focusKey,
   panelKey,
   pathCard,
   previewStats,
@@ -31,6 +32,7 @@ import {
   upgradeCardState,
 } from './decisions.ts';
 import { towerArtUrl } from './sprites.ts';
+import type { FocusView } from './decisions.ts';
 import type { Speed } from './clock.ts';
 
 /** How long the absorbed-hit explanation stays up after the last such hit. */
@@ -77,14 +79,23 @@ export class Ui {
   private runState = { status: 'idle', paused: false };
   private lastPanel = '';
   private lastPreview = -1;
-  private inspected: Tower | null = null;
+  /**
+   * The tower the panel is currently showing, taken from the last `sync` and
+   * read by the buttons inside the panel.
+   *
+   * Written in `syncInspect` and nowhere else. This module owns no panel state
+   * of its own: an earlier version let `showEnemy` write here from outside the
+   * sync, and the next frame -- driven by main, which knew nothing about it --
+   * closed the panel again.
+   */
+  private focusedTower: Tower | null = null;
   private hoverRange: number | null = null;
   /** Which upgrade card the pointer is on, so the stat rows can show what
    *  buying it would do. `null` whenever the pointer is anywhere else. */
   private hoverChoice: string | null = null;
-  /** `panelKey`, the running total and the hovered card: what the stat rows
-   *  were last drawn from, so they are rewritten only when one of the three
-   *  moves. */
+  /** `panelKey`, the health, the running total and the hovered card: what the
+   *  stat rows were last drawn from, so they are rewritten only when one of
+   *  the four moves. */
   private lastStats = '';
 
   /** What the range would become if the tier currently under the pointer
@@ -102,15 +113,18 @@ export class Ui {
     this.speedBtn.addEventListener('click', () => handlers.onCycleSpeed());
     el('inspectClose').addEventListener('click', () => handlers.onCloseInspect());
     el('restart').addEventListener('click', () => handlers.onRestart());
+    // Doubles as the troublemaker readout's Close, which is what its label
+    // says there: a troublemaker cannot be sent home for coins.
     this.sell.addEventListener('click', () => {
-      if (this.inspected) handlers.onSell(this.inspected);
+      if (this.focusedTower) handlers.onSell(this.focusedTower);
+      else handlers.onCloseInspect();
     });
     // One delegated listener rather than one per card, since the cards are
-    // rebuilt whenever `panelKey` changes.
+    // rebuilt whenever `focusKey` changes.
     this.upgrades.addEventListener('click', (ev) => {
       const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-choice]');
-      if (btn && btn.getAttribute('aria-disabled') !== 'true' && this.inspected) {
-        handlers.onBuyUpgrade(this.inspected, btn.dataset.choice!);
+      if (btn && btn.getAttribute('aria-disabled') !== 'true' && this.focusedTower) {
+        handlers.onBuyUpgrade(this.focusedTower, btn.dataset.choice!);
       }
     });
     // Same delegation for hover: any upgrade card previews its stats, and the
@@ -166,7 +180,7 @@ export class Ui {
 
   sync(
     world: World,
-    state: { selected: TowerId | null; inspected: Tower | null; paused: boolean; speed: Speed },
+    state: { selected: TowerId | null; focus: FocusView; paused: boolean; speed: Speed },
   ): void {
 
     for (const id of TOWER_IDS) {
@@ -205,41 +219,67 @@ export class Ui {
       absorbing: this.absorbTicks > 0,
     });
 
-    this.syncInspect(state.inspected, world.gold);
+    this.syncInspect(state.focus, world.gold);
     this.syncOverlay(world);
   }
 
-  private syncInspect(t: Tower | null, gold: number): void {
-    this.inspected = t;
+  private syncInspect(view: FocusView, gold: number): void {
+    this.focusedTower = view?.kind === 'tower' ? view.tower : null;
     // The neighbours list and the inspect/upgrade panel are always exact
     // opposites -- there's nowhere on this layout for both at once.
-    this.towerPanel.hidden = t !== null;
-    const key = panelKey(t);
+    this.towerPanel.hidden = view !== null;
+    const key = focusKey(view);
     if (key === this.lastPanel) {
-      // panelKey doesn't include gold, so an upgrade that was unaffordable
+      // focusKey doesn't include gold, so an upgrade that was unaffordable
       // when this panel was built can become affordable while it's still
       // open (gold keeps arriving mid-round) without anything else here
       // changing. Refresh just the affordability of what's already on
       // screen instead of skipping the frame outright.
-      if (t) {
+      if (this.focusedTower) {
         this.refreshUpgradeAffordability(gold);
-        this.paintStats(t);
+        this.paintStats(this.focusedTower);
       }
       return;
     }
     this.lastPanel = key;
 
-    if (!t) {
+    if (!view) {
       this.inspect.hidden = true;
       return;
     }
     this.inspect.hidden = false;
+    if (view.kind === 'enemy') {
+      this.paintEnemy(view.enemy);
+      return;
+    }
+    const t = view.tower;
     const card = towerCard(t.def);
     this.inspectTitle.textContent = card.name;
     this.paintStats(t);
     this.reserveStatHeight(t);
     this.upgrades.innerHTML = this.renderUpgrades(t, gold);
     this.sell.textContent = `Send home (+${refundOf(t.def)})`;
+  }
+
+  /**
+   * The read-out for a tapped troublemaker, shown in the same panel.
+   *
+   * Repainted whenever `focusKey` moves, which is whenever the words would
+   * read differently: health coming down, or a shield arriving as it walks
+   * past a Ben.
+   */
+  private paintEnemy(e: Parameters<typeof enemyReadout>[0]): void {
+    const r = enemyReadout(e);
+    this.inspectTitle.textContent = r.name;
+    // A troublemaker has no upgrades to preview, so it drops the height a
+    // tower panel reserved -- otherwise a two-line troublemaker sits in the
+    // blank space the last defender's stat block needed.
+    this.inspectBody.style.minHeight = '';
+    this.inspectBody.innerHTML = r.lines
+      .map((line) => `<div class="statrow"><span>${line}</span></div>`)
+      .join('');
+    this.upgrades.innerHTML = '';
+    this.sell.textContent = 'Close';
   }
 
   /**
@@ -251,11 +291,12 @@ export class Ui {
    * rewritten on every frame.
    */
   private paintStats(t: Tower): void {
-    // The running total is kept out of `panelKey` on purpose. A changed
-    // panelKey rebuilds the whole panel, which would re-measure the reserved
-    // height and tear down the upgrade card under the pointer on every kill.
-    // Only this key needs it, because only `inspectBody` shows the total.
-    const key = `${panelKey(t)}|${t.sentHome}|${this.hoverChoice ?? ''}`;
+    // The running total and the health are kept out of `panelKey` on purpose.
+    // A changed panelKey rebuilds the whole panel, which would re-measure the
+    // reserved height and tear down the upgrade card under the pointer on
+    // every kill -- and, on a regenerating Walter, six times a second. Only
+    // this key needs them, because only `inspectBody` shows them.
+    const key = `${panelKey(t)}|${Math.ceil(t.hp)}|${t.sentHome}|${this.hoverChoice ?? ''}`;
     if (key === this.lastStats) return;
     this.lastStats = key;
     this.inspectBody.innerHTML = this.statRowsHtml(t, this.hoverChoice);
@@ -390,24 +431,6 @@ export class Ui {
       if (affordable) btn.removeAttribute('aria-disabled');
       else btn.setAttribute('aria-disabled', 'true');
     }
-  }
-
-  /** The read-out for a tapped troublemaker, shown in the same panel. */
-  showEnemy(e: Parameters<typeof enemyReadout>[0]): void {
-    const r = enemyReadout(e);
-    this.lastPanel = `enemy:${r.name}:${r.lines.join('|')}`;
-    this.inspected = null;
-    this.inspect.hidden = false;
-    this.inspectTitle.textContent = r.name;
-    // An enemy has no upgrades to preview, so it drops the height a tower
-    // panel reserved -- otherwise a two-line troublemaker sits in the blank
-    // space the last defender's stat block needed.
-    this.inspectBody.style.minHeight = '';
-    this.inspectBody.innerHTML = r.lines
-      .map((line) => `<div class="statrow"><span>${line}</span></div>`)
-      .join('');
-    this.upgrades.innerHTML = '';
-    this.sell.textContent = 'Close';
   }
 
   private syncOverlay(world: World): void {

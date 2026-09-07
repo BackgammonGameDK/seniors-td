@@ -33,9 +33,20 @@ Found by reading the whole codebase and measuring, not by playing. Ranked
 roughly by how much they matter. The three that were fixed straight away are
 in PRs #49 and #50; these are what was left.
 
-### 1. Tapping a troublemaker shows its readout for one frame
+### 1. ~~Tapping a troublemaker shows its readout for one frame~~
 
-The whole "what is this thing" feature is effectively dead in the shipped
+Done. The panel has one owner in `main.ts` -- a `Focus` of `{ kind, id }`
+resolved against the world each frame -- `showEnemy` is gone as a side door,
+and the transition rules live in `decisions.ts` as `focusAfterTap`,
+`focusedTowerId` and `focusKey`, tested under a heading named after the bug.
+Two things came free with it: the readout is live, so health counts down and
+the shield line appears as a Ben walks past, and the panel closes itself when
+its troublemaker is sent home. The `Close` button, dead for the same reason,
+works.
+
+The diagnosis is kept below because it is why the fix is shaped this way.
+
+The whole "what is this thing" feature was effectively dead in the shipped
 game. Verified in the browser: immediately after the tap `#inspect` is
 visible and titled correctly, and after the next `frame()` it is hidden and
 the build menu is back.
@@ -95,14 +106,12 @@ never reached the renderer. Feed the tick count from `frame()` into
   in `canvas.ts` are keyed by tower id and never pruned when a tower is sold
   or falls. Bounded by `nextId` over a session, so small, but trivial to fix
   by dropping ids absent from `world.towers` once a round.
-- **Inspecting a regenerating Walter rebuilds the whole panel several times a
-  second.** `panelKey` includes `Math.ceil(t.hp)`; with `rally` (regen 6/s)
-  that changes six times a second, and each rebuild runs `reserveStatHeight`,
-  which writes `innerHTML` and reads `offsetHeight` five times -- five forced
-  synchronous layouts -- and destroys the upgrade card under the pointer.
-  That is precisely the flicker the surrounding code works hard to avoid. Move
-  `hp` out of `panelKey` and into the `paintStats` key, where `sentHome`
-  already lives for the same reason.
+- ~~**Inspecting a regenerating Walter rebuilds the whole panel several times
+  a second.**~~ Done alongside the readout fix above, which had to touch the
+  same key. `hp` has moved out of `panelKey` and into the `paintStats` key,
+  where `sentHome` already lived for the same reason, so a rebuild no longer
+  re-measures the reserved height or destroys the upgrade card under the
+  pointer six times a second.
 - **`rangeMult` is uncapped** in `advanceAuras` while `rateMult` is capped at
   `MAX_RATE_MULT`. Probably fine at 0.15 per Clara, but it is the same
   stacking shape that needed a cap once already.
