@@ -34,6 +34,27 @@ Not yet scheduled. Notes to self so these aren't lost.
    round. Left off Clara and Walter, who never deal damage and would sit at
    zero forever.
 
+## From playing, September 2026
+
+Noticed at the board rather than in the code.
+
+1. **Free play after round 21.** The campaign ends when the twenty-one
+   authored rounds are done. There should be something to carry on with
+   afterwards for a player who wants to keep going.
+
+2. **You cannot see what you have selected.** Tapping something should
+   visibly change it, and mostly it does not, so the tap reads as though
+   nothing happened. A defender with a range shows its range circle, which is
+   the only real feedback on the board today -- and even that is indirect,
+   since the circle says "this is how far I reach" rather than "this is the
+   one you picked". Everything else shows nothing: a troublemaker gets no mark
+   at all, and neither do Walter or Clara, who have no range circle to draw.
+   The white outline in `drawTower` only reaches defenders whose portrait has
+   not been painted yet, because it is drawn on the fallback circle that
+   stands in for the missing artwork -- so the better a character looks, the
+   less it responds to being tapped. Wants one mark that means "selected",
+   drawn for troublemakers and defenders alike and independent of range.
+
 ## From a code review, September 2026
 
 Found by reading the whole codebase and measuring, not by playing. Ranked
