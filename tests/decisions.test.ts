@@ -7,12 +7,16 @@ import { createWorld, placeTower, purchaseUpgrade } from '../src/sim/world.ts';
 import { TOWER_IDS } from '../src/sim/types.ts';
 import { AUTHORED_ROUNDS } from '../src/sim/waves.ts';
 import {
+  ABSORB_HINT_MS,
+  absorbHintLeft,
+  advanceFades,
   armTower,
   boardAction,
   capstoneLocked,
   cardState,
   describeStats,
   easeAngle,
+  easeAngleOver,
   hintText,
   hoveredStat,
   previewStats,
@@ -816,5 +820,58 @@ describe('what a tap on the board leaves the panel open on', () => {
     expect(focusedTowerId({ kind: 'tower', id: 9 })).toBe(9);
     expect(focusedTowerId({ kind: 'enemy', id: 9 })).toBeNull();
     expect(focusedTowerId(null)).toBeNull();
+  });
+});
+
+describe('the renderer ages what it draws in ticks, not in frames', () => {
+  // The bug this is named after: every fading thing decremented once per
+  // `draw()` call, which is once per screen refresh. On a 120Hz display that
+  // ran every effect at half its intended length, and at 3x speed -- three
+  // ticks between one frame and the next -- three times too long in the game's
+  // own time.
+  const fades = () => [{ life: 4 }, { life: 2 }];
+
+  it('ages by the ticks that happened, not by one', () => {
+    expect(advanceFades(fades(), 2)).toEqual([{ life: 2 }]);
+  });
+
+  it('retires in half the frames when a frame is worth two ticks', () => {
+    const slow = advanceFades(advanceFades(fades(), 1), 1);
+    const fast = advanceFades(fades(), 2);
+    expect(fast).toEqual(slow);
+  });
+
+  it('leaves everything alone on a frame worth no ticks', () => {
+    // Not an edge case: a 120Hz frame often falls between two ticks, and a
+    // paused game produces nothing else.
+    expect(advanceFades(fades(), 0)).toEqual(fades());
+  });
+
+  it('turns a tower by the same amount however the frames fall', () => {
+    const oneFrameOfThree = easeAngleOver(0, 1, 0.2, 3);
+    let threeFramesOfOne = 0;
+    for (let i = 0; i < 3; i++) threeFramesOfOne = easeAngle(threeFramesOfOne, 1, 0.2);
+    expect(oneFrameOfThree).toBeCloseTo(threeFramesOfOne, 12);
+    expect(easeAngleOver(0.5, 1, 0.2, 0)).toBe(0.5);
+  });
+});
+
+describe('the absorbed-hit hint is measured in seconds a player can read', () => {
+  it('starts full whenever another hit is absorbed', () => {
+    expect(absorbHintLeft(10, 16.7, true)).toBe(ABSORB_HINT_MS);
+  });
+
+  it('counts down in real time, so 3x speed does not cut it short', () => {
+    expect(absorbHintLeft(ABSORB_HINT_MS, 100, false)).toBe(ABSORB_HINT_MS - 100);
+  });
+
+  it('survives a tab coming back from the background', () => {
+    // One frame can arrive with seconds on it. Counting all of them would
+    // retire the hint before it had been on screen at all.
+    expect(absorbHintLeft(ABSORB_HINT_MS, 5000, false)).toBeGreaterThan(0);
+  });
+
+  it('stops at zero rather than going negative', () => {
+    expect(absorbHintLeft(10, 200, false)).toBe(0);
   });
 });

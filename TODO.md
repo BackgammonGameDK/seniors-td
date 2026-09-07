@@ -92,7 +92,7 @@ passes -- but nothing catches "the first fourteen rounds cost nothing", which
 is a long time to ask a player to stay interested. Worth a test asserting some
 pressure has landed by round 8-10.
 
-### 3. Render-side animation is frame-counted, not time-counted
+### 3. ~~Render-side animation is frame-counted, not time-counted~~
 
 `FLOATER_LIFE`, `BURST_LIFE`, `recoil` and `TURN_RATE` in
 `src/render/canvas.ts`, and `absorbTicks` in `src/render/ui.ts`, all decrement
@@ -104,8 +104,21 @@ once per `draw()`/`sync()` call -- per frame, not per tick. Two consequences:
   frame, so effects last three times as long in game-time.
 
 `src/render/clock.ts` already solved exactly this for the simulation; the fix
-never reached the renderer. Feed the tick count from `frame()` into
-`ingest`/`draw` and decay by ticks elapsed.
+never reached the renderer.
+
+Done. `frame()` now hands the tick count to a new `Renderer.advance`, which
+does all the ageing, so `draw` is read-only over what it draws -- the ageing
+used to happen inside `drawEffects` and `drawTower`, which is why it counted
+frames. The rules live in `decisions.ts` as `advanceFades` and `easeAngleOver`
+and are tested there.
+
+The absorbed-hit hint was deliberately left on real time rather than moved to
+ticks, and is now `ABSORB_HINT_MS = 3000` counted through `absorbHintLeft`. It
+is a sentence a player has to read: tied to game time it would flash past in
+one second at 3x speed, exactly when somebody watching their shots do nothing
+has least chance of reading why, and it would freeze unread on a pause. A very
+long frame -- a tab returning from the background -- is clamped so it cannot
+retire the hint before it has been seen.
 
 ### 4. Smaller things
 
