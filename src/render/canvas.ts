@@ -18,7 +18,7 @@ import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
-import { easeAngle, facingAngle, hudReadouts, roundReadout } from './decisions.ts';
+import { advanceFades, easeAngleOver, facingAngle, hudReadouts, roundReadout } from './decisions.ts';
 import type { Readout } from './decisions.ts';
 import { enemySprite, iconGlyph, iconSprite, shotSprite, towerSprite } from './sprites.ts';
 
@@ -38,7 +38,7 @@ const ROLL_SIZE = 15;
  */
 const SPRITE_SIZE = 42;
 /**
- * How much of the turn towards a new target a tower covers each frame.
+ * How much of the turn towards a new target a tower covers each tick.
  *
  * Low enough that the swing is visible rather than instant, high enough that
  * the character is looking the right way well before the shot lands.
@@ -73,8 +73,11 @@ interface Burst {
   max: number;
 }
 
+/** Both in simulated ticks, so 60 is a second however often the page draws. */
 const FLOATER_LIFE = 46;
 const BURST_LIFE = 18;
+/** Ticks of raised-off-the-ground kick after a defender fires. */
+const RECOIL_TICKS = 6;
 const ROAD_WIDTH = 46;
 
 const EVENT_COLOR: Record<SimEvent['type'], string> = {
@@ -386,6 +389,44 @@ export class Renderer {
     }
   }
 
+  /**
+   * Age everything the renderer animates by the ticks the simulation just ran.
+   *
+   * Called once a frame from `main.ts`, which already knows the tick count,
+   * and separate from `draw` on purpose: the header of this file promises the
+   * renderer is read-only over the simulation, and drawing that quietly aged
+   * what it drew was the reason every effect ran at half length on a 120Hz
+   * screen and three times too long at 3x speed.
+   */
+  advance(world: World, ticks: number): void {
+    // Sampled every frame, even one worth no ticks, because a shot is spotted
+    // by the cooldown jumping back up and the sample it is compared against
+    // has to keep up with the world.
+    for (const t of world.towers) {
+      const prev = this.lastCooldown.get(t.id) ?? 0;
+      if (t.cooldown > prev) this.recoil.set(t.id, RECOIL_TICKS);
+      this.lastCooldown.set(t.id, t.cooldown);
+    }
+    if (ticks <= 0) return;
+
+    const byId = new Map(world.enemies.map((e) => [e.id, e]));
+    for (const t of world.towers) {
+      const kick = this.recoil.get(t.id) ?? 0;
+      if (kick > 0) this.recoil.set(t.id, Math.max(0, kick - ticks));
+
+      const target = t.targetId === null ? undefined : byId.get(t.targetId);
+      // A tower with nothing in range keeps the angle it had. See `facing`.
+      if (target !== undefined) {
+        const held = this.facing.get(t.id) ?? 0;
+        const desired = facingAngle(t.x, t.y, target.x, target.y);
+        this.facing.set(t.id, easeAngleOver(held, desired, TURN_RATE, ticks));
+      }
+    }
+
+    this.bursts = advanceFades(this.bursts, ticks);
+    this.floaters = advanceFades(this.floaters, ticks);
+  }
+
   draw(
     world: World,
     opts: {
@@ -409,10 +450,7 @@ export class Renderer {
     }
 
     this.drawAuras(world);
-    // Built once rather than scanned per tower: every shooting tower needs to
-    // find the enemy it is facing, and the lane can hold a lot of bodies.
-    const byId = new Map(world.enemies.map((e) => [e.id, e]));
-    for (const t of world.towers) this.drawTower(t, opts.inspected?.id === t.id, byId);
+    for (const t of world.towers) this.drawTower(t, opts.inspected?.id === t.id);
     for (const e of world.enemies) this.drawEnemy(e);
     this.drawProjectiles(world);
     this.drawEffects();
@@ -618,25 +656,14 @@ export class Renderer {
     }
   }
 
-  private drawTower(t: Tower, isInspected: boolean, byId: Map<number, Enemy>): void {
+  private drawTower(t: Tower, isInspected: boolean): void {
     const g = this.g;
     const d = TOWERS[t.def];
     const look = TOWER_LOOK[t.def];
 
-    const prev = this.lastCooldown.get(t.id) ?? 0;
-    if (t.cooldown > prev) this.recoil.set(t.id, 6);
-    this.lastCooldown.set(t.id, t.cooldown);
-    const kick = this.recoil.get(t.id) ?? 0;
-    if (kick > 0) this.recoil.set(t.id, kick - 1);
-    const lift = kick * 0.5;
-
-    // The simulation says who the tower is aimed at; the angle is worked out
-    // here, because it is a drawing and not a decision the game turns on.
-    const target = t.targetId === null ? undefined : byId.get(t.targetId);
-    const held = this.facing.get(t.id) ?? 0;
-    const angle =
-      target === undefined ? held : easeAngle(held, facingAngle(t.x, t.y, target.x, target.y), TURN_RATE);
-    this.facing.set(t.id, angle);
+    // Both were worked out in `advance`; this only reads them.
+    const lift = (this.recoil.get(t.id) ?? 0) * 0.5;
+    const angle = this.facing.get(t.id) ?? 0;
 
     g.save();
     g.translate(t.x, t.y - lift);
@@ -859,9 +886,7 @@ export class Renderer {
       g.lineWidth = 3;
       g.stroke();
       g.globalAlpha = 1;
-      b.life--;
     }
-    this.bursts = this.bursts.filter((b) => b.life > 0);
 
     g.font = 'bold 14px "Trebuchet MS", sans-serif';
     g.textAlign = 'center';
@@ -878,9 +903,7 @@ export class Renderer {
       g.strokeText(f.text, x, f.y - 14 - t * 20);
       g.fillText(f.text, x, f.y - 14 - t * 20);
       g.globalAlpha = 1;
-      f.life--;
     }
-    this.floaters = this.floaters.filter((f) => f.life > 0);
   }
 
   /**

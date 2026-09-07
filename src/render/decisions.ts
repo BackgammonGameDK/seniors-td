@@ -696,6 +696,73 @@ export function easeAngle(current: number, desired: number, rate: number): numbe
   return current + diff * rate;
 }
 
+/**
+ * `easeAngle` applied once per simulated tick rather than once per frame.
+ *
+ * `rate` is a fraction of the remaining turn, so the steps compound and the
+ * turn cannot be done in one multiplication. A 120Hz display draws twice as
+ * often for the same ticks and a monitor that skipped a frame draws less
+ * often; going through the ticks means the swing takes the same simulated time
+ * on all of them, and none at all on a frame the clock gave no ticks to.
+ */
+export function easeAngleOver(
+  current: number,
+  desired: number,
+  rate: number,
+  ticks: number,
+): number {
+  let angle = current;
+  for (let i = 0; i < ticks; i++) angle = easeAngle(angle, desired, rate);
+  return angle;
+}
+
+// --- fading things, in ticks ----------------------------------------------
+
+/**
+ * Age a list of fading things by `ticks` and drop the finished ones.
+ *
+ * Everything the renderer fades -- damage numbers, hit bursts -- is counted in
+ * simulated ticks, not in frames drawn. The two used to be confused, which
+ * made every effect run at half its intended length on a 120Hz display and
+ * three times too long in game-time at 3x speed, where the simulation takes
+ * three ticks between one frame and the next.
+ *
+ * Ticks of zero is the ordinary case rather than an edge one: a 120Hz frame
+ * often falls between two ticks, and a paused game produces nothing but. It
+ * must leave the list exactly as it was.
+ */
+export function advanceFades<T extends { life: number }>(items: T[], ticks: number): T[] {
+  if (ticks <= 0) return items;
+  for (const item of items) item.life -= ticks;
+  return items.filter((item) => item.life > 0);
+}
+
+/** How long the absorbed-hit explanation stays up after the last such hit. */
+export const ABSORB_HINT_MS = 3000;
+
+/**
+ * The longest single frame the hint will count against itself.
+ *
+ * A tab left in the background can return with seconds of elapsed time in one
+ * frame, which would retire the hint before it had been on screen at all.
+ */
+const MAX_HINT_STEP_MS = 250;
+
+/**
+ * How much of the absorbed-hit hint is left, in real milliseconds.
+ *
+ * Real time rather than ticks, deliberately, and the one thing in the renderer
+ * that is: this is a sentence a player has to read. Tied to game time it would
+ * be gone in a second at 3x speed -- exactly when somebody watching their
+ * shots do nothing has least chance of reading why -- and it would freeze
+ * unread on a pause.
+ */
+export function absorbHintLeft(leftMs: number, elapsedMs: number, absorbed: boolean): number {
+  if (absorbed) return ABSORB_HINT_MS;
+  const step = Math.min(Math.max(0, elapsedMs), MAX_HINT_STEP_MS);
+  return Math.max(0, leftMs - step);
+}
+
 // --- recording a played board ---------------------------------------------
 
 /**

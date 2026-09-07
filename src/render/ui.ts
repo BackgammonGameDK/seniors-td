@@ -14,6 +14,7 @@ import { refundOf } from '../sim/world.ts';
 import { TOWER_LOOK } from '../shared/display.ts';
 import { UPGRADE_LOOK } from '../shared/upgrades.ts';
 import {
+  absorbHintLeft,
   capstoneLocked,
   cardState,
   describeStats,
@@ -35,9 +36,6 @@ import { towerArtUrl } from './sprites.ts';
 import type { FocusView } from './decisions.ts';
 import type { Speed } from './clock.ts';
 
-/** How long the absorbed-hit explanation stays up after the last such hit. */
-const ABSORB_HINT_TICKS = 180;
-
 function el<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
   if (!found) throw new Error(`missing #${id}`);
@@ -58,8 +56,8 @@ export interface UiHandlers {
 
 export class Ui {
   private hint = el<HTMLElement>('hint');
-  /** Frames left showing the absorbed-hit explanation. */
-  private absorbTicks = 0;
+  /** Real milliseconds left showing the absorbed-hit explanation. */
+  private absorbMs = 0;
   private preview = el<HTMLElement>('preview');
   private towerPanel = el<HTMLElement>('towerPanel');
   private towerList = el<HTMLElement>('towerList');
@@ -180,7 +178,15 @@ export class Ui {
 
   sync(
     world: World,
-    state: { selected: TowerId | null; focus: FocusView; paused: boolean; speed: Speed },
+    state: {
+      selected: TowerId | null;
+      focus: FocusView;
+      paused: boolean;
+      speed: Speed;
+      /** Real milliseconds since the last frame, for the one thing here that
+       *  is measured in them rather than in ticks. */
+      elapsedMs: number;
+    },
   ): void {
 
     for (const id of TOWER_IDS) {
@@ -208,15 +214,16 @@ export class Ui {
 
     // Held for a few seconds after the last one: absorbed hits arrive in ones
     // and twos, and a line that blinked out between them would be unreadable.
-    if (world.events.some((e) => e.type === 'hit' && e.text === 'absorbed')) {
-      this.absorbTicks = ABSORB_HINT_TICKS;
-    } else if (this.absorbTicks > 0) {
-      this.absorbTicks--;
-    }
+    // Counted in real milliseconds rather than ticks -- see `absorbHintLeft`.
+    this.absorbMs = absorbHintLeft(
+      this.absorbMs,
+      state.elapsedMs,
+      world.events.some((e) => e.type === 'hit' && e.text === 'absorbed'),
+    );
     this.hint.textContent = hintText({
       selected: state.selected,
       idle: world.status === 'idle',
-      absorbing: this.absorbTicks > 0,
+      absorbing: this.absorbMs > 0,
     });
 
     this.syncInspect(state.focus, world.gold);

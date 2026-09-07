@@ -264,12 +264,16 @@ function frame(now: number): void {
     step(world);
     renderer.ingest(world.events);
   }
+  // The renderer fades things in simulated ticks, not in frames drawn, so it
+  // is told how many just happened -- none, on a paused frame or a 120Hz one
+  // that fell between two ticks.
+  renderer.advance(world, ticks);
   // Resolved once, after the ticks: a tower knocked down or a troublemaker
   // sent home during them simply stops resolving, and the panel closes itself.
   const view = viewOf();
   const inspected = view?.kind === 'tower' ? view.tower : null;
   renderer.draw(world, { selected, hover, inspected, previewRange: ui.previewRange });
-  ui.sync(world, { selected, focus: view, paused, speed });
+  ui.sync(world, { selected, focus: view, paused, speed, elapsedMs: elapsed });
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
