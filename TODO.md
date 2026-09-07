@@ -16,8 +16,15 @@ Not yet scheduled. Notes to self so these aren't lost.
    tower is being inspected, and a path now shows only its next buyable
    tier rather than both at once, so the panel never shows more than one
    open card per path.
-4. **Start/pause/speed controls need a home that doesn't require
-   scrolling.** They currently sit below the fold on a normal viewport.
+4. ~~**Start/pause/speed controls need a home that doesn't require
+   scrolling.**~~ Done, and this note simply outlived the fix. `ebf38bf` took
+   `#controls` out of the page flow and gave it `position: absolute` inside
+   `#boardWrap`, and `3ee14ac` settled it in the bottom-right corner. The
+   buttons now float over the lawn, so they sit wherever the board sits and
+   cannot be pushed below anything. They are opaque dark rather than
+   see-through for a reason the CSS explains: a translucent element over the
+   canvas is at the mercy of how the browser composites the two, and rendered
+   too light in testing.
 
 ## Tower stats
 
