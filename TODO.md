@@ -101,15 +101,36 @@ transition rules in `decisions.ts` with a test named after this bug. Worth
 adding one jsdom smoke test that mounts `Ui`, calls `sync` twice, and asserts
 the readout survives frame two.
 
-### 2. The difficulty curve is flat for two thirds of the game
+### 2. The difficulty curve is flat for two thirds of the game -- for some boards
 
-Most builds take **zero damage until round 14 or 15**, then fall off a cliff.
-`sniper` holds 22 lives through nineteen rounds and loses all 22 in round 20.
+Most *generated* builds take **zero damage until round 14 or 15**, then fall
+off a cliff. `sniper` holds 22 lives through nineteen rounds and loses all 22
+in round 20. `tests/balance.test.ts` now has a reference-build section that
+would catch a played board sailing through untouched, which nothing did
+before, and `binoculars` joins `corner` as a recorded board.
 
-`tests/balance.test.ts` asserts the last rounds are the hard ones, and that
-passes -- but nothing catches "the first fourteen rounds cost nothing", which
-is a long time to ask a player to stay interested. Worth a test asserting some
-pressure has landed by round 8-10.
+A round of tuning against this went in and came back out, and what it measured
+is worth keeping:
+
+- **The flatness is the board, not the game.** `corner` loses points on two
+  rounds out of twenty-one. `binoculars`, the second played board, loses ten
+  at round 12 and six at round 14 on the same waves. Every conclusion drawn
+  from `corner` alone was a conclusion about an unusually strong knot.
+- **The middle pays for the end.** Bounties from a bigger round 10 bought
+  `corner` four more plan entries before round 20, and round 20 then cost it
+  nothing. Making the middle harder makes the end easier, through the purse.
+- **Hit points are not the lever.** Round 16 at `scale` 1.95 -- above round
+  21's -- still cost `corner` nothing. What gets past a board is bodies per
+  second.
+- **Swarms are all-or-nothing.** 48 Sams at gap 28 cost nothing; 52 at gap 26
+  cost six. Runners grade where a swarm cliffs -- but a runner group tuned to
+  cost `corner` four points took `binoculars` from a 94% clear rate to 63%.
+
+So the open question is not "make the middle harder". It is **why `corner`
+is immune to rounds that visibly hurt a board which also won**, and whether
+the answer is that `corner` is over-strong or that the middle rounds ask only
+one question. Answering it wants a third played board more than it wants
+another sweep.
 
 ### 3. ~~Render-side animation is frame-counted, not time-counted~~
 

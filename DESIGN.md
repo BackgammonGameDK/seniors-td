@@ -283,7 +283,22 @@ be.
 ## Balance: the difficulty the game is aimed at
 
 Measured with `npm run campaign -- --all-builds`, which plays whole twenty-one-round
-runs on a real purse against the six named boards in `src/sim/builds.ts`.
+runs on a real purse against the boards in `src/sim/builds.ts`.
+
+Those boards are not equals. Two of them -- `corner` and `binoculars` -- were
+played by hand and won with, captured with the `L` key, and kept verbatim. The
+rest are spending plans nobody has played. The played boards are what the
+difficulty is aimed at and `tests/balance.test.ts` asserts against them
+separately; the generated ones are a net that catches a change suiting one
+board and ruining the others. A generated board going red is a question about
+the board. A played board going red is a question about the game.
+
+The two played boards are also the reason the curve has not simply been made
+steeper in the middle. `corner`, a knot at the first hairpin, loses points on
+two rounds out of twenty-one. `binoculars`, seven Bills down the straight with
+no knitter at all, loses ten at round 12 and six at round 14 on exactly the
+same waves. A round of tuning aimed at the first one took the second from a
+94% clear rate to 63%, and was withdrawn. See TODO.md for what that measured.
 `npm run sim` answers a different question -- how hard is one round with a given
 board -- and cannot answer this one, because a round is only ever as hard as
 what the player could afford by the time it arrived.

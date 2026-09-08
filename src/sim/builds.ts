@@ -344,9 +344,37 @@ export interface Build {
   played: boolean;
 }
 
+/**
+ * A second board played by hand, deliberately without a Knitting Norah.
+ *
+ * Where `corner` is a knot of cheap fast hits with one Bill in it, this is the
+ * opposite reading of the same street: seven Binocular Bills taken all the way
+ * to Piercing Shot, one Clara to hurry them, and a Barbara and a Pete for the
+ * crowd. It matters because it shares almost nothing with `corner` -- if a
+ * change to the game suits one of them and not the other, that shows up here
+ * and nowhere in the generated boards.
+ */
+const BINOCULARS =
+  'bill@10,6 bill@10,6+b1 bill@10,6+b2 clara@8,6 clara@8,6+a1 bill@10,6+a1b2 pete@6,5 ' +
+  'bill@10,5 bill@10,5+b1 bill@10,5+a1b1 bill@10,5+a1b2 bill@10,6+a2b2 clara@8,6+a2 ' +
+  'clara@8,6+a2b1 clara@8,6+a2b2 clara@8,6+a2b2:secondRound bill@10,8 bill@10,8+b1 ' +
+  'bill@10,8+b2 bill@10,8+a1b2 bill@10,8+a2b2 bill@10,6+a2b2:piercingShot ' +
+  'bill@10,8+a2b2:piercingShot barbara@7,7 barbara@7,7+a1 barbara@7,7+a2 barbara@7,7+a2b1 ' +
+  'barbara@7,7+a2b2 barbara@7,7+a2b2:bigBatch bill@7,6 bill@7,6+b1 bill@7,6+b2 ' +
+  'bill@7,6+a1b2 bill@7,6+a2b2 bill@7,6+a2b2:piercingShot bill@9,5 bill@10,5+a2b2 ' +
+  'bill@10,5+a2b2:piercingShot bill@9,5+a1 bill@9,5+a1b1 bill@9,5+a1b2 bill@9,5+a2b2 ' +
+  'bill@9,5+a2b2:piercingShot bill@6,3 bill@6,3+a1 bill@6,3+a2 bill@6,3+a2b1 bill@6,3+a2b2 ' +
+  'bill@6,3+a2b2:piercingShot bill@8,5 bill@8,5+b1 bill@8,5+b2 bill@8,5+a1b2 bill@8,5+a2b2 ' +
+  'bill@8,5+a2b2:piercingShot';
+
 /** The recorded boards, in the order they were played. */
 const PLAYED_BUILDS: Omit<Build, 'played'>[] = [
   { name: 'corner', blurb: 'played by hand at the first hairpin, and won', loadout: CORNER },
+  {
+    name: 'binoculars',
+    blurb: 'played by hand with no knitters, seven binoculars down the street, and won',
+    loadout: BINOCULARS,
+  },
 ];
 
 export const BUILDS: Build[] = [

@@ -49,7 +49,7 @@ export const WAVES: Wave[] = [
   // 9: armour and interference together, with nothing cheap to soak the guns.
   { groups: [g('mike', 7, 200), g('tina', 4, 200, 313)], scale: 1.34 },
   // 10: Ben, whose shield is armour handed out to everyone standing near him.
-  { groups: [g('sam', 42, 32), g('ben', 5, 150, 150), g('skye', 4, 150, 220)], scale: 1.38 },
+  { groups: [g('sam', 25, 63), g('ben', 3, 200, 330)], scale: 1.38 },
   // 11: one of nearly everything, briefly -- a look at the rest of the game.
   {
     groups: [
@@ -63,27 +63,27 @@ export const WAVES: Wave[] = [
   // 12: splitting at volume. Every Gang that falls is two more problems.
   { groups: [g('gang', 17, 106), g('tina', 8, 200, 365)], scale: 1.46 },
   // 13: armour behind a shield. The round that asks for real damage per hit.
-  { groups: [g('mike', 18, 80), g('ben', 8, 120, 150), g('skye', 7, 135, 260)], scale: 1.51 },
+  { groups: [g('mike', 13, 149), g('ben', 6, 200, 382)], scale: 1.51 },
   // 14: the swarm round. A question about rate of fire, not damage per shot.
   { groups: [g('sam', 63, 30), g('gang', 14, 145, 399)], scale: 1.55 },
   // 15: three awkward things at once, none of them cheap to remove.
   { groups: [g('tina', 15, 141), g('ben', 12, 180, 416), g('mike', 12, 180, 773)], scale: 1.59 },
   // 16: splitters under a shield, with runners threading through them.
-  { groups: [g('gang', 22, 70), g('mike', 12, 120, 200), g('skye', 19, 95, 340)], scale: 1.63 },
+  { groups: [g('gang', 19, 115), g('mike', 11, 200, 434), g('skye', 9, 200, 807)], scale: 1.63 },
   // 17: the armour round, with Tinas turning off whatever is handling it.
   { groups: [g('ben', 13, 181), g('mike', 22, 103, 451), g('tina', 10, 200, 842)], scale: 1.67 },
   // 18: Duke, who keeps dropping Runaways for as long as he's up.
   { groups: [g('sam', 14, 110), g('duke', 1, 0, 700)], scale: 1.70 },
   // 19: mass. Mikes and Gangs, arriving for half a minute without a gap.
-  { groups: [g('mike', 34, 70), g('gang', 28, 88, 400), g('duke', 2, 700, 1300)], scale: 1.72 },
+  { groups: [g('mike', 26, 91), g('gang', 21, 113, 468), g('duke', 1, 0, 1600)], scale: 1.72 },
   // 20: the swarm again, much larger, with everything awkward mixed in.
   {
     groups: [
-      g('sam', 128, 21),
-      g('ben', 17, 150, 400),
-      g('gang', 27, 88, 760),
-      g('tina', 12, 200, 1200),
-      g('duke', 2, 800, 1700),
+      g('sam', 88, 27),
+      g('ben', 16, 158, 486),
+      g('gang', 25, 99, 911),
+      g('tina', 12, 200, 1337),
+      g('duke', 2, 800, 1900),
     ],
     scale: 1.76,
   },
@@ -91,12 +91,12 @@ export const WAVES: Wave[] = [
   // whole game at once rather than a surprise.
   {
     groups: [
-      g('mike', 34, 74),
-      g('ben', 18, 145, 380),
-      g('tina', 12, 170, 700),
-      g('gang', 26, 100, 1000),
-      g('skye', 16, 150, 1400),
-      g('duke', 3, 600, 2000),
+      g('mike', 25, 103),
+      g('ben', 13, 200, 503),
+      g('tina', 10, 200, 946),
+      g('gang', 18, 145, 1388),
+      g('skye', 13, 200, 1831),
+      g('duke', 2, 700, 2400),
     ],
     scale: 1.8,
   },
