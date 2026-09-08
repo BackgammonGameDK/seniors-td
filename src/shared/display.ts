@@ -115,4 +115,11 @@ export const PALETTE = {
   hudLabel: 'rgba(255,255,255,0.70)',
   rangeFill: 'rgba(255,255,255,0.08)',
   rangeLine: 'rgba(255,255,255,0.45)',
+  /**
+   * The mark on whatever is selected: the `--accent` the build menu uses for
+   * an armed card, so the board and the menu agree about what "picked" looks
+   * like. The pool beneath is the same colour carrying its own transparency.
+   */
+  selectMark: '#e07a5f',
+  selectPool: 'rgba(224,122,95,0.35)',
 } as const;

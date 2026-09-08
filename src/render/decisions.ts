@@ -151,7 +151,7 @@ export function focusAfterTap(opts: {
 /** A focus resolved against the world it names, ready to be drawn. */
 export type FocusView =
   | { kind: 'tower'; tower: Tower }
-  | { kind: 'enemy'; enemy: Pick<Enemy, 'id' | 'def' | 'hp' | 'scale' | 'shield'> }
+  | { kind: 'enemy'; enemy: Pick<Enemy, 'id' | 'def' | 'hp' | 'scale' | 'shield' | 'x' | 'y'> }
   | null;
 
 /**
@@ -161,6 +161,19 @@ export type FocusView =
  * readout is rewritten exactly when it would read differently -- health coming
  * down, a shield arriving as it walks past a Ben -- and not once a frame.
  */
+/**
+ * Where the board should mark what is selected, or nothing when nothing is.
+ *
+ * Position only. How big the mark has to be depends on whether that character
+ * has had its portrait painted yet, which is the renderer's business and not a
+ * decision -- see `drawSelectionMark`.
+ */
+export function focusMark(view: FocusView): { x: number; y: number } | null {
+  if (!view) return null;
+  if (view.kind === 'tower') return { x: view.tower.x, y: view.tower.y };
+  return { x: view.enemy.x, y: view.enemy.y };
+}
+
 export function focusKey(view: FocusView): string {
   if (!view) return 'none';
   if (view.kind === 'tower') return `tower:${panelKey(view.tower)}`;

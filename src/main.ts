@@ -271,8 +271,7 @@ function frame(now: number): void {
   // Resolved once, after the ticks: a tower knocked down or a troublemaker
   // sent home during them simply stops resolving, and the panel closes itself.
   const view = viewOf();
-  const inspected = view?.kind === 'tower' ? view.tower : null;
-  renderer.draw(world, { selected, hover, inspected, previewRange: ui.previewRange });
+  renderer.draw(world, { selected, hover, focus: view, previewRange: ui.previewRange });
   ui.sync(world, { selected, focus: view, paused, speed, elapsedMs: elapsed });
   requestAnimationFrame(frame);
 }
