@@ -33,13 +33,16 @@ export function boardAction(opts: {
   occupied: boolean;
   /** Whether the tapped cell is legal for the armed tower. */
   legal: boolean;
+  /** Whether the armed tower is still affordable. Omitted where cost
+   *  doesn't apply; defaults to true. */
+  affordable?: boolean;
   /** Whether the inspect panel is currently open on that same tower. */
   inspectingSame: boolean;
   /** Whether the inspect panel is open on anything at all. */
   hasInspected: boolean;
 }): BoardAction {
   if (opts.occupied) return opts.inspectingSame ? 'close' : 'inspect';
-  if (opts.selected) return opts.legal ? 'place' : 'unarm';
+  if (opts.selected) return opts.legal && opts.affordable !== false ? 'place' : 'unarm';
   // An empty, unarmed tap elsewhere on the board reads as "done looking at
   // that one" -- the same as tapping it again or pressing Escape.
   if (opts.hasInspected) return 'close';

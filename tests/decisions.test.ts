@@ -133,6 +133,19 @@ describe('what a tap on the board means', () => {
     ).toBe('unarm');
   });
 
+  it('a legal but unaffordable tap also drops the armed tower', () => {
+    expect(
+      boardAction({
+        selected: 'norah',
+        occupied: false,
+        legal: true,
+        affordable: false,
+        inspectingSame: false,
+        hasInspected: false,
+      }),
+    ).toBe('unarm');
+  });
+
   it('inspects an occupied cell even while a tower is armed', () => {
     expect(
       boardAction({
@@ -249,6 +262,12 @@ describe('build cards', () => {
 
   it('marks the armed one', () => {
     expect(cardState({ gold: 99, cost: 40, isSelected: true }).className).toContain('on');
+  });
+
+  it('dims the armed one too when it outspends the wallet', () => {
+    const state = cardState({ gold: 10, cost: 40, isSelected: true });
+    expect(state.className).toContain('poor');
+    expect(state.className).toContain('on');
   });
 
   it('gives every tower a name, a blurb and at least a cost', () => {

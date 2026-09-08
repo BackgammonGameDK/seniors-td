@@ -173,6 +173,7 @@ canvas.addEventListener('pointerdown', (ev) => {
     selected,
     occupied: existing !== undefined,
     legal: selected ? legalFor(selected, cell.col, cell.row) : false,
+    affordable: selected ? world.gold >= TOWERS[selected].cost : undefined,
     inspectingSame: existing !== undefined && focusedTower === existing.id,
     hasInspected: focus !== null,
   });

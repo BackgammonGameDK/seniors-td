@@ -53,13 +53,14 @@ Noticed at the board rather than in the code.
    `FocusView` rather than a tower, which is what let the board see a selected
    troublemaker at all.
 
-3. **An armed card with no money left should be easy to drop.** Selecting a
-   tower and placing it is fine, and the card staying armed afterwards is
-   fine too -- but if the placement leaves you without enough Pension Coins
-   for another one, the still-armed card should stop sitting there as a dead
-   end. Either unarm it automatically once you can no longer afford it, or
-   turn the card red to say so and then drop the arming on the next tap
-   anywhere on the board.
+3. ~~**An armed card with no money left should be easy to drop.**~~ Done --
+   the card already dimmed itself once unaffordable (`cardState` never
+   exempted the armed one from the `poor` class), so the only missing piece
+   was what a board tap then did. `boardAction` now folds affordability into
+   the same branch that already drops the arming on an illegal cell, so a
+   legal-but-unaffordable tap reads as `'unarm'` too -- no forced deselect
+   the instant gold dips (which could undo itself a second later on a kill),
+   only when you actually try to spend it.
 
 4. **Killing a splitter should cost more than one life.** Right now finishing
    off a troublemaker who breaks into two costs the same one life as any
