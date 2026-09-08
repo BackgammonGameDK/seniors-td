@@ -146,11 +146,38 @@ is worth keeping:
   cost six. Runners grade where a swarm cliffs -- but a runner group tuned to
   cost `corner` four points took `binoculars` from a 94% clear rate to 63%.
 
-So the open question is not "make the middle harder". It is **why `corner`
-is immune to rounds that visibly hurt a board which also won**, and whether
-the answer is that `corner` is over-strong or that the middle rounds ask only
-one question. Answering it wants a third played board more than it wants
-another sweep.
+So the open question is not "make the middle harder". It is why one played
+board is immune to rounds that visibly hurt another one. A third played board,
+`wall`, was recorded and answers a good part of it.
+
+#### What `wall` showed
+
+It clears every seed with 21.75 lives of 25, losing points only at rounds 4
+and 6 and nothing at all from round 7 to round 21. Two assertions fail because
+of it and are left failing: nobody-finishes-untouched, and the-end-is-the-hard-
+part. It owns seventeen plan entries at round 10, the same as `corner`, so it
+is not out-spending the curve.
+
+**The three garden walls do nothing.** Removing all three Walters from the
+board changes the result not at all -- still 100%, still 21.4 lives. The lane
+distances say why: the walls stand at 560-640, and the knot that does the
+killing is at 320-400. Everything is dead before it reaches them. Removing any
+other piece ends the run -- no Barbaras dies at round 5, no Norahs at round 13,
+no Claras at round 20 -- so the board is a splash-and-volume knot with a rate
+buff, and the blockades are ornament.
+
+**Splash throughput does not care how big the crowd is.** That is the likeliest
+reason no late round touches this shape. Every round from 17 to 21 is composed
+of *more bodies*, and a Barbara hitting all of them at once answers more bodies
+for free, while two Claras keep six Norahs firing through the pile. The only
+played board that volume hurts is `binoculars`, which kills one troublemaker at
+a time. So the back half of the game currently asks one question -- can you
+delete a crowd -- and a splash knot at the double-back has already answered it.
+
+Worth testing before anything is changed: Ben's shield absorbs a flat amount
+per hit and should be the counter to many weak hits, and round 20 carries
+sixteen Bens without denting this board. If the shield is not doing that, it
+is a better lead than any wave size.
 
 ### 3. ~~Render-side animation is frame-counted, not time-counted~~
 
