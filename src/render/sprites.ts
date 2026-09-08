@@ -101,6 +101,11 @@ export function towerArtUrl(id: TowerId): string | null {
   return TOWER_ART[id] ?? null;
 }
 
+/** The address of a troublemaker's picture, on the same terms. */
+export function enemyArtUrl(id: EnemyId): string | null {
+  return ENEMY_ART[id] ?? null;
+}
+
 /** The tower's picture, or `null` while it loads or if it was never drawn. */
 export function towerSprite(id: TowerId): HTMLImageElement | null {
   return ready(TOWER_ART[id]);
