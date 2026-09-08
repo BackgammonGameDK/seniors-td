@@ -53,6 +53,26 @@ Noticed at the board rather than in the code.
    `FocusView` rather than a tower, which is what let the board see a selected
    troublemaker at all.
 
+3. **An armed card with no money left should be easy to drop.** Selecting a
+   tower and placing it is fine, and the card staying armed afterwards is
+   fine too -- but if the placement leaves you without enough Pension Coins
+   for another one, the still-armed card should stop sitting there as a dead
+   end. Either unarm it automatically once you can no longer afford it, or
+   turn the card red to say so and then drop the arming on the next tap
+   anywhere on the board.
+
+4. **Killing a splitter should cost more than one life.** Right now finishing
+   off a troublemaker who breaks into two costs the same one life as any
+   other kill that gets through, even though it hands you two troublemakers
+   in the same spot instead of zero. That can leave you worse off than if
+   you had dealt less damage and not triggered the split at all. A split
+   kill should probably cost two or three lives, not one.
+
+5. **The "next round brings" overview should let you inspect one enemy at a
+   time.** It currently shows the round's composition as a group; it should
+   be possible to click an enemy in that overview and see that one
+   troublemaker's own information, the way tapping it on the board does.
+
 ## From a code review, September 2026
 
 Found by reading the whole codebase and measuring, not by playing. Ranked

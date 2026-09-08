@@ -367,6 +367,35 @@ const BINOCULARS =
   'bill@6,3+a2b2:piercingShot bill@8,5 bill@8,5+b1 bill@8,5+b2 bill@8,5+a1b2 bill@8,5+a2b2 ' +
   'bill@8,5+a2b2:piercingShot';
 
+/**
+ * A third board played by hand: garden walls, cinnamon rolls and knitters.
+ *
+ * The only played board that puts Walter in the road at all -- three of them,
+ * side by side at the bottom of the street -- and the only one built around
+ * Barbara's splash rather than around a gun. Six Norahs and two Claras behind
+ * the wall do the killing while the blockades hold the crowd in the splash.
+ *
+ * It completes the set: `corner` is cheap fast hits in a knot, `binoculars` is
+ * a few big ones down a straight, and this is holding ground and letting an
+ * area do the work. Three different answers to the same street.
+ */
+const WALL =
+  'barbara@7,7 barbara@3,5 barbara@9,7 barbara@7,7+a1 barbara@7,7+a2 barbara@3,5+a1 ' +
+  'clara@7,6 clara@7,6+a1 clara@7,6+a1b1 norah@8,6 norah@8,6+b1 norah@8,6+b2 ' +
+  'barbara@7,7+a2b1 barbara@7,7+a2b2 norah@8,6+a1b2 norah@8,6+a2b2 ' +
+  'norah@8,6+a2b2:longYarn barbara@7,7+a2b2:bigBatch clara@7,6+a2b1 clara@7,6+a2b2 ' +
+  'clara@7,6+a2b2:secondRound walter@9,9 walter@8,9 walter@7,9 walter@7,9+b1 ' +
+  'walter@7,9+a1b1 walter@7,9+a2b1 walter@7,9+a2b2 norah@6,6 norah@6,6+a1 ' +
+  'norah@6,6+a1b1 norah@6,6+a2b1 norah@6,6+a2b2 norah@6,6+a2b2:tripleKnit norah@6,5 ' +
+  'norah@6,5+a1 norah@6,5+a2 norah@6,5+a2b1 norah@6,5+a2b2 norah@6,5+a2b2:tripleKnit ' +
+  'norah@7,5 norah@7,5+a1 norah@7,5+a1b1 norah@7,5+a2b1 norah@7,5+a2b2 ' +
+  'norah@7,5+a2b2:tripleKnit clara@8,7 clara@8,7+a1 clara@8,7+a2 clara@8,7+a2b1 ' +
+  'clara@8,7+a2b2 clara@8,7+a2b2:doubleEspresso barbara@9,7+a1 bill@10,7 bill@10,7+b1 ' +
+  'bill@10,7+b2 bill@10,7+a1b2 bill@10,7+a2b2 bill@10,7+a2b2:deadeye norah@6,7 ' +
+  'norah@6,7+a1 norah@6,7+a2 norah@6,7+a2b1 norah@6,7+a2b2 norah@6,7+a2b2:tripleKnit ' +
+  'norah@9,6 norah@9,6+a1 norah@9,6+a2 norah@9,6+a2b1 norah@9,6+a2b2 ' +
+  'norah@9,6+a2b2:longYarn';
+
 /** The recorded boards, in the order they were played. */
 const PLAYED_BUILDS: Omit<Build, 'played'>[] = [
   { name: 'corner', blurb: 'played by hand at the first hairpin, and won', loadout: CORNER },
@@ -374,6 +403,11 @@ const PLAYED_BUILDS: Omit<Build, 'played'>[] = [
     name: 'binoculars',
     blurb: 'played by hand with no knitters, seven binoculars down the street, and won',
     loadout: BINOCULARS,
+  },
+  {
+    name: 'wall',
+    blurb: 'played by hand behind three garden walls, cinnamon rolls doing the work, and won',
+    loadout: WALL,
   },
 ];
 
