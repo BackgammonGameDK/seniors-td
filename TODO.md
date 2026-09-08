@@ -174,10 +174,46 @@ played board that volume hurts is `binoculars`, which kills one troublemaker at
 a time. So the back half of the game currently asks one question -- can you
 delete a crowd -- and a splash knot at the double-back has already answered it.
 
-Worth testing before anything is changed: Ben's shield absorbs a flat amount
-per hit and should be the counter to many weak hits, and round 20 carries
-sixteen Bens without denting this board. If the shield is not doing that, it
-is a better lead than any wave size.
+#### The shield was the answer, and Ben was too fragile to give it
+
+The lead was tested and it was right. Ben's whole identity is the aura -- a
+flat 2 off every hit landing within 90px of him -- and he had 55 hit points,
+which is less than a splash knot deletes on arrival. He died before he had
+protected anybody, so the one mechanic built to punish many weak hits never
+happened.
+
+Measured against the three played boards, at twelve seeds each:
+
+| change | corner | binoculars | wall |
+|---|---|---|---|
+| as shipped | 100% / 15.0 | 92% / 8.8 | 100% / 21.6 |
+| hp 55 -> 160 | 50% | 42% | 0% |
+| shieldAura 2 -> 5 | 17% | 25% | 50% / 12.3 |
+| auraRange 90 -> 140 | 50% | 42% | 100% / 20.6 |
+
+Only survival reaches the knot. A stronger shield costs a board that kills one
+at a time far more than it costs a splash board, which is backwards, and more
+range does nothing to a knot at all.
+
+**Ben now has 95 hit points.** Every played board still clears, `wall` pays
+something at last, and the whole cohort feels round 20:
+
+    build      held 20   lives left        build      held 20   lives left
+    support        63%          2.6        corner         88%         10.7
+    mixed          75%          4.3        binoculars     75%          7.0
+                                           wall          100%         17.3
+
+Five of the nine boards now clear at least half the time, where three did
+before, so this was a gain in variety and not only in difficulty.
+
+Two things it did not fix, both worth knowing:
+
+- **`wall` ends on 17.3 against a threshold of 18.** The assertion passes on a
+  thin margin and seed noise could flip it. If it does, the answer is another
+  played board or a harder look at the knot, not a bigger number.
+- **Rounds 16 to 21 still cost `wall` nothing.** The change taxes it once, at
+  round 15. The back half of the game still asks the one question a splash
+  knot has already answered.
 
 ### 3. ~~Render-side animation is frame-counted, not time-counted~~
 

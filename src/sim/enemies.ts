@@ -59,7 +59,22 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
   },
   ben: {
     id: 'ben',
-    hp: 55,
+    // 55 for a long time, which meant his shield never happened. Ben's whole
+    // identity is the aura -- a flat 2 off every hit landing within 90px of
+    // him -- and 55 hit points is less than a splash knot deletes on arrival,
+    // so he died before he had protected anybody. Measured against the three
+    // played boards: at 55 he was worth nothing to round 20, and `wall`
+    // finished the whole campaign on 21.6 lives of 25 having lost nothing
+    // after round 6. At 95 he lives long enough to tax the many small hits he
+    // is supposed to punish, and `wall` finishes on 17.7 instead.
+    //
+    // Hit points rather than a bigger shield on purpose. A stronger shield
+    // costs a board that kills one troublemaker at a time far more than it
+    // costs a splash knot -- at shieldAura 5, `binoculars` fell to a 25%
+    // clear rate while `wall` still cleared half -- which is backwards. More
+    // range does nothing to a knot at all. Only survival reaches the shape
+    // that was ignoring him.
+    hp: 95,
     speed: 1.15,
     armour: 1,
     bounty: 5,
