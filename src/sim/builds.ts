@@ -297,19 +297,25 @@ const SPECS: Record<string, BuildSpec> = {
 };
 
 /**
- * A board played by hand and recorded, kept exactly as it was played.
+ * The boards played by hand and recorded, kept exactly as they were played.
  *
- * Written out rather than generated, because that is the point of it: it is
- * the only entry here that is evidence rather than a proposal, and rewriting
- * it into the vocabulary above would quietly turn it back into a proposal. It
- * was captured with the `L` key while playing at localhost:5173 -- see
- * CLAUDE.md -- on a run that was won.
+ * Written out rather than generated, because that is the point of them: they
+ * are the only entries here that are evidence rather than a proposal, and
+ * rewriting one into the vocabulary above would quietly turn it back into a
+ * proposal. Each was captured with the `L` key while playing at
+ * localhost:5173 -- see CLAUDE.md.
  *
- * Keep it verbatim. If a change to the game stops this board clearing, that is
- * a finding worth having, and it is only worth having while the board is still
- * the one somebody actually won with.
+ * Keep every one of them verbatim. If a change to the game stops a played
+ * board clearing, that is a finding worth having, and it is only worth having
+ * while the board is still the one somebody actually played.
+ *
+ * These outrank the generated boards rather than standing beside them. The
+ * difficulty curve is tuned until *these* feel it; `SPECS` above is the net
+ * that catches a change which happens to suit one board and ruins the rest.
+ * A generated plan going red is a question about the plan. A played board
+ * going red is a question about the game.
  */
-const PLAYED =
+const CORNER =
   'norah@3,4 norah@7,6 norah@7,6+b1 norah@7,6+a1b1 norah@7,6+a1b2 norah@3,4+a1 ' +
   'norah@7,6+a2b2 norah@3,4+a1b1 norah@3,4+a2b1 bill@9,5 bill@9,5+b1 norah@3,4+a2b2 ' +
   'norah@7,6+a2b2:longYarn norah@3,4+a2b2:longYarn clara@6,5 clara@6,5+b1 clara@6,5+b2 ' +
@@ -328,16 +334,38 @@ export interface Build {
   blurb: string;
   /** The plan, in the grammar `parseLoadout` reads. */
   loadout: string;
+  /**
+   * Whether a person played this board, or `render` generated it.
+   *
+   * The distinction used to live only in a comment, which meant nothing
+   * downstream could act on it and the balance sweep weighed a recording and a
+   * proposal the same. `tests/balance.test.ts` now reads this.
+   */
+  played: boolean;
 }
+
+/** The recorded boards, in the order they were played. */
+const PLAYED_BUILDS: Omit<Build, 'played'>[] = [
+  { name: 'corner', blurb: 'played by hand at the first hairpin, and won', loadout: CORNER },
+];
 
 export const BUILDS: Build[] = [
   ...Object.entries(SPECS).map(([name, spec]) => ({
     name,
     blurb: spec.blurb,
     loadout: render(spec),
+    played: false,
   })),
-  { name: 'corner', blurb: 'played by hand at the first hairpin, and won', loadout: PLAYED },
+  ...PLAYED_BUILDS.map((b) => ({ ...b, played: true })),
 ];
+
+/**
+ * The boards a person actually played.
+ *
+ * What the difficulty curve is aimed at. Kept as its own export so a test can
+ * say which standard it is applying without re-deriving the distinction.
+ */
+export const REFERENCE_BUILDS: Build[] = BUILDS.filter((b) => b.played);
 
 export const BUILD_NAMES: string[] = BUILDS.map((b) => b.name);
 
