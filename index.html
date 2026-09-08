@@ -149,6 +149,24 @@
         padding: 22px 26px; max-width: 380px; text-align: center;
       }
       #overlay h2 { font-size: 20px; text-transform: none; letter-spacing: 0; opacity: 1; }
+      /* The recording box. Deliberately not a window.prompt: Chrome caps the
+         length of a prompt's default value and elides the middle with an
+         ellipsis, so a long board came out of it unparseable. A textarea holds
+         the whole thing however long it is, and can be selected and copied. */
+      #recording { position: fixed; inset: 0; display: grid; place-items: center;
+        background: rgba(30, 26, 22, .55); padding: 20px; z-index: 5; }
+      #recording > div {
+        background: var(--card); border: 2px solid var(--line); border-radius: 14px;
+        padding: 18px 20px; width: min(560px, 100%);
+      }
+      #recording h2 { font-size: 17px; text-transform: none; letter-spacing: 0; opacity: 1; }
+      #recordingText {
+        width: 100%; height: 150px; resize: vertical; font-family: ui-monospace, monospace;
+        font-size: 11px; line-height: 1.5; padding: 8px; border: 1px solid var(--line);
+        border-radius: 8px; background: var(--bg); color: var(--ink);
+      }
+      #recordingNote { font-size: 12px; opacity: .75; margin: 6px 0 10px; }
+      #recordingButtons { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
       [hidden] { display: none !important; }
     </style>
   </head>
@@ -193,6 +211,19 @@
         </aside>
       </main>
       <p id="hint"></p>
+    </div>
+
+    <div id="recording" hidden>
+      <div>
+        <h2>Your board so far, as a loadout</h2>
+        <p id="recordingNote"></p>
+        <textarea id="recordingText" readonly spellcheck="false"></textarea>
+        <div id="recordingButtons">
+          <button id="recordingSave">Save as a file</button>
+          <button id="recordingCopy">Copy</button>
+          <button id="recordingClose">Close</button>
+        </div>
+      </div>
     </div>
 
     <div id="overlay" hidden>

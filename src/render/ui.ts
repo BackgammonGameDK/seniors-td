@@ -75,6 +75,9 @@ export class Ui {
   private overlayTitle = el<HTMLElement>('overlayTitle');
   private overlayBody = el<HTMLElement>('overlayBody');
   private keepGoing = el<HTMLButtonElement>('keepGoing');
+  private recording = el<HTMLElement>('recording');
+  private recordingText = el<HTMLTextAreaElement>('recordingText');
+  private recordingNote = el<HTMLElement>('recordingNote');
 
   private cards = new Map<TowerId, HTMLButtonElement>();
   /** What the run button was last told, so a click knows what it means. */
@@ -122,6 +125,16 @@ export class Ui {
     });
     el('restart').addEventListener('click', () => handlers.onRestart());
     this.keepGoing.addEventListener('click', () => handlers.onKeepGoing());
+    el('recordingClose').addEventListener('click', () => {
+      this.recording.hidden = true;
+    });
+    el('recordingCopy').addEventListener('click', () => {
+      // Select as well as write: if the clipboard is refused the text is then
+      // sitting selected under the pointer, ready for the keyboard.
+      this.recordingText.select();
+      void navigator.clipboard?.writeText(this.recordingText.value).catch(() => {});
+    });
+    el('recordingSave').addEventListener('click', () => this.saveRecording());
     // Doubles as the troublemaker readout's Close, which is what its label
     // says there: a troublemaker cannot be sent home for coins.
     this.sell.addEventListener('click', () => {
@@ -459,6 +472,35 @@ export class Ui {
       if (affordable) btn.removeAttribute('aria-disabled');
       else btn.setAttribute('aria-disabled', 'true');
     }
+  }
+
+  /**
+   * Show a recorded board, in full.
+   *
+   * Not a `window.prompt`. Chrome caps how much of a prompt's default value it
+   * will show and cuts the middle out with an ellipsis, so a long board came
+   * back from it as text no harness could parse -- and since that is the text
+   * the player copies, the elision reached the file they pasted into. A
+   * textarea has no such limit.
+   */
+  showRecording(loadout: string, warning: string | null): void {
+    this.recordingText.value = loadout;
+    this.recordingNote.textContent =
+      warning ?? 'Copied. Paste it wherever you need it, or save it as a file.';
+    this.recording.hidden = false;
+    this.recordingText.focus();
+    this.recordingText.select();
+  }
+
+  /** Hand the loadout over as a file, which nothing can shorten on the way. */
+  private saveRecording(): void {
+    const blob = new Blob([this.recordingText.value], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'loadout.txt';
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   private syncOverlay(world: World): void {

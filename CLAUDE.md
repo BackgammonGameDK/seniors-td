@@ -75,7 +75,15 @@ npm run campaign -- --build corner --endless        # how far free play carries 
 
 While playing at localhost:5173, **press `L`**. It copies everything bought
 this run, in the order it was bought, as a loadout string, and shows it in a
-box in case the clipboard is refused. No developer tools needed.
+box with Copy and **Save as a file** in case the clipboard is refused. No
+developer tools needed.
+
+The box is a textarea rather than a `window.prompt` for a reason worth not
+rediscovering: Chrome caps how much of a prompt's default value it will show
+and cuts the middle out with an ellipsis. A board from a long run came back
+`bill@10,6+a1...8,9+a1b1` -- unparseable, and elided in the text the player
+copied, so it reached the file they pasted into. Saving as a file is the path
+nothing can shorten.
 
 ```bash
 npm run campaign -- --loadout "<the string>" --runs 20
