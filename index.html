@@ -126,6 +126,8 @@
       button:disabled, button[aria-disabled="true"] { opacity: .45; cursor: default; }
       #preview { display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; }
       #preview span { display: flex; align-items: center; gap: 4px; }
+      #preview span[data-enemy] { cursor: pointer; }
+      #preview span[data-enemy]:hover { text-decoration: underline; }
       .statrow { display: flex; justify-content: space-between; gap: 10px;
                  font-size: 12px; padding: 2px 0; border-bottom: 1px dotted var(--line); }
       .statrow:last-child { border-bottom: none; }

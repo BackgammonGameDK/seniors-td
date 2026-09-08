@@ -10,6 +10,7 @@ import { createClock, nextSpeed, ticksFor, TICK_MS } from './render/clock.ts';
 import type { Speed } from './render/clock.ts';
 import {
   boardAction,
+  enemyTypeView,
   focusAfterTap,
   focusedTowerId,
   pickEnemy,
@@ -26,7 +27,7 @@ import { Ui } from './render/ui.ts';
 import type { UiHandlers } from './render/ui.ts';
 import { BOARD, isBlockerCell, isBuildableCell } from './sim/path.ts';
 import { TOWERS } from './sim/towers.ts';
-import type { TowerId } from './sim/types.ts';
+import type { EnemyId, TowerId } from './sim/types.ts';
 import {
   createWorld,
   placeTower,
@@ -76,6 +77,7 @@ function viewOf(): FocusView {
     const t = world.towers.find((x) => x.id === f.id);
     return t ? { kind: 'tower', tower: t } : null;
   }
+  if (f.kind === 'enemyType') return enemyTypeView(f.id);
   const e = world.enemies.find((x) => x.id === f.id && x.alive);
   return e ? { kind: 'enemy', enemy: e } : null;
 }
@@ -117,6 +119,9 @@ const handlers: UiHandlers = {
   },
   onCloseInspect() {
     focus = null;
+  },
+  onInspectEnemyType(id: EnemyId) {
+    focus = { kind: 'enemyType', id };
   },
   onSell(t) {
     if (sellTower(world, t)) sold++;

@@ -7,7 +7,7 @@
  */
 import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
-import type { Tower, TowerId } from '../sim/types.ts';
+import type { EnemyId, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef, UPGRADES } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { refundOf } from '../sim/world.ts';
@@ -47,6 +47,7 @@ export interface UiHandlers {
   onStartWave(): void;
   onRestart(): void;
   onCloseInspect(): void;
+  onInspectEnemyType(id: EnemyId): void;
   onSell(t: Tower): void;
   onTogglePause(): void;
   onCycleSpeed(): void;
@@ -110,6 +111,12 @@ export class Ui {
     });
     this.speedBtn.addEventListener('click', () => handlers.onCycleSpeed());
     el('inspectClose').addEventListener('click', () => handlers.onCloseInspect());
+    // One delegated listener rather than one per row, since the rows are
+    // rebuilt wholesale whenever the wave index changes.
+    this.preview.addEventListener('click', (ev) => {
+      const span = (ev.target as HTMLElement).closest<HTMLElement>('span[data-enemy]');
+      if (span) handlers.onInspectEnemyType(span.dataset.enemy as EnemyId);
+    });
     el('restart').addEventListener('click', () => handlers.onRestart());
     // Doubles as the troublemaker readout's Close, which is what its label
     // says there: a troublemaker cannot be sent home for coins.
@@ -202,7 +209,9 @@ export class Ui {
       this.lastPreview = world.waveIndex;
       const rows = roundPreview(world.waveIndex);
       this.preview.innerHTML = rows.length
-        ? rows.map((r) => `<span>${r.glyph} ${r.name} <b>&times;${r.count}</b></span>`).join('')
+        ? rows
+            .map((r) => `<span data-enemy="${r.enemy}">${r.glyph} ${r.name} <b>&times;${r.count}</b></span>`)
+            .join('')
         : '<span>Nothing left to come.</span>';
     }
 
@@ -255,7 +264,7 @@ export class Ui {
       return;
     }
     this.inspect.hidden = false;
-    if (view.kind === 'enemy') {
+    if (view.kind === 'enemy' || view.kind === 'enemyType') {
       this.paintEnemy(view.enemy);
       return;
     }
