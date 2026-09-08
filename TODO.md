@@ -121,15 +121,99 @@ transition rules in `decisions.ts` with a test named after this bug. Worth
 adding one jsdom smoke test that mounts `Ui`, calls `sync` twice, and asserts
 the readout survives frame two.
 
-### 2. The difficulty curve is flat for two thirds of the game
+### 2. The difficulty curve is flat for two thirds of the game -- for some boards
 
-Most builds take **zero damage until round 14 or 15**, then fall off a cliff.
-`sniper` holds 22 lives through nineteen rounds and loses all 22 in round 20.
+Most *generated* builds take **zero damage until round 14 or 15**, then fall
+off a cliff. `sniper` holds 22 lives through nineteen rounds and loses all 22
+in round 20. `tests/balance.test.ts` now has a reference-build section that
+would catch a played board sailing through untouched, which nothing did
+before, and `binoculars` joins `corner` as a recorded board.
 
-`tests/balance.test.ts` asserts the last rounds are the hard ones, and that
-passes -- but nothing catches "the first fourteen rounds cost nothing", which
-is a long time to ask a player to stay interested. Worth a test asserting some
-pressure has landed by round 8-10.
+A round of tuning against this went in and came back out, and what it measured
+is worth keeping:
+
+- **The flatness is the board, not the game.** `corner` loses points on two
+  rounds out of twenty-one. `binoculars`, the second played board, loses ten
+  at round 12 and six at round 14 on the same waves. Every conclusion drawn
+  from `corner` alone was a conclusion about an unusually strong knot.
+- **The middle pays for the end.** Bounties from a bigger round 10 bought
+  `corner` four more plan entries before round 20, and round 20 then cost it
+  nothing. Making the middle harder makes the end easier, through the purse.
+- **Hit points are not the lever.** Round 16 at `scale` 1.95 -- above round
+  21's -- still cost `corner` nothing. What gets past a board is bodies per
+  second.
+- **Swarms are all-or-nothing.** 48 Sams at gap 28 cost nothing; 52 at gap 26
+  cost six. Runners grade where a swarm cliffs -- but a runner group tuned to
+  cost `corner` four points took `binoculars` from a 94% clear rate to 63%.
+
+So the open question is not "make the middle harder". It is why one played
+board is immune to rounds that visibly hurt another one. A third played board,
+`wall`, was recorded and answers a good part of it.
+
+#### What `wall` showed
+
+It clears every seed with 21.75 lives of 25, losing points only at rounds 4
+and 6 and nothing at all from round 7 to round 21. Two assertions fail because
+of it and are left failing: nobody-finishes-untouched, and the-end-is-the-hard-
+part. It owns seventeen plan entries at round 10, the same as `corner`, so it
+is not out-spending the curve.
+
+**The three garden walls do nothing.** Removing all three Walters from the
+board changes the result not at all -- still 100%, still 21.4 lives. The lane
+distances say why: the walls stand at 560-640, and the knot that does the
+killing is at 320-400. Everything is dead before it reaches them. Removing any
+other piece ends the run -- no Barbaras dies at round 5, no Norahs at round 13,
+no Claras at round 20 -- so the board is a splash-and-volume knot with a rate
+buff, and the blockades are ornament.
+
+**Splash throughput does not care how big the crowd is.** That is the likeliest
+reason no late round touches this shape. Every round from 17 to 21 is composed
+of *more bodies*, and a Barbara hitting all of them at once answers more bodies
+for free, while two Claras keep six Norahs firing through the pile. The only
+played board that volume hurts is `binoculars`, which kills one troublemaker at
+a time. So the back half of the game currently asks one question -- can you
+delete a crowd -- and a splash knot at the double-back has already answered it.
+
+#### The shield was the answer, and Ben was too fragile to give it
+
+The lead was tested and it was right. Ben's whole identity is the aura -- a
+flat 2 off every hit landing within 90px of him -- and he had 55 hit points,
+which is less than a splash knot deletes on arrival. He died before he had
+protected anybody, so the one mechanic built to punish many weak hits never
+happened.
+
+Measured against the three played boards, at twelve seeds each:
+
+| change | corner | binoculars | wall |
+|---|---|---|---|
+| as shipped | 100% / 15.0 | 92% / 8.8 | 100% / 21.6 |
+| hp 55 -> 160 | 50% | 42% | 0% |
+| shieldAura 2 -> 5 | 17% | 25% | 50% / 12.3 |
+| auraRange 90 -> 140 | 50% | 42% | 100% / 20.6 |
+
+Only survival reaches the knot. A stronger shield costs a board that kills one
+at a time far more than it costs a splash board, which is backwards, and more
+range does nothing to a knot at all.
+
+**Ben now has 95 hit points.** Every played board still clears, `wall` pays
+something at last, and the whole cohort feels round 20:
+
+    build      held 20   lives left        build      held 20   lives left
+    support        63%          2.6        corner         88%         10.7
+    mixed          75%          4.3        binoculars     75%          7.0
+                                           wall          100%         17.3
+
+Five of the nine boards now clear at least half the time, where three did
+before, so this was a gain in variety and not only in difficulty.
+
+Two things it did not fix, both worth knowing:
+
+- **`wall` ends on 17.3 against a threshold of 18.** The assertion passes on a
+  thin margin and seed noise could flip it. If it does, the answer is another
+  played board or a harder look at the knot, not a bigger number.
+- **Rounds 16 to 21 still cost `wall` nothing.** The change taxes it once, at
+  round 15. The back half of the game still asks the one question a splash
+  knot has already answered.
 
 ### 3. ~~Render-side animation is frame-counted, not time-counted~~
 

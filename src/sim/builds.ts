@@ -297,19 +297,25 @@ const SPECS: Record<string, BuildSpec> = {
 };
 
 /**
- * A board played by hand and recorded, kept exactly as it was played.
+ * The boards played by hand and recorded, kept exactly as they were played.
  *
- * Written out rather than generated, because that is the point of it: it is
- * the only entry here that is evidence rather than a proposal, and rewriting
- * it into the vocabulary above would quietly turn it back into a proposal. It
- * was captured with the `L` key while playing at localhost:5173 -- see
- * CLAUDE.md -- on a run that was won.
+ * Written out rather than generated, because that is the point of them: they
+ * are the only entries here that are evidence rather than a proposal, and
+ * rewriting one into the vocabulary above would quietly turn it back into a
+ * proposal. Each was captured with the `L` key while playing at
+ * localhost:5173 -- see CLAUDE.md.
  *
- * Keep it verbatim. If a change to the game stops this board clearing, that is
- * a finding worth having, and it is only worth having while the board is still
- * the one somebody actually won with.
+ * Keep every one of them verbatim. If a change to the game stops a played
+ * board clearing, that is a finding worth having, and it is only worth having
+ * while the board is still the one somebody actually played.
+ *
+ * These outrank the generated boards rather than standing beside them. The
+ * difficulty curve is tuned until *these* feel it; `SPECS` above is the net
+ * that catches a change which happens to suit one board and ruins the rest.
+ * A generated plan going red is a question about the plan. A played board
+ * going red is a question about the game.
  */
-const PLAYED =
+const CORNER =
   'norah@3,4 norah@7,6 norah@7,6+b1 norah@7,6+a1b1 norah@7,6+a1b2 norah@3,4+a1 ' +
   'norah@7,6+a2b2 norah@3,4+a1b1 norah@3,4+a2b1 bill@9,5 bill@9,5+b1 norah@3,4+a2b2 ' +
   'norah@7,6+a2b2:longYarn norah@3,4+a2b2:longYarn clara@6,5 clara@6,5+b1 clara@6,5+b2 ' +
@@ -328,16 +334,100 @@ export interface Build {
   blurb: string;
   /** The plan, in the grammar `parseLoadout` reads. */
   loadout: string;
+  /**
+   * Whether a person played this board, or `render` generated it.
+   *
+   * The distinction used to live only in a comment, which meant nothing
+   * downstream could act on it and the balance sweep weighed a recording and a
+   * proposal the same. `tests/balance.test.ts` now reads this.
+   */
+  played: boolean;
 }
+
+/**
+ * A second board played by hand, deliberately without a Knitting Norah.
+ *
+ * Where `corner` is a knot of cheap fast hits with one Bill in it, this is the
+ * opposite reading of the same street: seven Binocular Bills taken all the way
+ * to Piercing Shot, one Clara to hurry them, and a Barbara and a Pete for the
+ * crowd. It matters because it shares almost nothing with `corner` -- if a
+ * change to the game suits one of them and not the other, that shows up here
+ * and nowhere in the generated boards.
+ */
+const BINOCULARS =
+  'bill@10,6 bill@10,6+b1 bill@10,6+b2 clara@8,6 clara@8,6+a1 bill@10,6+a1b2 pete@6,5 ' +
+  'bill@10,5 bill@10,5+b1 bill@10,5+a1b1 bill@10,5+a1b2 bill@10,6+a2b2 clara@8,6+a2 ' +
+  'clara@8,6+a2b1 clara@8,6+a2b2 clara@8,6+a2b2:secondRound bill@10,8 bill@10,8+b1 ' +
+  'bill@10,8+b2 bill@10,8+a1b2 bill@10,8+a2b2 bill@10,6+a2b2:piercingShot ' +
+  'bill@10,8+a2b2:piercingShot barbara@7,7 barbara@7,7+a1 barbara@7,7+a2 barbara@7,7+a2b1 ' +
+  'barbara@7,7+a2b2 barbara@7,7+a2b2:bigBatch bill@7,6 bill@7,6+b1 bill@7,6+b2 ' +
+  'bill@7,6+a1b2 bill@7,6+a2b2 bill@7,6+a2b2:piercingShot bill@9,5 bill@10,5+a2b2 ' +
+  'bill@10,5+a2b2:piercingShot bill@9,5+a1 bill@9,5+a1b1 bill@9,5+a1b2 bill@9,5+a2b2 ' +
+  'bill@9,5+a2b2:piercingShot bill@6,3 bill@6,3+a1 bill@6,3+a2 bill@6,3+a2b1 bill@6,3+a2b2 ' +
+  'bill@6,3+a2b2:piercingShot bill@8,5 bill@8,5+b1 bill@8,5+b2 bill@8,5+a1b2 bill@8,5+a2b2 ' +
+  'bill@8,5+a2b2:piercingShot';
+
+/**
+ * A third board played by hand: garden walls, cinnamon rolls and knitters.
+ *
+ * The only played board that puts Walter in the road at all -- three of them,
+ * side by side at the bottom of the street -- and the only one built around
+ * Barbara's splash rather than around a gun. Six Norahs and two Claras behind
+ * the wall do the killing while the blockades hold the crowd in the splash.
+ *
+ * It completes the set: `corner` is cheap fast hits in a knot, `binoculars` is
+ * a few big ones down a straight, and this is holding ground and letting an
+ * area do the work. Three different answers to the same street.
+ */
+const WALL =
+  'barbara@7,7 barbara@3,5 barbara@9,7 barbara@7,7+a1 barbara@7,7+a2 barbara@3,5+a1 ' +
+  'clara@7,6 clara@7,6+a1 clara@7,6+a1b1 norah@8,6 norah@8,6+b1 norah@8,6+b2 ' +
+  'barbara@7,7+a2b1 barbara@7,7+a2b2 norah@8,6+a1b2 norah@8,6+a2b2 ' +
+  'norah@8,6+a2b2:longYarn barbara@7,7+a2b2:bigBatch clara@7,6+a2b1 clara@7,6+a2b2 ' +
+  'clara@7,6+a2b2:secondRound walter@9,9 walter@8,9 walter@7,9 walter@7,9+b1 ' +
+  'walter@7,9+a1b1 walter@7,9+a2b1 walter@7,9+a2b2 norah@6,6 norah@6,6+a1 ' +
+  'norah@6,6+a1b1 norah@6,6+a2b1 norah@6,6+a2b2 norah@6,6+a2b2:tripleKnit norah@6,5 ' +
+  'norah@6,5+a1 norah@6,5+a2 norah@6,5+a2b1 norah@6,5+a2b2 norah@6,5+a2b2:tripleKnit ' +
+  'norah@7,5 norah@7,5+a1 norah@7,5+a1b1 norah@7,5+a2b1 norah@7,5+a2b2 ' +
+  'norah@7,5+a2b2:tripleKnit clara@8,7 clara@8,7+a1 clara@8,7+a2 clara@8,7+a2b1 ' +
+  'clara@8,7+a2b2 clara@8,7+a2b2:doubleEspresso barbara@9,7+a1 bill@10,7 bill@10,7+b1 ' +
+  'bill@10,7+b2 bill@10,7+a1b2 bill@10,7+a2b2 bill@10,7+a2b2:deadeye norah@6,7 ' +
+  'norah@6,7+a1 norah@6,7+a2 norah@6,7+a2b1 norah@6,7+a2b2 norah@6,7+a2b2:tripleKnit ' +
+  'norah@9,6 norah@9,6+a1 norah@9,6+a2 norah@9,6+a2b1 norah@9,6+a2b2 ' +
+  'norah@9,6+a2b2:longYarn';
+
+/** The recorded boards, in the order they were played. */
+const PLAYED_BUILDS: Omit<Build, 'played'>[] = [
+  { name: 'corner', blurb: 'played by hand at the first hairpin, and won', loadout: CORNER },
+  {
+    name: 'binoculars',
+    blurb: 'played by hand with no knitters, seven binoculars down the street, and won',
+    loadout: BINOCULARS,
+  },
+  {
+    name: 'wall',
+    blurb: 'played by hand behind three garden walls, cinnamon rolls doing the work, and won',
+    loadout: WALL,
+  },
+];
 
 export const BUILDS: Build[] = [
   ...Object.entries(SPECS).map(([name, spec]) => ({
     name,
     blurb: spec.blurb,
     loadout: render(spec),
+    played: false,
   })),
-  { name: 'corner', blurb: 'played by hand at the first hairpin, and won', loadout: PLAYED },
+  ...PLAYED_BUILDS.map((b) => ({ ...b, played: true })),
 ];
+
+/**
+ * The boards a person actually played.
+ *
+ * What the difficulty curve is aimed at. Kept as its own export so a test can
+ * say which standard it is applying without re-deriving the distinction.
+ */
+export const REFERENCE_BUILDS: Build[] = BUILDS.filter((b) => b.played);
 
 export const BUILD_NAMES: string[] = BUILDS.map((b) => b.name);
 

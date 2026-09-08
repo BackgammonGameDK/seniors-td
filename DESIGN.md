@@ -283,7 +283,22 @@ be.
 ## Balance: the difficulty the game is aimed at
 
 Measured with `npm run campaign -- --all-builds`, which plays whole twenty-one-round
-runs on a real purse against the six named boards in `src/sim/builds.ts`.
+runs on a real purse against the boards in `src/sim/builds.ts`.
+
+Those boards are not equals. Two of them -- `corner` and `binoculars` -- were
+played by hand and won with, captured with the `L` key, and kept verbatim. The
+rest are spending plans nobody has played. The played boards are what the
+difficulty is aimed at and `tests/balance.test.ts` asserts against them
+separately; the generated ones are a net that catches a change suiting one
+board and ruining the others. A generated board going red is a question about
+the board. A played board going red is a question about the game.
+
+The two played boards are also the reason the curve has not simply been made
+steeper in the middle. `corner`, a knot at the first hairpin, loses points on
+two rounds out of twenty-one. `binoculars`, seven Bills down the straight with
+no knitter at all, loses ten at round 12 and six at round 14 on exactly the
+same waves. A round of tuning aimed at the first one took the second from a
+94% clear rate to 63%, and was withdrawn. See TODO.md for what that measured.
 `npm run sim` answers a different question -- how hard is one round with a given
 board -- and cannot answer this one, because a round is only ever as hard as
 what the player could afford by the time it arrived.
@@ -302,6 +317,9 @@ The three numbers worth holding on to, all enforced by `tests/balance.test.ts`:
   twenty-one at least half the time. One build clearing is a solved game, not a balanced one.
 - **Nobody finishes untouched.** A clear leaves at most about seventy per cent of
   the starting points. A board that never felt the wall was never tested by it.
+  A played board broke this promise once -- `wall` finished on 21.6 points of
+  25 having lost nothing after round 6 -- and the cause was Ben rather than the
+  rounds. See below.
 - **The end is the hard part.** Every build is alive at round eleven and has lost
   ground by round twenty-one, so the difficulty is a slope and not a spike.
 
@@ -313,6 +331,17 @@ and takes nothing, or it does not and takes everything, which is why the old
 curve was flat for thirteen rounds and then vertical. Windows now run from about
 eight seconds to half a minute, and boards that are not quite enough now bleed
 instead of collapsing.
+
+**A support enemy has to survive to support anything.** Ben's shield takes a
+flat 2 off every hit landing near him, which is exactly what should punish a
+board of many small hits -- and for a long time it did nothing at all, because
+he had 55 hit points and a splash knot deletes that on arrival. He now has 95.
+Raising his hit points was the only one of the three obvious dials that reached
+the boards ignoring him: a stronger shield costs a board that kills one
+troublemaker at a time far more than it costs a splash board, and more aura
+range does nothing to a knot whose towers are all inside it anyway. The lesson
+generalises past Ben -- an aura carrier is worth what its life expectancy says
+it is worth, not what its aura says.
 
 **Armour is not hit points.** Damage is flat subtraction, so armour costs the
 towers a share of every shot rather than costing the round a pool of health. An
