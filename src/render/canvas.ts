@@ -488,7 +488,7 @@ export class Renderer {
     const resources = this.panelWidth(hudReadouts(world));
     this.drawPanel(HUD.x, resources.width, resources.rows);
 
-    const round = this.panelWidth([roundReadout(world.waveIndex)]);
+    const round = this.panelWidth([roundReadout(world.waveIndex, world.endless)]);
     this.drawPanel(BOARD.width - HUD.x - round.width, round.width, round.rows);
 
     g.restore();

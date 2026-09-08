@@ -384,6 +384,16 @@ describe('the round read-out', () => {
   it('is empty past the last round rather than throwing', () => {
     expect(roundPreview(AUTHORED_ROUNDS)).toEqual([]);
   });
+
+  it('drops the total and just counts once free play has started', () => {
+    expect(waveLabel(AUTHORED_ROUNDS, true)).toBe(String(AUTHORED_ROUNDS + 1));
+    expect(waveLabel(30, true)).toBe('31');
+  });
+
+  it('shows what a free play round brings, where the campaign shows nothing', () => {
+    expect(roundPreview(AUTHORED_ROUNDS + 4, true).length).toBeGreaterThan(0);
+    expect(roundPreview(AUTHORED_ROUNDS + 4)).toEqual([]);
+  });
 });
 
 describe('the end overlay', () => {
@@ -398,8 +408,22 @@ describe('the end overlay', () => {
     expect(o.body).toContain('round 7');
   });
 
-  it('congratulates a finished run', () => {
-    expect(endOverlay({ status: 'won', waveIndex: 20, stats: noStats }).title).toMatch(/quiet/i);
+  it('congratulates a finished run, and offers to carry on', () => {
+    const o = endOverlay({ status: 'won', waveIndex: 20, stats: noStats });
+    expect(o.title).toMatch(/quiet/i);
+    expect(o.canContinue).toBe(true);
+  });
+
+  it('says how far past the end free play got, and offers nothing further', () => {
+    const o = endOverlay({
+      status: 'lost',
+      waveIndex: AUTHORED_ROUNDS + 3,
+      endless: true,
+      stats: noStats,
+    });
+    expect(o.body).toContain(`round ${AUTHORED_ROUNDS + 4}`);
+    expect(o.body).toContain('4 past the end');
+    expect(o.canContinue).toBe(false);
   });
 });
 

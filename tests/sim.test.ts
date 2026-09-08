@@ -10,12 +10,14 @@ import {
   pointAt,
 } from '../src/sim/path.ts';
 import { TOWERS } from '../src/sim/towers.ts';
+import { ENEMY_IDS } from '../src/sim/types.ts';
 import type { EnemyId, TowerId } from '../src/sim/types.ts';
 import { effectiveDef } from '../src/sim/upgrades.ts';
-import { WAVES } from '../src/sim/waves.ts';
+import { AUTHORED_ROUNDS, waveAt, WAVES } from '../src/sim/waves.ts';
 import {
   applyHit,
   canPlace,
+  continueEndless,
   createWorld,
   placeTower,
   purchaseUpgrade,
@@ -431,6 +433,60 @@ describe('the round', () => {
     expect(w.waveIndex).toBe(before + 1);
     expect(w.status).toBe('idle');
     expect(w.stats.goldEarned).toBeGreaterThan(0);
+  });
+});
+
+describe('free play after the authored rounds', () => {
+  it('grows the late rounds rather than inventing new ones', () => {
+    for (let i = 0; i < AUTHORED_ROUNDS; i++) expect(waveAt(i)).toBe(WAVES[i]);
+  });
+
+  it('keeps getting bigger, without running away', () => {
+    const bodies = (i: number): number =>
+      waveAt(i).groups.reduce((n, g) => n + g.count, 0);
+    let last = bodies(AUTHORED_ROUNDS - 1);
+    let biggest = 0;
+    for (let i = AUTHORED_ROUNDS; i < AUTHORED_ROUNDS + 40; i++) {
+      const wave = waveAt(i);
+      for (const g of wave.groups) {
+        expect(g.count).toBeGreaterThan(0);
+        expect(g.gap).toBeGreaterThanOrEqual(12);
+        expect(ENEMY_IDS).toContain(g.enemy);
+      }
+      expect(wave.scale).toBeGreaterThan(waveAt(i - 1).scale);
+      biggest = Math.max(biggest, bodies(i));
+    }
+    // The three shapes rotate, so one round is not bigger than the one before
+    // it; over a full turn of the rotation it is.
+    expect(bodies(AUTHORED_ROUNDS + 3)).toBeGreaterThan(bodies(AUTHORED_ROUNDS));
+    expect(biggest).toBeGreaterThan(last);
+    // The growth cap holds, so a very deep round is still a round a browser
+    // and the harness's tick limit can survive.
+    expect(biggest).toBeLessThan(600);
+  });
+
+  it('does not start a twenty-second round until the player asks for one', () => {
+    const w = rich();
+    w.waveIndex = AUTHORED_ROUNDS;
+    w.status = 'idle';
+    expect(startWave(w)).toBe(false);
+    w.endless = true;
+    expect(startWave(w)).toBe(true);
+  });
+
+  it('is only ever entered from a won run, and ends the winning for good', () => {
+    const w = rich();
+    expect(continueEndless(w)).toBe(false);
+    w.status = 'won';
+    w.waveIndex = AUTHORED_ROUNDS;
+    expect(continueEndless(w)).toBe(true);
+    expect(w.status).toBe('idle');
+    // A round cleared in free play returns to 'idle', never to 'won' again.
+    expect(startWave(w)).toBe(true);
+    w.spawnQueue = [];
+    step(w);
+    expect(w.waveIndex).toBe(AUTHORED_ROUNDS + 1);
+    expect(w.status).toBe('idle');
   });
 });
 

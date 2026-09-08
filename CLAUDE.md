@@ -42,7 +42,7 @@ hex colours, display names or blurbs in `src/sim/`.
 | Path | What it is |
 |---|---|
 | `src/sim/towers.ts`, `src/sim/enemies.ts` | The whole design, as flat data. |
-| `src/sim/waves.ts` | Twenty-one authored rounds. Composition is the difficulty dial. |
+| `src/sim/waves.ts` | Twenty-one authored rounds, and `waveAt`, which grows the late ones into free play past the end. Composition is the difficulty dial. |
 | `src/sim/world.ts` | `step()`, placement, auras, status effects, damage, splitting, blockades. The only place damage is resolved. |
 | `src/sim/path.ts` | Board dimensions, the street, and which cells take a tower or a blockade. |
 | `src/sim/upgrades.ts` | Two paths per defender and the final fork between them, plus `effectiveDef()` -- the only way to read a defender's bought stats. |
@@ -68,6 +68,7 @@ npm run sim -- --wave 7 --runs 60 --json     # machine-readable
 npm run sim -- --wave 12 --loadout "norah@4,2 bill@10,8"
 npm run campaign -- --all-builds             # all seven boards, twenty-one rounds
 npm run campaign -- --build sniper --runs 40 --json
+npm run campaign -- --build corner --endless        # how far free play carries a board
 ```
 
 ## Turning a board you played into a measurement

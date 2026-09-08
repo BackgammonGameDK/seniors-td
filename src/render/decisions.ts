@@ -18,7 +18,7 @@ import type { Placement } from '../sim/loadout.ts';
 import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
 import type { Enemy, EnemyId, Stats, Tower, TowerDef, TowerId } from '../sim/types.ts';
-import { AUTHORED_ROUNDS, WAVES } from '../sim/waves.ts';
+import { AUTHORED_ROUNDS, waveAt } from '../sim/waves.ts';
 import { UPGRADES } from '../sim/upgrades.ts';
 import { cooldownAt } from '../sim/world.ts';
 import { ENEMY_LOOK, TOWER_LOOK } from '../shared/display.ts';
@@ -205,7 +205,15 @@ export function focusKey(view: FocusView): string {
   return `enemy:${view.enemy.id}:${r.name}:${r.lines.join('|')}`;
 }
 
-export function waveLabel(waveIndex: number): string {
+/**
+ * The round counter.
+ *
+ * `n/21` while the authored campaign is running, because the total is the
+ * thing a player is counting down. In free play there is no total to count
+ * towards, so it is the round number on its own -- round 24 is round 24.
+ */
+export function waveLabel(waveIndex: number, endless = false): string {
+  if (endless) return String(waveIndex + 1);
   return `${Math.min(waveIndex + 1, AUTHORED_ROUNDS)}/${AUTHORED_ROUNDS}`;
 }
 
@@ -250,8 +258,8 @@ export function hudReadouts(opts: { gold: number; lives: number }): Readout[] {
  * changes once a round and sits out of the way in the far corner. It keeps
  * its word, since 1/20 on its own could be anything.
  */
-export function roundReadout(waveIndex: number): Readout {
-  return { value: waveLabel(waveIndex), label: 'round', icon: null };
+export function roundReadout(waveIndex: number, endless = false): Readout {
+  return { value: waveLabel(waveIndex, endless), label: 'round', icon: null };
 }
 
 export interface RunButton {
@@ -317,9 +325,11 @@ export interface PreviewRow {
 }
 
 /** Who is coming next round, so the player can spend before it starts. */
-export function roundPreview(waveIndex: number): PreviewRow[] {
-  const wave = WAVES[waveIndex];
-  if (!wave) return [];
+export function roundPreview(waveIndex: number, endless = false): PreviewRow[] {
+  // There is a grown round for every index, so what decides whether anything
+  // is coming is whether the player has asked to carry on -- not the wave list.
+  if (waveIndex >= AUTHORED_ROUNDS && !endless) return [];
+  const wave = waveAt(waveIndex);
   const totals = new Map<EnemyId, number>();
   for (const g of wave.groups) totals.set(g.enemy, (totals.get(g.enemy) ?? 0) + g.count);
   return [...totals.entries()].map(([enemy, count]) => ({
@@ -330,26 +340,41 @@ export function roundPreview(waveIndex: number): PreviewRow[] {
   }));
 }
 
-export function endOverlay(opts: { status: string; waveIndex: number; stats: Stats }): {
+export function endOverlay(opts: {
+  status: string;
+  waveIndex: number;
+  endless?: boolean;
+  stats: Stats;
+}): {
   show: boolean;
   title: string;
   body: string;
+  /** Whether to offer carrying on past the authored rounds. */
+  canContinue: boolean;
 } {
   if (opts.status === 'won') {
     return {
       show: true,
       title: 'Peace and quiet',
       body: `All ${AUTHORED_ROUNDS} rounds held. ${opts.stats.kills} troublemakers sent home.`,
+      canContinue: true,
     };
   }
   if (opts.status === 'lost') {
+    const round = opts.waveIndex + 1;
+    // In free play the round number alone says little, since the player is
+    // past the end of the game. How far past is the thing they went for.
+    const where = opts.endless
+      ? `They got through on round ${round}, ${round - AUTHORED_ROUNDS} past the end.`
+      : `They got through on round ${round}.`;
     return {
       show: true,
       title: 'The neighbourhood gave up',
-      body: `They got through on round ${opts.waveIndex + 1}. ${opts.stats.leaks} slipped past in all.`,
+      body: `${where} ${opts.stats.leaks} slipped past in all.`,
+      canContinue: false,
     };
   }
-  return { show: false, title: '', body: '' };
+  return { show: false, title: '', body: '', canContinue: false };
 }
 
 /**

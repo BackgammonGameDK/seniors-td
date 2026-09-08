@@ -46,6 +46,8 @@ export interface UiHandlers {
   onSelect(id: TowerId): void;
   onStartWave(): void;
   onRestart(): void;
+  /** Carry on past the twenty-one authored rounds. */
+  onKeepGoing(): void;
   onCloseInspect(): void;
   onInspectEnemyType(id: EnemyId): void;
   onSell(t: Tower): void;
@@ -72,6 +74,7 @@ export class Ui {
   private overlay = el<HTMLElement>('overlay');
   private overlayTitle = el<HTMLElement>('overlayTitle');
   private overlayBody = el<HTMLElement>('overlayBody');
+  private keepGoing = el<HTMLButtonElement>('keepGoing');
 
   private cards = new Map<TowerId, HTMLButtonElement>();
   /** What the run button was last told, so a click knows what it means. */
@@ -118,6 +121,7 @@ export class Ui {
       if (span) handlers.onInspectEnemyType(span.dataset.enemy as EnemyId);
     });
     el('restart').addEventListener('click', () => handlers.onRestart());
+    this.keepGoing.addEventListener('click', () => handlers.onKeepGoing());
     // Doubles as the troublemaker readout's Close, which is what its label
     // says there: a troublemaker cannot be sent home for coins.
     this.sell.addEventListener('click', () => {
@@ -207,7 +211,7 @@ export class Ui {
 
     if (this.lastPreview !== world.waveIndex) {
       this.lastPreview = world.waveIndex;
-      const rows = roundPreview(world.waveIndex);
+      const rows = roundPreview(world.waveIndex, world.endless);
       this.preview.innerHTML = rows.length
         ? rows
             .map((r) => `<span data-enemy="${r.enemy}">${r.glyph} ${r.name} <b>&times;${r.count}</b></span>`)
@@ -461,12 +465,14 @@ export class Ui {
     const o = endOverlay({
       status: world.status,
       waveIndex: world.waveIndex,
+      endless: world.endless,
       stats: world.stats,
     });
     this.overlay.hidden = !o.show;
     if (o.show) {
       this.overlayTitle.textContent = o.title;
       this.overlayBody.textContent = o.body;
+      this.keepGoing.hidden = !o.canContinue;
     }
   }
 }

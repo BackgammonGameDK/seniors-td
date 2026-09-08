@@ -31,7 +31,7 @@ import type {
   TowerId,
 } from './types.ts';
 import { ENEMY_IDS } from './types.ts';
-import { AUTHORED_ROUNDS, WAVES } from './waves.ts';
+import { AUTHORED_ROUNDS, waveAt } from './waves.ts';
 
 const PROJECTILE_SPEED = 9;
 /** How close a projectile must get to its mark to count as arrived. */
@@ -94,6 +94,14 @@ export interface World {
   projectiles: Projectile[];
   /** Index of the round now running, or the one about to start. */
   waveIndex: number;
+  /**
+   * Whether the player has chosen to carry on past the authored rounds.
+   *
+   * Free play is opt-in so that holding all twenty-one still ends the game the
+   * way it is meant to end. Nothing sets this except `continueEndless`, and
+   * only from a won run.
+   */
+  endless: boolean;
   spawnQueue: { at: number; enemy: EnemyId; scale: number }[];
   /**
    * Enemies created during this tick, held back until the end of it.
@@ -143,6 +151,7 @@ export function createWorld(seed = 1): World {
     towers: [],
     projectiles: [],
     waveIndex: 0,
+    endless: false,
     spawnQueue: [],
     pendingSpawns: [],
     pendingHits: [],
@@ -289,8 +298,10 @@ export function cooldownAt(cooldown: number, rateMult: number): number {
 
 export function startWave(w: World): boolean {
   if (w.status === 'running' || w.status === 'won' || w.status === 'lost') return false;
-  const wave = WAVES[w.waveIndex];
-  if (!wave) return false;
+  // Past the authored rounds there is always a round to be had, so the refusal
+  // has to be the player's choice rather than the absence of a wave.
+  if (w.waveIndex >= AUTHORED_ROUNDS && !w.endless) return false;
+  const wave = waveAt(w.waveIndex);
   // Second Wind is spent once a round, so a Walter left standing from a round
   // he never fell in gets it back for the next one.
   for (const t of w.towers) t.revivesUsed = 0;
@@ -312,6 +323,20 @@ export function startWave(w: World): boolean {
   }
   w.spawnQueue.sort((a, b) => a.at - b.at);
   w.status = 'running';
+  return true;
+}
+
+/**
+ * Carry on past the twenty-one authored rounds.
+ *
+ * Only from a won run, and only once: free play is the thing a player chooses
+ * after the victory rather than instead of it. Returns whether it took, so the
+ * interface cannot half-apply it.
+ */
+export function continueEndless(w: World): boolean {
+  if (w.status !== 'won') return false;
+  w.endless = true;
+  w.status = 'idle';
   return true;
 }
 
@@ -899,6 +924,6 @@ export function step(w: World): void {
     restoreBlockers(w);
     award(w, ECONOMY.roundClearBonus(w.waveIndex + 1));
     w.waveIndex++;
-    w.status = w.waveIndex >= AUTHORED_ROUNDS ? 'won' : 'idle';
+    w.status = !w.endless && w.waveIndex >= AUTHORED_ROUNDS ? 'won' : 'idle';
   }
 }

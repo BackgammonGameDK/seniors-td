@@ -103,3 +103,80 @@ export const WAVES: Wave[] = [
 ];
 
 export const AUTHORED_ROUNDS = WAVES.length;
+
+// --- free play --------------------------------------------------------------
+
+/**
+ * Rounds after the twenty-first, for a player who wants to carry on.
+ *
+ * Free play is the score at the end of a won run rather than a second game, so
+ * it is meant to end in a loss. That rules out the obvious construction --
+ * round twenty-one again with a bigger `scale` -- because hit points are not
+ * the lever this game turns. A splash knot at the double-back kills a crowd
+ * for a fixed cost no matter how large the crowd or how healthy, so a round
+ * that only grows `scale` would never actually arrive. Bodies per second is
+ * what gets past a board, so that is what these rounds grow.
+ *
+ * Each extra round takes one of the three late shapes and inflates it. The
+ * three rotate, so consecutive extra rounds are not the same round twice: mass
+ * (nineteen), the swarm (twenty), then everything at once (twenty-one).
+ *
+ * It is a pure function of the round number and uses no randomness, so round
+ * thirty is the same round thirty on every seed and a test can assert its
+ * shape. That is also what lets `npm run campaign -- --endless` compare one
+ * board's free play against another's.
+ */
+const ENDLESS_THEMES = [18, 19, 20] as const;
+
+/** Growth per extra round, compounded into a single factor rather than per round. */
+const ENDLESS_STEP = 0.07;
+
+/**
+ * No round is more than four times the shape it grew from.
+ *
+ * Past this the composition dial has said everything it can, and only `scale`
+ * keeps climbing. It is also what keeps a very deep run from putting a
+ * thousand sprites on a canvas or running the harness past its tick limit.
+ */
+const MAX_GROWTH = 4;
+
+/** Ticks between arrivals never falls below this, however dense a round gets. */
+const GAP_FLOOR = 12;
+
+/**
+ * The spacing to give a group that was authored as a single arrival.
+ *
+ * Round nineteen sends one Duke with a gap of zero, because the gap between one
+ * arrival and nothing means nothing. Once growth turns him into two, they need
+ * spacing from somewhere, and round twenty's own pair arrive 800 ticks apart.
+ */
+const SOLO_GAP = 800;
+
+/** Hit points per extra round, on top of round twenty-one's 1.8. */
+const ENDLESS_SCALE_STEP = 0.04;
+
+/**
+ * The round at a given index, authored or grown.
+ *
+ * Below `AUTHORED_ROUNDS` this is exactly `WAVES[index]`. Above it, a free
+ * play round -- so callers that must not run past the campaign check the
+ * player has opted in, rather than relying on this returning nothing.
+ */
+export function waveAt(index: number): Wave {
+  const authored = WAVES[index];
+  if (authored) return authored;
+
+  const n = index - AUTHORED_ROUNDS + 1;
+  const theme = WAVES[ENDLESS_THEMES[(n - 1) % ENDLESS_THEMES.length]!]!;
+  const f = Math.min(1 + ENDLESS_STEP * n, MAX_GROWTH);
+
+  return {
+    groups: theme.groups.map((group) => ({
+      enemy: group.enemy,
+      count: Math.ceil(group.count * f),
+      gap: Math.max(GAP_FLOOR, Math.round((group.gap > 0 ? group.gap : SOLO_GAP) / f)),
+      delay: group.delay,
+    })),
+    scale: WAVES[AUTHORED_ROUNDS - 1]!.scale + ENDLESS_SCALE_STEP * n,
+  };
+}

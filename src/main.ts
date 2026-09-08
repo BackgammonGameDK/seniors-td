@@ -29,6 +29,7 @@ import { BOARD, isBlockerCell, isBuildableCell } from './sim/path.ts';
 import { TOWERS } from './sim/towers.ts';
 import type { EnemyId, TowerId } from './sim/types.ts';
 import {
+  continueEndless,
   createWorld,
   placeTower,
   purchaseUpgrade,
@@ -109,6 +110,11 @@ const handlers: UiHandlers = {
     // reading an upgrade panel is not a decision the round starting cancels.
     selected = null;
     startWave(world);
+  },
+  // The recorded plan is deliberately not cleared: free play is played on the
+  // board that won, so pressing `L` afterwards still writes that board down.
+  onKeepGoing() {
+    continueEndless(world);
   },
   onRestart() {
     world = createWorld(Date.now() % 100000);
