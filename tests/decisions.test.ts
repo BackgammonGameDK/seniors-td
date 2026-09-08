@@ -25,6 +25,7 @@ import {
   facingAngle,
   focusAfterTap,
   focusKey,
+  focusMark,
   focusedTowerId,
   hudReadouts,
   roundReadout,
@@ -750,7 +751,7 @@ describe('a tapped troublemaker stays on screen after the frame it was tapped in
   // main's state, which knew nothing of it -- decided the panel should close.
   // The panel now has one owner, and its key is a pure function of what is on
   // screen, so a frame that changes nothing cannot decide to close it.
-  const walking = { id: 7, def: 'mike', hp: 90, scale: 1, shield: 0 } as const;
+  const walking = { id: 7, def: 'mike', hp: 90, scale: 1, shield: 0, x: 200, y: 140 } as const;
 
   it('keeps the same key frame after frame while nothing about it changes', () => {
     const first = focusKey({ kind: 'enemy', enemy: walking });
@@ -775,6 +776,16 @@ describe('a tapped troublemaker stays on screen after the frame it was tapped in
     expect(focusKey({ kind: 'enemy', enemy: { ...walking, id: 8 } })).not.toBe(
       focusKey({ kind: 'enemy', enemy: walking }),
     );
+  });
+
+  it('is marked on the board wherever it currently stands', () => {
+    // The mark follows the troublemaker rather than the tap: it is read from
+    // the enemy every frame, so it walks down the street with it.
+    expect(focusMark({ kind: 'enemy', enemy: walking })).toEqual({ x: 200, y: 140 });
+    expect(focusMark({ kind: 'enemy', enemy: { ...walking, x: 260 } })).toEqual({
+      x: 260,
+      y: 140,
+    });
   });
 
   it('never collides with a defender panel', () => {
@@ -873,5 +884,29 @@ describe('the absorbed-hit hint is measured in seconds a player can read', () =>
 
   it('stops at zero rather than going negative', () => {
     expect(absorbHintLeft(10, 200, false)).toBe(0);
+  });
+});
+
+
+describe('the board marks whatever was tapped, range or no range', () => {
+  // Tapping something used to change nothing on screen unless it happened to
+  // have a range circle, so the tap read as though it had missed. Walter and
+  // Clara have no range, and neither has any troublemaker.
+  it('marks a defender at its own position', () => {
+    expect(focusMark({ kind: 'tower', tower: tower({ x: 180, y: 100 }) })).toEqual({
+      x: 180,
+      y: 100,
+    });
+  });
+
+  it('marks a defender that has no range to draw', () => {
+    expect(focusMark({ kind: 'tower', tower: tower({ def: 'walter', x: 220, y: 180 }) })).toEqual({
+      x: 220,
+      y: 180,
+    });
+  });
+
+  it('marks nothing when nothing is selected', () => {
+    expect(focusMark(null)).toBeNull();
   });
 });

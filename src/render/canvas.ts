@@ -18,8 +18,15 @@ import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
-import { advanceFades, easeAngleOver, facingAngle, hudReadouts, roundReadout } from './decisions.ts';
-import type { Readout } from './decisions.ts';
+import {
+  advanceFades,
+  easeAngleOver,
+  facingAngle,
+  focusMark,
+  hudReadouts,
+  roundReadout,
+} from './decisions.ts';
+import type { FocusView, Readout } from './decisions.ts';
 import { enemySprite, iconGlyph, iconSprite, shotSprite, towerSprite } from './sprites.ts';
 
 /**
@@ -432,7 +439,9 @@ export class Renderer {
     opts: {
       selected: TowerId | null;
       hover: { col: number; row: number } | null;
-      inspected: Tower | null;
+      /** Whatever the inspect panel is open on -- a defender or a
+       *  troublemaker. Both get marked; only a defender gets a range circle. */
+      focus: FocusView;
       previewRange: number | null;
     },
   ): void {
@@ -444,13 +453,17 @@ export class Renderer {
     g.drawImage(this.floor, 0, 0, BOARD.width, BOARD.height);
 
     if (opts.selected && opts.hover) this.drawPlacementPreview(world, opts.hover, opts.selected);
-    if (opts.inspected) this.drawRange(opts.inspected);
-    if (opts.inspected && opts.previewRange !== null) {
-      this.drawPreviewRange(opts.inspected, opts.previewRange);
+    const focused = opts.focus?.kind === 'tower' ? opts.focus.tower : null;
+    if (focused) this.drawRange(focused);
+    if (focused && opts.previewRange !== null) {
+      this.drawPreviewRange(focused, opts.previewRange);
     }
 
     this.drawAuras(world);
-    for (const t of world.towers) this.drawTower(t, opts.inspected?.id === t.id);
+    // Before the characters, so the pool lies under whatever it marks and the
+    // caret sits over the lawn rather than over a face.
+    this.drawSelectionMark(opts.focus);
+    for (const t of world.towers) this.drawTower(t, focused?.id === t.id);
     for (const e of world.enemies) this.drawEnemy(e);
     this.drawProjectiles(world);
     this.drawEffects();
@@ -566,6 +579,69 @@ export class Renderer {
 
       at = start + w + HUD.gap;
     }
+  }
+
+  /**
+   * How far a character's picture reaches from its own centre.
+   *
+   * A painted portrait is drawn wider than the hit radius the simulation uses,
+   * so anything that has to sit outside the picture -- the shield and armour
+   * rings, and the selection mark -- has to ask for this rather than for the
+   * radius. One function so the mark cannot drift away from the thing it is
+   * marking when a portrait is painted for a character that had none.
+   */
+  private enemyEdge(e: Pick<Enemy, 'def'>): number {
+    const r = ENEMY_LOOK[e.def].radius;
+    return enemySprite(e.def) !== null ? r * 1.5 : r;
+  }
+
+  /**
+   * The mark that says "this is the one you tapped".
+   *
+   * Deliberately not a ring. A troublemaker already wears rings that mean
+   * armour and shield, and a third would read as one more stat rather than as
+   * a selection. A caret over the head and a pool of colour on the ground say
+   * nothing about the character and cannot be mistaken for something it is.
+   *
+   * The same mark for a defender and for a troublemaker, in the accent the
+   * build menu uses for an armed card, and drawn whether or not the thing has
+   * a range to show -- which is the whole point. The range circle was the only
+   * feedback the board had, and Walter, Clara and every troublemaker have no
+   * range, so tapping them changed nothing on screen at all.
+   */
+  private drawSelectionMark(view: FocusView): void {
+    const at = focusMark(view);
+    if (!at || !view) return;
+    const reach = view.kind === 'tower' ? SPRITE_SIZE / 2 : this.enemyEdge(view.enemy);
+    const g = this.g;
+
+    g.save();
+    g.translate(at.x, at.y);
+
+    // A flattened pool rather than a circle, so it reads as light on the
+    // ground under the character instead of a ring around it. Wider than the
+    // picture on purpose: a portrait is drawn the full width of `reach` and
+    // would hide a pool that fitted inside it, leaving only the caret.
+    g.beginPath();
+    g.ellipse(0, reach * 0.72, reach * 1.35, reach * 0.5, 0, 0, Math.PI * 2);
+    g.fillStyle = PALETTE.selectPool;
+    g.fill();
+
+    const tip = -reach - 6;
+    g.beginPath();
+    g.moveTo(0, tip);
+    g.lineTo(-6, tip - 9);
+    g.lineTo(6, tip - 9);
+    g.closePath();
+    g.fillStyle = PALETTE.selectMark;
+    g.fill();
+    // Outlined, because the caret hangs over grass, road and hedge alike and
+    // the accent alone is not far enough from the lawn to be certain.
+    g.strokeStyle = 'rgba(0,0,0,.45)';
+    g.lineWidth = 1.5;
+    g.stroke();
+
+    g.restore();
   }
 
   private drawRange(t: Tower): void {
@@ -771,7 +847,7 @@ export class Renderer {
     // armour rings move out to sit just outside it. Kept as rings rather
     // than folded into the artwork: they say what is true right now, and a
     // shield comes and goes while the picture does not.
-    const edge = sprite !== null ? r * 1.5 : r;
+    const edge = this.enemyEdge(e);
 
     if (sprite !== null) {
       if (e.flash > 0) {
