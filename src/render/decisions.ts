@@ -117,7 +117,11 @@ export function panelKey(t: Tower | null): string {
  * longer on the board. Everything the panel shows is looked up from the world
  * each frame, from this.
  */
-export type Focus = { kind: 'tower'; id: number } | { kind: 'enemy'; id: number } | null;
+export type Focus =
+  | { kind: 'tower'; id: number }
+  | { kind: 'enemy'; id: number }
+  | { kind: 'enemyType'; id: EnemyId }
+  | null;
 
 /** The focused tower's id, or null when the focus is a troublemaker or empty. */
 export function focusedTowerId(focus: Focus): number | null {
@@ -152,7 +156,19 @@ export function focusAfterTap(opts: {
 export type FocusView =
   | { kind: 'tower'; tower: Tower }
   | { kind: 'enemy'; enemy: Pick<Enemy, 'id' | 'def' | 'hp' | 'scale' | 'shield' | 'x' | 'y'> }
+  | { kind: 'enemyType'; enemy: Pick<Enemy, 'def' | 'hp' | 'scale' | 'shield'> }
   | null;
+
+/**
+ * The view for a troublemaker type that hasn't spawned yet -- what the round
+ * preview opens the panel on. Built from `ENEMIES` alone, since nothing
+ * `enemyReadout` reads is per-instance until the thing actually walks on:
+ * full health, no shield, no scale-up.
+ */
+export function enemyTypeView(id: EnemyId): FocusView {
+  const d = ENEMIES[id];
+  return { kind: 'enemyType', enemy: { def: id, hp: d.hp, scale: 1, shield: 0 } };
+}
 
 /**
  * The rebuild key for whatever the panel is open on.
@@ -171,12 +187,17 @@ export type FocusView =
 export function focusMark(view: FocusView): { x: number; y: number } | null {
   if (!view) return null;
   if (view.kind === 'tower') return { x: view.tower.x, y: view.tower.y };
+  if (view.kind === 'enemyType') return null;
   return { x: view.enemy.x, y: view.enemy.y };
 }
 
 export function focusKey(view: FocusView): string {
   if (!view) return 'none';
   if (view.kind === 'tower') return `tower:${panelKey(view.tower)}`;
+  if (view.kind === 'enemyType') {
+    const r = enemyReadout(view.enemy);
+    return `enemyType:${view.enemy.def}:${r.name}:${r.lines.join('|')}`;
+  }
   const r = enemyReadout(view.enemy);
   return `enemy:${view.enemy.id}:${r.name}:${r.lines.join('|')}`;
 }

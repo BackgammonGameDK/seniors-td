@@ -68,10 +68,14 @@ Noticed at the board rather than in the code.
    you had dealt less damage and not triggered the split at all. A split
    kill should probably cost two or three lives, not one.
 
-5. **The "next round brings" overview should let you inspect one enemy at a
-   time.** It currently shows the round's composition as a group; it should
-   be possible to click an enemy in that overview and see that one
-   troublemaker's own information, the way tapping it on the board does.
+5. ~~**The "next round brings" overview should let you inspect one enemy at
+   a time.**~~ Done -- clicking an entry opens the same `#inspect` panel a
+   board tap does, since `Focus` grew a third kind, `enemyType`, that
+   `enemyReadout` reads from `ENEMIES` alone (full health, no shield, no
+   position, so the board draws no ring for something that hasn't spawned).
+   Every existing way to close the panel -- tapping elsewhere, Close,
+   starting the round -- already worked on it for free, since they all just
+   set `focus = null` regardless of what kind it was.
 
 ## From a code review, September 2026
 

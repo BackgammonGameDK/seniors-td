@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { runCampaign } from '../src/campaign.ts';
 import { parseLoadout } from '../src/sim/loadout.ts';
 import type { Placement } from '../src/sim/loadout.ts';
+import { ENEMIES } from '../src/sim/enemies.ts';
 import { TOWERS } from '../src/sim/towers.ts';
 import { createWorld, placeTower, purchaseUpgrade } from '../src/sim/world.ts';
 import { TOWER_IDS } from '../src/sim/types.ts';
@@ -17,6 +18,7 @@ import {
   describeStats,
   easeAngle,
   easeAngleOver,
+  enemyTypeView,
   hintText,
   hoveredStat,
   previewStats,
@@ -790,6 +792,38 @@ describe('a tapped troublemaker stays on screen after the frame it was tapped in
 
   it('never collides with a defender panel', () => {
     expect(focusKey({ kind: 'enemy', enemy: walking })).not.toBe(
+      focusKey({ kind: 'tower', tower: tower({ id: 7 }) }),
+    );
+  });
+});
+
+describe('inspecting a troublemaker from the round preview, before it has spawned', () => {
+  it('reads at full health, unshielded, unscaled', () => {
+    expect(enemyTypeView('mike')).toEqual({
+      kind: 'enemyType',
+      enemy: { def: 'mike', hp: ENEMIES.mike.hp, scale: 1, shield: 0 },
+    });
+  });
+
+  it('draws no selection ring, since nothing has walked on yet', () => {
+    expect(focusMark(enemyTypeView('mike'))).toBeNull();
+  });
+
+  it('keeps the same key frame after frame, so the panel does not rebuild while parked open', () => {
+    expect(focusKey(enemyTypeView('mike'))).toBe(focusKey(enemyTypeView('mike')));
+  });
+
+  it('tells two previewed types apart', () => {
+    expect(focusKey(enemyTypeView('mike'))).not.toBe(focusKey(enemyTypeView('gang')));
+  });
+
+  it('never collides with a live troublemaker of the same kind', () => {
+    const walking = { id: 7, def: 'mike', hp: 90, scale: 1, shield: 0, x: 200, y: 140 } as const;
+    expect(focusKey(enemyTypeView('mike'))).not.toBe(focusKey({ kind: 'enemy', enemy: walking }));
+  });
+
+  it('never collides with a defender panel', () => {
+    expect(focusKey(enemyTypeView('mike'))).not.toBe(
       focusKey({ kind: 'tower', tower: tower({ id: 7 }) }),
     );
   });
