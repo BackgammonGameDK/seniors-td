@@ -83,11 +83,12 @@ Noticed at the board rather than in the code.
    starting the round -- already worked on it for free, since they all just
    set `focus = null` regardless of what kind it was.
 
-6. **Clicking an enemy in "Next round brings" should show a picture of it.**
-   The panel that opens (see item 5) is text-only stat rows -- no portrait,
-   for a previewed type or for a live-tapped troublemaker either. A tower's
-   build card already has one (`towerArtUrl`, with an emoji fallback); the
-   inspect panel has nothing equivalent for a troublemaker.
+6. ~~**Clicking an enemy in "Next round brings" should show a picture of
+   it.**~~ Done -- `enemyArtUrl` mirrors `towerArtUrl` (falling back to the
+   emoji glyph the same way), and `paintEnemy` now prepends a portrait to
+   the stat rows using the exact fold-out markup a build card already uses.
+   Covers both the previewed-type and live-tapped cases, since both already
+   routed through the same function.
 
 ## From a code review, September 2026
 

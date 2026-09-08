@@ -11,7 +11,7 @@ import type { EnemyId, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef, UPGRADES } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { refundOf } from '../sim/world.ts';
-import { TOWER_LOOK } from '../shared/display.ts';
+import { ENEMY_LOOK, TOWER_LOOK } from '../shared/display.ts';
 import { UPGRADE_LOOK } from '../shared/upgrades.ts';
 import {
   absorbHintLeft,
@@ -32,7 +32,7 @@ import {
   towerCard,
   upgradeCardState,
 } from './decisions.ts';
-import { towerArtUrl } from './sprites.ts';
+import { enemyArtUrl, towerArtUrl } from './sprites.ts';
 import type { FocusView } from './decisions.ts';
 import type { Speed } from './clock.ts';
 
@@ -291,9 +291,17 @@ export class Ui {
     // tower panel reserved -- otherwise a two-line troublemaker sits in the
     // blank space the last defender's stat block needed.
     this.inspectBody.style.minHeight = '';
-    this.inspectBody.innerHTML = r.lines
+    // The picture is the drawn one where there is one, and the emoji blown
+    // up where there is not -- the same fallback a build card uses.
+    const art = enemyArtUrl(e.def);
+    const portrait =
+      art !== null
+        ? `<img src="${art}" alt="${r.name}">`
+        : `<span class="big">${ENEMY_LOOK[e.def].glyph}</span>`;
+    const rows = r.lines
       .map((line) => `<div class="statrow"><span>${line}</span></div>`)
       .join('');
+    this.inspectBody.innerHTML = `<span class="fold">${portrait}<span class="rows">${rows}</span></span>`;
     this.upgrades.innerHTML = '';
     this.sell.textContent = 'Close';
   }

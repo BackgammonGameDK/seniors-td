@@ -81,11 +81,13 @@
                     margin-top: 6px; padding-top: 8px;
                     border-top: 2px dotted var(--line); }
       .card.on .fold { display: flex; }
-      .card .fold img { width: 116px; height: 116px; flex: 0 0 116px;
-                        align-self: center; }
-      .card .fold .big { font-size: 74px; line-height: 116px; width: 116px;
-                         flex: 0 0 116px; text-align: center; }
-      .card .fold .rows { flex: 1 1 auto; min-width: 0; }
+      /* Shared by a card's fold-out and the inspect panel's portrait. */
+      .fold img { width: 116px; height: 116px; flex: 0 0 116px;
+                  align-self: center; }
+      .fold .big { font-size: 74px; line-height: 116px; width: 116px;
+                   flex: 0 0 116px; text-align: center; }
+      .fold .rows { flex: 1 1 auto; min-width: 0; }
+      #inspectBody .fold { display: flex; gap: 10px; margin-bottom: 8px; }
       .card.poor { opacity: .45; cursor: not-allowed; }
       .card.locked { opacity: .4; cursor: not-allowed; }
       .card.bought { border-color: var(--good); background: #f1f8f3; cursor: default; }
