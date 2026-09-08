@@ -38,9 +38,29 @@ Not yet scheduled. Notes to self so these aren't lost.
 
 Noticed at the board rather than in the code.
 
-1. **Free play after round 21.** The campaign ends when the twenty-one
-   authored rounds are done. There should be something to carry on with
-   afterwards for a player who wants to keep going.
+1. ~~**Free play after round 21.**~~ Done. Holding all twenty-one still ends
+   the game the way it did, and the victory overlay now offers "Keep going"
+   beside Restart. Taking it puts the run into free play, where `waveAt` grows
+   one of the three late shapes -- mass, the swarm, everything at once -- by
+   seven percent a round, rotating so no two extra rounds are the same round
+   twice. It is a pure function of the round number, so round thirty is the
+   same round thirty on every seed and `npm run campaign -- --endless` can
+   compare one board's free play against another's.
+
+   Bodies per second is what grows, not hit points, for the reason the review
+   below measured: a splash knot at the double-back deletes a crowd for a fixed
+   cost however large or healthy the crowd, so a round that only grew `scale`
+   would never arrive. Growth stops at four times the shape it grew from, past
+   which only `scale` climbs -- a ceiling that also keeps a deep round inside
+   the harness's tick limit and a browser's frame budget.
+
+   Measured at eight seeds a build: the boards that clear the campaign get one
+   to seven rounds of free play out of it -- `support` reaches 22, `corner` 25,
+   `mixed` 28 -- and none reaches the harness's cap of 60. Read those as a
+   floor rather than a figure. The harness plays a written plan and stops
+   buying when the plan runs out, so `corner` enters free play with 3500
+   unspent coins it has nothing to do with, where a player at the board would
+   still be spending.
 
 2. ~~**You cannot see what you have selected.**~~ Done. Whatever the inspect
    panel is open on now carries a mark on the board: a caret above the head

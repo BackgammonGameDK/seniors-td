@@ -30,10 +30,18 @@ import { UPGRADES } from './sim/upgrades.ts';
 import { ENEMY_IDS } from './sim/types.ts';
 import type { EnemyId } from './sim/types.ts';
 import { AUTHORED_ROUNDS } from './sim/waves.ts';
-import { createWorld, placeTower, purchaseUpgrade, startWave, step, towerAt } from './sim/world.ts';
+import { continueEndless, createWorld, placeTower, purchaseUpgrade, startWave, step, towerAt } from './sim/world.ts';
 
 /** A round that cannot finish in four minutes is a stall, not a hard round. */
 const MAX_TICKS = 60 * 240;
+
+/**
+ * How far free play is played before the harness gives up on it.
+ *
+ * Free play is meant to end in a loss, so a run that reaches this cap is a
+ * finding rather than a result: the ramp in `waveAt` is too soft.
+ */
+const ENDLESS_CAP = 60;
 
 export interface RoundRecord {
   round: number;
@@ -114,12 +122,13 @@ function apply(w: ReturnType<typeof createWorld>, p: Placement): void {
   }
 }
 
-export function runCampaign(plan: Placement[], seed: number): CampaignRun {
+export function runCampaign(plan: Placement[], seed: number, endless = false): CampaignRun {
   const w = createWorld(seed);
   const rounds: RoundRecord[] = [];
   let next = 0;
+  let cleared = false;
 
-  for (let round = 1; round <= AUTHORED_ROUNDS; round++) {
+  for (let round = 1; round <= (endless ? ENDLESS_CAP : AUTHORED_ROUNDS); round++) {
     let goldSpent = 0;
     const bought: string[] = [];
     for (;;) {
@@ -154,11 +163,18 @@ export function runCampaign(plan: Placement[], seed: number): CampaignRun {
     });
 
     if (w.status === 'lost') break;
+    // Round twenty-one is still the thing that counts as clearing the game.
+    // In free play the win never lands as a status, so it is recorded here and
+    // the run is put into free play to carry on from.
+    if (round === AUTHORED_ROUNDS) {
+      cleared = true;
+      if (endless && !continueEndless(w)) throw new Error('free play would not start');
+    }
   }
 
   return {
     seed,
-    cleared: w.status === 'won',
+    cleared,
     // A lost run reached the round before the one that killed it.
     reached: w.status === 'lost' ? rounds.length - 1 : rounds.length,
     livesLeft: w.lives,
@@ -179,7 +195,9 @@ export interface BuildResult {
   clearRate: number;
   /** Mean furthest round reached, cleared or not. */
   avgReached: number;
-  /** Mean lives remaining, over the runs that cleared. */
+  /** The furthest any one seed got. Only interesting in free play. */
+  bestReached: number;
+  /** Mean lives remaining at the end of round twenty-one, over the runs that got there. */
   avgLivesOnClear: number;
   /** Mean coins never spent, over every run. */
   avgUnspent: number;
@@ -210,12 +228,16 @@ export function measureBuild(
   blurb: string,
   plan: Placement[],
   runs: number,
+  endless = false,
 ): BuildResult {
-  const all = Array.from({ length: runs }, (_, i) => runCampaign(plan, i + 1));
+  const all = Array.from({ length: runs }, (_, i) => runCampaign(plan, i + 1, endless));
   const cleared = all.filter((r) => r.cleared);
   const warnings = all.map(warningRounds).filter((n): n is number => n !== null);
   const curve: number[] = [];
-  for (let round = 0; round < AUTHORED_ROUNDS; round++) {
+  // The curve runs as far as the deepest seed got, so free play does not get
+  // cut off at twenty-one. A seed that ended earlier counts as no lives left.
+  const depth = Math.max(AUTHORED_ROUNDS, ...all.map((r) => r.rounds.length));
+  for (let round = 0; round < depth; round++) {
     const seen = all.map((r) => r.rounds[round]?.livesAfter ?? 0);
     curve.push(seen.reduce((a, b) => a + b, 0) / seen.length);
   }
@@ -227,7 +249,11 @@ export function measureBuild(
     runs,
     clearRate: cleared.length / runs,
     avgReached: mean(all.map((r) => r.reached)),
-    avgLivesOnClear: mean(cleared.map((r) => r.livesLeft)),
+    bestReached: Math.max(...all.map((r) => r.reached)),
+    // Lives as they stood when round twenty-one was held, not at the very end.
+    // The two are the same in the campaign, where twenty-one is the last round,
+    // and different in free play, which always ends on nothing left.
+    avgLivesOnClear: mean(cleared.map((r) => r.rounds[AUTHORED_ROUNDS - 1]?.livesAfter ?? 0)),
     avgUnspent: mean(all.map((r) => r.goldUnspent)),
     avgPlanBought: mean(all.map((r) => r.planBought)),
     planLength: plan.length,
@@ -251,7 +277,8 @@ function report(results: BuildResult[]): void {
     );
   }
   console.log('\nlives remaining after each round');
-  console.log('build      ' + Array.from({ length: AUTHORED_ROUNDS }, (_, i) => String(i + 1).padStart(4)).join(''));
+  const depth = results[0]?.livesCurve.length ?? AUTHORED_ROUNDS;
+  console.log('build      ' + Array.from({ length: depth }, (_, i) => String(i + 1).padStart(4)).join(''));
   for (const r of results) {
     console.log(r.name.padEnd(10) + ' ' + r.livesCurve.map((v) => v.toFixed(0).padStart(4)).join(''));
   }
@@ -265,6 +292,7 @@ function main(): void {
       loadout: { type: 'string' },
       runs: { type: 'string' },
       json: { type: 'boolean' },
+      endless: { type: 'boolean' },
       verbose: { type: 'boolean' },
     },
   });
@@ -276,16 +304,39 @@ function main(): void {
       ? BUILDS
       : [buildNamed(values.build)];
 
-  const results = chosen.map((b) => measureBuild(b.name, b.blurb, parseLoadout(b.loadout), runs));
+  const endless = Boolean(values.endless);
+  const results = chosen.map((b) =>
+    measureBuild(b.name, b.blurb, parseLoadout(b.loadout), runs, endless),
+  );
 
   if (values.json) {
     console.log(JSON.stringify({ runs, results }, null, 2));
     return;
   }
 
-  console.log(`seeds per build: ${runs}   rounds: ${AUTHORED_ROUNDS}   `
+  console.log(`seeds per build: ${runs}   `
+    + `rounds: ${endless ? `${AUTHORED_ROUNDS} then free play to ${ENDLESS_CAP}` : AUTHORED_ROUNDS}   `
     + `start: ${ECONOMY.startGold} coins, ${ECONOMY.startLives} lives\n`);
   report(results);
+
+  if (endless) {
+    console.log('\nfree play: how far past round twenty-one');
+    for (const r of results) {
+      // A build that never held round twenty-one never saw free play at all,
+      // and reporting it as negative rounds past the end would be nonsense.
+      if (r.clearRate === 0) {
+        console.log(r.name.padEnd(10) + '   never got there');
+        continue;
+      }
+      const past = r.avgReached - AUTHORED_ROUNDS;
+      console.log(
+        r.name.padEnd(10) +
+          `   mean ${past.toFixed(1).padStart(5)} rounds past` +
+          `   best round ${String(r.bestReached).padStart(3)}` +
+          (r.bestReached >= ENDLESS_CAP ? '   -- hit the cap, the ramp is too soft' : ''),
+      );
+    }
+  }
 
   if (values.verbose) {
     for (const b of chosen) {
