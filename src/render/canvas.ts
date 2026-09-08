@@ -6,16 +6,11 @@
  * reach it.
  */
 import { ENEMIES } from '../sim/enemies.ts';
-import {
-  BOARD,
-  cellCentre,
-  isBlockerCell,
-  isBuildableCell,
-  PATH_POINTS,
-} from '../sim/path.ts';
+import { BOARD, cellCentre, PATH_POINTS } from '../sim/path.ts';
 import { TOWERS } from '../sim/towers.ts';
 import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
+import { canPlace } from '../sim/world.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
 import {
@@ -710,10 +705,9 @@ export class Renderer {
     selected: TowerId,
   ): void {
     const g = this.g;
-    const mode = TOWERS[selected].mode;
-    const legal =
-      (mode === 'blocker' ? isBlockerCell(hover.col, hover.row) : isBuildableCell(hover.col, hover.row)) &&
-      !world.towers.some((t) => t.col === hover.col && t.row === hover.row);
+    // The same check `placeTower` runs before spending anything, so the
+    // preview can never promise a tap that a poor wallet would refuse.
+    const legal = canPlace(world, selected, hover.col, hover.row);
     const p = cellCentre(hover.col, hover.row);
 
     g.fillStyle = legal ? PALETTE.buildable : PALETTE.blocked;

@@ -60,7 +60,12 @@ Noticed at the board rather than in the code.
    the same branch that already drops the arming on an illegal cell, so a
    legal-but-unaffordable tap reads as `'unarm'` too -- no forced deselect
    the instant gold dips (which could undo itself a second later on a kill),
-   only when you actually try to spend it.
+   only when you actually try to spend it. The board's own hover preview had
+   the same gap from the other direction -- it painted a legal, unaffordable
+   cell green with a range circle, promising a placement the wallet would
+   refuse. `drawPlacementPreview` now calls `canPlace` (the exact check
+   `placeTower` runs) instead of a hand-rolled cell-shape check, so the
+   preview can no longer lie about what a tap will do.
 
 4. **Killing a splitter should cost more than one life.** Right now finishing
    off a troublemaker who breaks into two costs the same one life as any
