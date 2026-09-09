@@ -6,7 +6,7 @@
  * capstone id can never say one thing in the sim and another on screen --
  * the same drift `display.ts` already warns about for tower and enemy ids.
  */
-import type { TowerId } from '../sim/types.ts';
+import type { CapstoneIds, TowerId } from '../sim/types.ts';
 
 export interface TierLook {
   name: string;
@@ -21,14 +21,19 @@ export interface PathLook {
   tiers: [TierLook, TierLook];
 }
 
-export interface TowerUpgradeLook {
+export interface TowerUpgradeLook<T extends TowerId = TowerId> {
   pathA: PathLook;
   pathB: PathLook;
-  /** Keyed by capstone id, matching `src/sim/upgrades.ts` exactly. */
-  capstones: Record<string, CapstoneLook>;
+  /**
+   * Keyed by this tower's own capstone ids. The header above says these must
+   * match `src/sim/upgrades.ts` exactly; keying them by `CapstoneIds` is what
+   * makes that a compile error rather than a convention -- a missing entry, a
+   * misspelt one, or one belonging to another tower all fail here.
+   */
+  capstones: Record<CapstoneIds[T], CapstoneLook>;
 }
 
-export const UPGRADE_LOOK: Record<TowerId, TowerUpgradeLook> = {
+export const UPGRADE_LOOK: { [T in TowerId]: TowerUpgradeLook<T> } = {
   norah: {
     pathA: {
       name: 'Speed',
@@ -150,3 +155,16 @@ export const UPGRADE_LOOK: Record<TowerId, TowerUpgradeLook> = {
     },
   },
 };
+
+/**
+ * The words for one capstone.
+ *
+ * A function rather than two index steps because `UPGRADE_LOOK[def]` is only
+ * as specific as `def` is: read with a tower whose kind is known at runtime,
+ * both the table and the id widen to every tower's, and the two can no longer
+ * be lined up. Passing them in together is what keeps the pairing checked
+ * wherever the caller does know which tower it means.
+ */
+export function capstoneLook<T extends TowerId>(def: T, id: CapstoneIds[T]): CapstoneLook {
+  return UPGRADE_LOOK[def].capstones[id];
+}

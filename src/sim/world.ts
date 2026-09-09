@@ -29,6 +29,7 @@ import type {
   Tower,
   TowerDef,
   TowerId,
+  UpgradeChoice,
 } from './types.ts';
 import { ENEMY_IDS } from './types.ts';
 import { AUTHORED_ROUNDS, waveAt } from './waves.ts';
@@ -260,7 +261,7 @@ export function sellTower(w: World, t: Tower): boolean {
 export function purchaseUpgrade(
   w: World,
   towerId: number,
-  choice: 'pathA' | 'pathB' | string,
+  choice: UpgradeChoice,
 ): boolean {
   const t = w.towers.find((x) => x.id === towerId);
   if (!t) return false;

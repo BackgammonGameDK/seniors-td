@@ -22,6 +22,7 @@ import {
   enemyTypeView,
   hintText,
   hoveredStat,
+  upgradeChoiceOf,
   previewStats,
   endOverlay,
   enemyReadout,
@@ -353,6 +354,19 @@ describe('an upgrade under the pointer previews its own stats', () => {
     expect(hoveredStat(clara, 'doubleEspresso')).toBe(
       UPGRADES.clara.capstones.find((c) => c.id === 'doubleEspresso')!.stat,
     );
+  });
+
+  it('turns a button\'s dataset into a choice, or into nothing', () => {
+    // The panel is rebuilt while the pointer is over it, so the button clicked
+    // need not still belong to the tower being inspected -- a Clara's capstone
+    // read off a Norah's panel must not be bought on the Norah.
+    const norah = tower({ def: 'norah' });
+    expect(upgradeChoiceOf(norah, 'pathA')).toBe('pathA');
+    expect(upgradeChoiceOf(norah, 'pathB')).toBe('pathB');
+    expect(upgradeChoiceOf(norah, 'tripleKnit')).toBe('tripleKnit');
+    expect(upgradeChoiceOf(norah, 'doubleEspresso')).toBeNull();
+    expect(upgradeChoiceOf(norah, 'pathC')).toBeNull();
+    expect(upgradeChoiceOf(norah, undefined)).toBeNull();
   });
 });
 

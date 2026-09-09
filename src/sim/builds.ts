@@ -1,5 +1,5 @@
 import { clusterCells, nearestCell } from './path.ts';
-import type { TowerId } from './types.ts';
+import type { CapstoneId, CapstoneIds, TowerId } from './types.ts';
 import { UPGRADES } from './upgrades.ts';
 
 /**
@@ -61,9 +61,11 @@ interface Slot {
    * Barbara's Big Batch and a Protest Pete for Walter's Stone Wall, eight
    * entries in all, and nothing caught it because the build was too poor to
    * ever reach them. A capstone that cannot be written apart from its tower
-   * cannot come adrift from it.
+   * cannot come adrift from it. The `s` helper below types it per tower, so
+   * the pairing is now checked where the build is written rather than only
+   * when `render` runs.
    */
-  capstone?: string;
+  capstone?: CapstoneId;
 }
 
 interface BuildSpec {
@@ -166,7 +168,7 @@ const TOWERS_RANGE: Record<TowerId, number> = {
   clara: 90,
 };
 
-const s = (def: TowerId, capstone?: string): Slot => ({ def, capstone });
+const s = <T extends TowerId>(def: T, capstone?: CapstoneIds[T]): Slot => ({ def, capstone });
 
 const SPECS: Record<string, BuildSpec> = {
   /** Knitters, and as little else as the shape allows. Volume of small hits. */

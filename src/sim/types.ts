@@ -13,6 +13,36 @@ export type TowerId = 'norah' | 'barbara' | 'pete' | 'bill' | 'walter' | 'clara'
 export type EnemyId = 'sam' | 'mike' | 'ben' | 'tina' | 'gang' | 'skye' | 'duke' | 'walker';
 
 export const TOWER_IDS: TowerId[] = ['norah', 'barbara', 'pete', 'bill', 'walter', 'clara'];
+
+/**
+ * Which capstone belongs to which defender.
+ *
+ * Written down as a type because a capstone coming adrift from its tower has
+ * happened: eight entries in `builds.ts` once asked a Knitting Norah for
+ * Barbara's Big Batch and a Protest Pete for Walter's Stone Wall, and nothing
+ * complained, because the id was a bare string all the way from the build to
+ * the fold. Runtime checks caught it in the end. This is what would have
+ * caught it while it was being written.
+ *
+ * `src/sim/upgrades.ts` holds the capstones themselves and is checked against
+ * this table, so the two cannot drift; the ids live here rather than there so
+ * that `src/shared/upgrades.ts` can name them without reaching into the
+ * simulation's data.
+ */
+export interface CapstoneIds {
+  norah: 'longYarn' | 'tripleKnit';
+  barbara: 'bigBatch' | 'freshBatch';
+  pete: 'megaphone' | 'bullhorn';
+  bill: 'deadeye' | 'piercingShot';
+  walter: 'stoneWall' | 'rally';
+  clara: 'doubleEspresso' | 'secondRound';
+}
+
+/** Any capstone, whoever it belongs to. */
+export type CapstoneId = CapstoneIds[TowerId];
+
+/** What can be bought on a tower that already has one: a tier, or the fork. */
+export type UpgradeChoice = 'pathA' | 'pathB' | CapstoneId;
 export const ENEMY_IDS: EnemyId[] = ['sam', 'mike', 'ben', 'tina', 'gang', 'skye', 'duke', 'walker'];
 
 /**
@@ -211,7 +241,7 @@ export interface Tower {
   upgradeA: 0 | 1 | 2;
   upgradeB: 0 | 1 | 2;
   /** Which capstone was chosen, or none yet. Cannot be changed once set. */
-  capstone: string | null;
+  capstone: CapstoneId | null;
   /** Blocker only: how many times Second Wind has already brought it back. */
   revivesUsed: number;
   /** Blocker only: the tick Second Wind gets it back up, or none pending. */
