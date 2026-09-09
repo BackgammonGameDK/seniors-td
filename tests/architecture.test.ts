@@ -15,6 +15,7 @@ import { describe, expect, it } from 'vitest';
  * even in a file nothing else pulls in.
  */
 const SIM_DIR = new URL('../src/sim/', import.meta.url);
+const INDEX_HTML = new URL('../index.html', import.meta.url);
 
 /**
  * Every `src/sim` file, with its comments already stripped.
@@ -74,6 +75,32 @@ describe('the simulation stays pure', () => {
     // which would make every number this project reports meaningless.
     for (const { name, code } of simFiles()) {
       expect(code, `src/sim/${name}`).not.toContain('Math.random');
+    }
+  });
+});
+
+describe('the page stays inside its Content-Security-Policy', () => {
+  /**
+   * The built page ships `script-src 'self'`, injected by the plugin in
+   * `vite.config.ts`. That policy has one way to be broken by an ordinary
+   * edit: an inline `<script>` in index.html, which the browser would refuse
+   * to run. It would fail silently in production and work perfectly in
+   * `npm run dev`, where the policy is not applied -- so nothing short of
+   * loading the built page would catch it. This catches it here instead.
+   *
+   * Inline *styles* are fine and deliberately allowed: index.html carries a
+   * <style> block and `reserveStatHeight` writes `element.style.minHeight`,
+   * which is why the policy says `style-src 'unsafe-inline'`.
+   */
+  it('has no inline script for script-src to refuse', () => {
+    const html = readFileSync(INDEX_HTML, 'utf8');
+    const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)];
+    for (const [, attrs, body] of scripts) {
+      expect(
+        attrs!.includes('src='),
+        `index.html has an inline <script> with body "${body!.trim().slice(0, 40)}" -- ` +
+          "the built page's script-src 'self' would refuse to run it",
+      ).toBe(true);
     }
   });
 });
