@@ -282,22 +282,49 @@ retire the hint before it has been seen.
 
 ### 4. Smaller things
 
-- **The renderer leaks map entries.** `lastCooldown`, `recoil` and `facing`
-  in `canvas.ts` are keyed by tower id and never pruned when a tower is sold
-  or falls. Bounded by `nextId` over a session, so small, but trivial to fix
-  by dropping ids absent from `world.towers` once a round.
+- ~~**The renderer leaks map entries.**~~ Done, and the leak turned out to be
+  the lesser half of it. `advance` now sweeps ids the board no longer answers
+  for, triggered by the maps holding more entries than there are towers -- a
+  comparison rather than an allocation on the ordinary frame -- and the rule
+  itself is `staleKeys` in `decisions.ts`, where the renderer's other rules
+  already live and can be tested without a canvas. The other half is that
+  `Restart` builds a fresh world whose ids begin again at one while the
+  `Renderer` survives, so an entry left from the run before is not unused
+  memory but a different tower's recoil and facing, worn by whoever is placed
+  first. `Renderer.reset()`, called from `onRestart`, drops the lot; the size
+  check cannot see that case, since old ids and new ids can coincide exactly.
 - ~~**Inspecting a regenerating Walter rebuilds the whole panel several times
   a second.**~~ Done alongside the readout fix above, which had to touch the
   same key. `hp` has moved out of `panelKey` and into the `paintStats` key,
   where `sentHome` already lived for the same reason, so a rebuild no longer
   re-measures the reserved height or destroys the upgrade card under the
   pointer six times a second.
-- **`rangeMult` is uncapped** in `advanceAuras` while `rateMult` is capped at
-  `MAX_RATE_MULT`. Probably fine at 0.15 per Clara, but it is the same
-  stacking shape that needed a cap once already.
-- **`Tower.capstone` is `string | null`.** A per-tower union would have made
-  the capstone mismatch fixed in #49 a compile error instead of a latent
-  crash.
+- ~~**`rangeMult` is uncapped**~~ Done. `MAX_RANGE_MULT` is 1.5, just under
+  the 1.52 that three maxed Claras reach, so it is a rail and not a change:
+  `--all-builds` comes back byte-identical with the cap at 1.5 and with it
+  removed entirely. Left at a number nothing can afford today on purpose --
+  the point is that range multiplied and range added are the same thing at
+  one Clara and very different things at six, which is what rate had to learn
+  the expensive way. The tests had single-Clara coverage of both multipliers
+  and stacking coverage of neither, `MAX_RATE_MULT` included; one test now
+  crowds four maxed Claras onto one knitter and holds both caps.
+- ~~**`Tower.capstone` is `string | null`.**~~ Done, and the #49 mismatch is
+  now a compile error -- verified by writing it: `s('norah', 'bigBatch')`
+  fails to build. `CapstoneIds` in `types.ts` says which two capstones each
+  defender has, and `UPGRADES`, `UPGRADE_LOOK` and `builds.ts`'s slot helper
+  are all checked against it, so a misspelt or misplaced id fails in the data
+  itself rather than at runtime in a campaign rich enough to reach it.
+  `UPGRADE_LOOK` being keyed the same way turns its "must match the sim
+  exactly" header from a convention into something the compiler holds.
+
+  Two boundaries genuinely receive an unvalidated string and both narrow by
+  looking the id up rather than by asserting: the loadout grammar, which
+  already threw on an unknown capstone, and a button's `data-choice`, now
+  `upgradeChoiceOf` in `decisions.ts`. That second one closed a real gap
+  rather than only a typing one -- the panel is rebuilt under the pointer, so
+  the button clicked need not still belong to the tower being inspected.
+  The runtime checks in `builds.ts` and `loadout.ts` stay: they guard
+  `grow()`'s output and text a player pasted, neither of which a type reaches.
 
 ## Balance questions this review opened
 

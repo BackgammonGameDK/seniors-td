@@ -118,6 +118,7 @@ const handlers: UiHandlers = {
   },
   onRestart() {
     world = createWorld(Date.now() % 100000);
+    renderer.reset();
     selected = null;
     focus = null;
     bought.length = 0;

@@ -1,5 +1,5 @@
 import { TOWER_IDS } from './types.ts';
-import type { TowerId } from './types.ts';
+import type { CapstoneId, TowerId } from './types.ts';
 import { UPGRADES } from './upgrades.ts';
 
 /**
@@ -26,7 +26,7 @@ export interface Placement {
   upgradeA: 0 | 1 | 2;
   upgradeB: 0 | 1 | 2;
   /** Capstone id, or none. */
-  capstone: string | null;
+  capstone: CapstoneId | null;
 }
 
 const ENTRY = /^([a-z]+)@(\d+),(\d+)(\+[a-zA-Z0-9:]+)?$/;
@@ -46,7 +46,7 @@ export function parseLoadout(raw: string): Placement[] {
       }
       let upgradeA: 0 | 1 | 2 = 0;
       let upgradeB: 0 | 1 | 2 = 0;
-      let capstone: string | null = null;
+      let capstone: CapstoneId | null = null;
       if (m[4]) {
         const s = SUFFIX.exec(m[4]);
         if (!s) {
@@ -60,13 +60,16 @@ export function parseLoadout(raw: string): Placement[] {
           // some other tower would sit unnoticed in a plan until the build
           // got rich enough to buy it, and then throw mid-campaign. The
           // grammar is where a name is either known or it is not.
-          if (!UPGRADES[def].capstones.some((c) => c.id === s[3])) {
+          // Looked up rather than merely checked, so the id the placement
+          // carries away is the tree's own and is typed as one.
+          const cap = UPGRADES[def].capstones.find((c) => c.id === s[3]);
+          if (!cap) {
             throw new Error(
               `unknown capstone "${s[3]}" for ${def} -- known: ` +
                 UPGRADES[def].capstones.map((c) => c.id).join(', '),
             );
           }
-          capstone = s[3];
+          capstone = cap.id;
         }
       }
       return { def, col: Number(m[2]), row: Number(m[3]), upgradeA, upgradeB, capstone };

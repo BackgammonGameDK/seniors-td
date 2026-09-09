@@ -7,12 +7,12 @@
  */
 import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
-import type { EnemyId, Tower, TowerId } from '../sim/types.ts';
+import type { EnemyId, Tower, TowerId, UpgradeChoice } from '../sim/types.ts';
 import { effectiveDef, UPGRADES } from '../sim/upgrades.ts';
 import type { World } from '../sim/world.ts';
 import { refundOf } from '../sim/world.ts';
 import { ENEMY_LOOK, TOWER_LOOK } from '../shared/display.ts';
-import { UPGRADE_LOOK } from '../shared/upgrades.ts';
+import { capstoneLook, UPGRADE_LOOK } from '../shared/upgrades.ts';
 import {
   absorbHintLeft,
   capstoneLocked,
@@ -31,6 +31,7 @@ import {
   runButton,
   towerCard,
   upgradeCardState,
+  upgradeChoiceOf,
 } from './decisions.ts';
 import { enemyArtUrl, towerArtUrl } from './sprites.ts';
 import type { FocusView } from './decisions.ts';
@@ -54,7 +55,7 @@ export interface UiHandlers {
   onTogglePause(): void;
   onCycleSpeed(): void;
   /** `choice` is `'pathA'`, `'pathB'`, or a capstone id -- see `purchaseUpgrade`. */
-  onBuyUpgrade(t: Tower, choice: string): void;
+  onBuyUpgrade(t: Tower, choice: UpgradeChoice): void;
 }
 
 export class Ui {
@@ -146,7 +147,8 @@ export class Ui {
     this.upgrades.addEventListener('click', (ev) => {
       const btn = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-choice]');
       if (btn && btn.getAttribute('aria-disabled') !== 'true' && this.focusedTower) {
-        handlers.onBuyUpgrade(this.focusedTower, btn.dataset.choice!);
+        const choice = upgradeChoiceOf(this.focusedTower, btn.dataset.choice);
+        if (choice) handlers.onBuyUpgrade(this.focusedTower, choice);
       }
     });
     // Same delegation for hover: any upgrade card previews its stats, and the
@@ -417,7 +419,7 @@ export class Ui {
     if (!capstoneLocked(t.upgradeA, t.upgradeB) || t.capstone) {
       const capCards = tree.capstones
         .map((cap) => {
-          const capLook = look.capstones[cap.id]!;
+          const capLook = capstoneLook(t.def, cap.id);
           const state = upgradeCardState({
             gold,
             cost: cap.cost,

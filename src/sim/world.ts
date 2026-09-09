@@ -29,6 +29,7 @@ import type {
   Tower,
   TowerDef,
   TowerId,
+  UpgradeChoice,
 } from './types.ts';
 import { ENEMY_IDS } from './types.ts';
 import { AUTHORED_ROUNDS, waveAt } from './waves.ts';
@@ -75,7 +76,19 @@ const STUN_RECOVERY_TICKS = 60;
  * Clara worth her full price and only makes the third one a poor buy, which is
  * the shape support is meant to have: a force multiplier, not a win condition.
  */
-const MAX_RATE_MULT = 2.5;
+export const MAX_RATE_MULT = 2.5;
+/**
+ * The most a tower's range can be multiplied, for the same reason and by the
+ * same shape of stacking.
+ *
+ * Only Clara's Second Round feeds this, at fifteen percent apiece, so three of
+ * them reach 1.52 and the rail sits just under that: no board anyone can
+ * afford today touches it, and the sweep it was added after measured no change
+ * anywhere. It is here because range multiplied and range added are the same
+ * thing at one Clara and very different things at six, and rate has already
+ * had to learn that once.
+ */
+export const MAX_RANGE_MULT = 1.5;
 /** How far short of a blockade an enemy halts, so it stands beside it. */
 const BLOCKER_STOP_GAP = 14;
 /** Ticks between one swing at a blockade and the next. */
@@ -248,7 +261,7 @@ export function sellTower(w: World, t: Tower): boolean {
 export function purchaseUpgrade(
   w: World,
   towerId: number,
-  choice: 'pathA' | 'pathB' | string,
+  choice: UpgradeChoice,
 ): boolean {
   const t = w.towers.find((x) => x.id === towerId);
   if (!t) return false;
@@ -408,7 +421,7 @@ function advanceAuras(w: World): void {
     for (const t of w.towers) {
       if (t === src || !within(t.x, t.y, src.x, src.y, d.range)) continue;
       t.rateMult = Math.min(MAX_RATE_MULT, t.rateMult * d.buffRate);
-      t.rangeMult *= 1 + (d.rangeBuffBonus ?? 0);
+      t.rangeMult = Math.min(MAX_RANGE_MULT, t.rangeMult * (1 + (d.rangeBuffBonus ?? 0)));
     }
   }
 

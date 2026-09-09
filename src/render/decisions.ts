@@ -17,7 +17,15 @@ import { describePlacement } from '../sim/loadout.ts';
 import type { Placement } from '../sim/loadout.ts';
 import { TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
-import type { Enemy, EnemyId, Stats, Tower, TowerDef, TowerId } from '../sim/types.ts';
+import type {
+  Enemy,
+  EnemyId,
+  Stats,
+  Tower,
+  TowerDef,
+  TowerId,
+  UpgradeChoice,
+} from '../sim/types.ts';
 import { AUTHORED_ROUNDS, waveAt } from '../sim/waves.ts';
 import { UPGRADES } from '../sim/upgrades.ts';
 import { cooldownAt } from '../sim/world.ts';
@@ -557,6 +565,20 @@ export function previewStats(
  * DOM -- one place decides what a choice means. `null` for a path with
  * nothing left to buy, or an id that is not a capstone of this tower.
  */
+/**
+ * The upgrade a button's `data-choice` names, if it names one for this tower.
+ *
+ * A dataset value is a string the DOM hands back, and the panel is rebuilt
+ * often enough that the button under the pointer need not still belong to the
+ * tower being inspected. This is the one place that string becomes something
+ * `purchaseUpgrade` accepts, the same way the loadout grammar is the one place
+ * a written capstone becomes one.
+ */
+export function upgradeChoiceOf(t: Tower, raw: string | null | undefined): UpgradeChoice | null {
+  if (raw === 'pathA' || raw === 'pathB') return raw;
+  return UPGRADES[t.def].capstones.find((c) => c.id === raw)?.id ?? null;
+}
+
 export function hoveredStat(t: Tower, choice: string | null): Partial<TowerDef> | null {
   if (!choice) return null;
   const tree = UPGRADES[t.def];
@@ -797,6 +819,22 @@ export function advanceFades<T extends { life: number }>(items: T[], ticks: numb
   if (ticks <= 0) return items;
   for (const item of items) item.life -= ticks;
   return items.filter((item) => item.life > 0);
+}
+
+/**
+ * Which of a per-tower map's keys belong to no tower on the board.
+ *
+ * The renderer keeps a few things per tower id -- last cooldown, recoil,
+ * facing -- and nothing in the simulation announces a tower being sold or a
+ * blocker falling. Left alone those entries only pile up, which is small. The
+ * reason to sweep them is the other one: a restart builds a fresh world whose
+ * ids begin again at one, and an entry left over from the run before would
+ * then be read as belonging to a tower that never fired.
+ */
+export function staleKeys(keys: Iterable<number>, live: ReadonlySet<number>): number[] {
+  const gone: number[] = [];
+  for (const key of keys) if (!live.has(key)) gone.push(key);
+  return gone;
 }
 
 /** How long the absorbed-hit explanation stays up after the last such hit. */

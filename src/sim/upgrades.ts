@@ -1,5 +1,5 @@
 import { TOWERS } from './towers.ts';
-import type { Tower, TowerDef, TowerId } from './types.ts';
+import type { CapstoneId, CapstoneIds, Tower, TowerDef, TowerId } from './types.ts';
 
 /**
  * The upgrade tree, as flat data -- the same convention `towers.ts` states in
@@ -17,19 +17,25 @@ export interface UpgradeTier {
   stat: Partial<TowerDef>;
 }
 
-export interface CapstoneOption {
-  id: string;
+export interface CapstoneOption<Id extends CapstoneId = CapstoneId> {
+  id: Id;
   cost: number;
   stat: Partial<TowerDef>;
 }
 
-export interface TowerUpgrades {
+export interface TowerUpgrades<T extends TowerId = TowerId> {
   pathA: [UpgradeTier, UpgradeTier];
   pathB: [UpgradeTier, UpgradeTier];
-  capstones: [CapstoneOption, CapstoneOption];
+  capstones: [CapstoneOption<CapstoneIds[T]>, CapstoneOption<CapstoneIds[T]>];
 }
 
-export const UPGRADES: Record<TowerId, TowerUpgrades> = {
+/**
+ * Written as a map from tower to its own tree rather than
+ * `Record<TowerId, TowerUpgrades>`, so that each entry is checked against the
+ * two capstones `CapstoneIds` says that tower has. A capstone written under
+ * the wrong tower, or misspelt, is a compile error in the data itself.
+ */
+export const UPGRADES: { [T in TowerId]: TowerUpgrades<T> } = {
   norah: {
     pathA: [
       { cost: 25, stat: { cooldown: 20 } },
