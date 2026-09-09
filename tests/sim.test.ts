@@ -19,6 +19,8 @@ import {
   canPlace,
   continueEndless,
   createWorld,
+  MAX_RANGE_MULT,
+  MAX_RATE_MULT,
   placeTower,
   purchaseUpgrade,
   sellTower,
@@ -706,6 +708,36 @@ describe('upgrades', () => {
     const d = effectiveDef(clara);
     expect(norah.rangeMult).toBeCloseTo(1 + (d.rangeBuffBonus ?? 0));
     expect(clara.rangeMult).toBe(1);
+  });
+
+  it('stops both buffs at their cap, however many Claras crowd around', () => {
+    // Multiplying is what makes a cap necessary: four maxed Claras are 1.45 to
+    // the fourth on rate and 1.15 to the fourth on range, and neither number
+    // is one anybody aimed at. Rate learned this the hard way -- see
+    // MAX_RATE_MULT -- and range had never been asserted at all.
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(300));
+    const claras = [400, 500, 600, 700].map((dist) => {
+      const c = put(w, 'clara', buildCellNear(dist));
+      expect(purchaseUpgrade(w, c.id, 'pathA')).toBe(true);
+      expect(purchaseUpgrade(w, c.id, 'pathA')).toBe(true);
+      expect(purchaseUpgrade(w, c.id, 'pathB')).toBe(true);
+      expect(purchaseUpgrade(w, c.id, 'pathB')).toBe(true);
+      expect(purchaseUpgrade(w, c.id, 'secondRound')).toBe(true);
+      return c;
+    });
+    // Stood on top of each other so every one of them reaches the knitter.
+    for (const c of claras) {
+      c.x = norah.x + 10;
+      c.y = norah.y;
+    }
+    step(w);
+
+    const d = effectiveDef(claras[0]!);
+    expect(d.buffRate ** claras.length).toBeGreaterThan(MAX_RATE_MULT);
+    expect((1 + (d.rangeBuffBonus ?? 0)) ** claras.length).toBeGreaterThan(MAX_RANGE_MULT);
+    expect(norah.rateMult).toBe(MAX_RATE_MULT);
+    expect(norah.rangeMult).toBe(MAX_RANGE_MULT);
   });
 });
 
