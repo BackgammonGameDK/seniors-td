@@ -4,6 +4,7 @@
  *   npm run campaign -- --all-builds
  *   npm run campaign -- --build sniper --runs 40
  *   npm run campaign -- --loadout "norah@6,1 norah@6,1+a1" --json
+ *   npm run campaign -- --loadout-file loadout.txt
  *
  * `npm run sim` hands out towers free and refills lives every round, which
  * makes it the right tool for "how hard is round 12" and the wrong one for
@@ -20,6 +21,7 @@
  * ordering is a finding, not a bug in the harness.
  */
 import { parseArgs } from 'node:util';
+import { loadoutText } from './harness-args.ts';
 import { BUILDS, buildNamed } from './sim/builds.ts';
 import { ECONOMY } from './sim/economy.ts';
 import { describePlacement, parseLoadout } from './sim/loadout.ts';
@@ -290,6 +292,7 @@ function main(): void {
       build: { type: 'string' },
       'all-builds': { type: 'boolean' },
       loadout: { type: 'string' },
+      'loadout-file': { type: 'string' },
       runs: { type: 'string' },
       json: { type: 'boolean' },
       endless: { type: 'boolean' },
@@ -298,11 +301,21 @@ function main(): void {
   });
 
   const runs = Number(values.runs ?? 20);
-  const chosen = values.loadout
-    ? [{ name: 'loadout', blurb: 'given on the command line', loadout: values.loadout }]
-    : values['all-builds'] || !values.build
-      ? BUILDS
-      : [buildNamed(values.build)];
+  const written = loadoutText(values);
+  const chosen =
+    written !== null
+      ? [
+          {
+            name: 'loadout',
+            blurb: values['loadout-file']
+              ? `read from ${values['loadout-file']}`
+              : 'given on the command line',
+            loadout: written,
+          },
+        ]
+      : values['all-builds'] || !values.build
+        ? BUILDS
+        : [buildNamed(values.build)];
 
   const endless = Boolean(values.endless);
   const results = chosen.map((b) =>
