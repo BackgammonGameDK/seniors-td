@@ -78,11 +78,18 @@ export default defineConfig({
   /**
    * Relative asset paths, not a hardcoded deploy path.
    *
-   * The same build then works served from a domain root, served from a
-   * subpath, and opened straight off disk by double-clicking dist/index.html.
-   * A hardcoded base would tie the build to one URL and break the other two --
-   * and the offline case is genuinely useful, since the game is a single 36KB
-   * folder with no backend behind it.
+   * The same build then works served from a domain root and served from a
+   * subpath. A hardcoded base would tie it to one URL and break the other.
+   *
+   * It does not also work opened straight off disk, though this comment
+   * claimed it did for a long time. Vite emits the bundle as
+   * `<script type="module" crossorigin>`, and Chrome refuses a module script
+   * over `file://` on CORS grounds -- nothing to do with the policy below,
+   * as a build with that meta tag stripped out fails in exactly the same way.
+   * Restoring the offline case would mean inlining the bundle as a non-module
+   * script and embedding the nine portraits as data URIs, turning a 776K
+   * folder into a single file about a third larger again. Not worth it for a
+   * game that is played at a URL.
    */
   base: './',
 });
