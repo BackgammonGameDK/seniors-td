@@ -127,6 +127,12 @@ const handlers: UiHandlers = {
     focus = null;
   },
   onInspectEnemyType(id: EnemyId) {
+    // Reading up on a troublemaker puts the build menu down, for the same
+    // reason starting a round does: the panel that shows the readout is the
+    // one the armed card was in, so the card goes out of sight while staying
+    // armed, and the next tap on the board spends coins with nothing on
+    // screen saying it would.
+    selected = null;
     focus = { kind: 'enemyType', id };
   },
   onSell(t) {
