@@ -7,6 +7,7 @@
  *
  *   npm run sim -- --all-waves
  *   npm run sim -- --wave 7 --loadout "norah@5,4 bill@9,2" --runs 200
+ *   npm run sim -- --loadout-file loadout.txt
  *   npm run sim -- --all-waves --json
  *
  * Towers are placed free of charge and lives are refreshed each round, so this
@@ -14,6 +15,7 @@
  * actually afford is `npm run campaign`.
  */
 import { parseArgs } from 'node:util';
+import { loadoutText } from './harness-args.ts';
 import { ECONOMY } from './sim/economy.ts';
 import { describePlacement, parseLoadout } from './sim/loadout.ts';
 import type { Placement } from './sim/loadout.ts';
@@ -130,12 +132,14 @@ function main(): void {
       'all-waves': { type: 'boolean' },
       runs: { type: 'string' },
       loadout: { type: 'string' },
+      'loadout-file': { type: 'string' },
       json: { type: 'boolean' },
     },
   });
 
   const runs = Number(values.runs ?? 20);
-  const plan = values.loadout ? parseLoadout(values.loadout) : defaultPlan();
+  const written = loadoutText(values);
+  const plan = written === null ? defaultPlan() : parseLoadout(written);
   const waves = values['all-waves']
     ? WAVES.map((_, i) => i)
     : [Number(values.wave ?? 1) - 1];

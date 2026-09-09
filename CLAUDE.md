@@ -49,6 +49,7 @@ hex colours, display names or blurbs in `src/sim/`.
 | `src/sim/economy.ts` | Bounties, the round clear bonus, and what selling returns. |
 | `src/sim/builds.ts` | Seven named boards the campaign harness plays: six archetypes, plus `corner`, a board played by hand and kept verbatim. |
 | `src/sim/loadout.ts` | The `towerId@col,row` grammar the harnesses parse. |
+| `src/harness-args.ts` | Where a harness gets its board from: `--loadout`, or `--loadout-file`. |
 | `src/shared/display.ts` | Names, colours, radii, emoji. Both layers may read it. |
 | `src/shared/upgrades.ts` | The words and pictures for the upgrades. Presentational half of `src/sim/upgrades.ts`. |
 | `src/render/decisions.ts` | What the interface decides, without the interface. Pure and tested. |
@@ -66,6 +67,7 @@ npm run typecheck  # tsc --noEmit
 npm run sim -- --all-waves                   # difficulty for every round
 npm run sim -- --wave 7 --runs 60 --json     # machine-readable
 npm run sim -- --wave 12 --loadout "norah@4,2 bill@10,8"
+npm run sim -- --loadout-file loadout.txt    # a board saved from the game
 npm run campaign -- --all-builds             # all seven boards, twenty-one rounds
 npm run campaign -- --build sniper --runs 40 --json
 npm run campaign -- --build corner --endless        # how far free play carries a board
@@ -85,9 +87,19 @@ and cuts the middle out with an ellipsis. A board from a long run came back
 copied, so it reached the file they pasted into. Saving as a file is the path
 nothing can shorten.
 
+Point a harness at the file you saved. **Prefer this to pasting the string**:
+a board is meant to be shared, and a shared string inside double quotes is
+text the shell expands -- `$(...)` and backticks run before `parseLoadout`
+ever sees them. A path is a fixed word you typed, and the board's own bytes
+arrive through the filesystem, which has no interpreter.
+
 ```bash
-npm run campaign -- --loadout "<the string>" --runs 20
+npm run campaign -- --loadout-file ~/Downloads/loadout.txt --runs 20
 ```
+
+`--loadout "<the string>"` is still there for boards short enough to type by
+hand, like the ones in `builds.ts`. Both harnesses take either, and refuse
+both at once.
 
 That closes the loop `loadout.ts` describes: a written plan could always be
 played, but until now a played board could not be written down, so every board
