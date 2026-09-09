@@ -697,8 +697,9 @@ describe('the game explains why a hit did nothing', () => {
   it('shows the shield a troublemaker is carrying right now', () => {
     const lines = enemyReadout({ def: 'mike', hp: 90, scale: 1, shield: 4 }).lines.join(' ');
     expect(lines).toMatch(/Shielded right now: 4/);
-    // 3 armour + 4 shield, so 7 does nothing and 8 is the first that counts.
-    expect(lines).toMatch(/under 8 damage does nothing/);
+    // 3 armour + 4 shield, so 7 is nearly all eaten and 8 is the first that
+    // pays in full.
+    expect(lines).toMatch(/under 8 damage is nearly all eaten/);
   });
 
   it('says nothing about shields when none is on them', () => {

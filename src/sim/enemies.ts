@@ -68,13 +68,26 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     // after round 6. At 95 he lives long enough to tax the many small hits he
     // is supposed to punish, and `wall` finishes on 17.7 instead.
     //
+    // 95 until the shield grew a rail and every hit grew a floor under it. Both
+    // of those hand something back to the boards Ben exists to tax -- a hit
+    // that used to vanish against him now keeps a fifth of itself -- and the
+    // board that gained most was `wall`, the one already gaining most from
+    // him: cinnamon rolls are many light hits by definition. Measured at 16
+    // seeds, `wall` went from finishing on 18.0 lives of 25 to 20.6, over the
+    // line the balance sweep draws at 18. 120 puts it back to 16.0 while
+    // `corner` and `binoculars` both still clear, and it is the same lever for
+    // the same reason as the move off 55: Ben taxes nothing he does not live
+    // long enough to stand next to. 115 measured at 17.8, which is the knife
+    // edge 95 was already sitting on and the reason this was invisible until
+    // something moved.
+    //
     // Hit points rather than a bigger shield on purpose. A stronger shield
     // costs a board that kills one troublemaker at a time far more than it
     // costs a splash knot -- at shieldAura 5, `binoculars` fell to a 25%
     // clear rate while `wall` still cleared half -- which is backwards. More
     // range does nothing to a knot at all. Only survival reaches the shape
     // that was ignoring him.
-    hp: 95,
+    hp: 120,
     speed: 1.15,
     armour: 1,
     bounty: 5,

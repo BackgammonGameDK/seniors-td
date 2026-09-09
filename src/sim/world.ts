@@ -89,6 +89,48 @@ export const MAX_RATE_MULT = 2.5;
  * had to learn that once.
  */
 export const MAX_RANGE_MULT = 1.5;
+/**
+ * The most shield an enemy can be carrying, however many carriers it stands
+ * among.
+ *
+ * The rail the two above already have, arriving on the enemy side of the same
+ * system after the same failure. Ben's aura was summed once per Ben with
+ * nothing stopping it, and a board that knots the street -- blockades, a wall
+ * of glaze -- gathers every carrier in a round into one 90px blob and shields
+ * it with all of them at once. Measured in free play at round 57, which sends
+ * 46 Bens: a played board reached 92, meaning every single carrier was inside
+ * one circle. That is a board being punished for its own crowd control, and it
+ * annihilated the cheap fast defenders rather than taxing them.
+ *
+ * Six is three carriers. A knot of Bens is still three times the protection of
+ * one, which keeps the first Ben worth his whole price and only makes the
+ * fourth a passenger -- the shape a stacking rail is supposed to have. The
+ * harness never saw the runaway because it never bunches a wave that hard: the
+ * three played boards peak at 12 to 16 in the same rounds.
+ */
+export const MAX_SHIELD = 6;
+/**
+ * The least of itself a hit keeps, however armoured and shielded the target.
+ *
+ * Armour and shield are flat subtractions, and a flat subtraction has a cliff
+ * in it: a defender is not weakened as protection rises, it goes to exactly
+ * zero and stays there. Norah pays that first and hardest, because her damage
+ * is 7 and no upgrade she owns ever changes it -- her paths buy rate, range
+ * and a third shot, and every one of those pays the tax again per hit, so
+ * multiShot makes an armoured target worse rather than better.
+ *
+ * A fifth of the hit always lands, and only against a shield. Armour keeps its
+ * cliff untouched, because nothing on the board falls off it: the heaviest
+ * armour is Duke's 4 and the lightest hit is Pete's 5. The shield is the only
+ * part of the subtraction that can grow without limit, so it is the only part
+ * that needs a floor under it, and confining it there measured identically to
+ * flooring the whole subtraction while changing far less.
+ *
+ * Weak hits are still the wrong answer by a wide margin, which is the whole of
+ * Ben's identity, but they are a bad answer rather than no answer, and a
+ * defender fades instead of switching off.
+ */
+export const MIN_DAMAGE_FRACTION = 0.2;
 /** How far short of a blockade an enemy halts, so it stands beside it. */
 const BLOCKER_STOP_GAP = 14;
 /** Ticks between one swing at a blockade and the next. */
@@ -432,7 +474,9 @@ function advanceAuras(w: World): void {
       // the towers it exists to punish, and the answer to a carrier is meant
       // to be shooting the carrier.
       for (const e of w.enemies) {
-        if (e !== src && within(e.x, e.y, src.x, src.y, d.auraRange)) e.shield += d.shieldAura;
+        if (e !== src && within(e.x, e.y, src.x, src.y, d.auraRange)) {
+          e.shield = Math.min(MAX_SHIELD, e.shield + d.shieldAura);
+        }
       }
     }
     if (d.disablesTowers) {
@@ -641,7 +685,9 @@ function advanceEnemies(w: World): void {
  * Armour and shield are flat subtractions taken at the moment of impact, so a
  * single heavy hit gives up far less of itself than the same damage spread
  * over six light ones. That is the whole of the "what beats what" in this
- * game, and it is arithmetic rather than a table.
+ * game, and it is arithmetic rather than a table. Against a shield a fifth of
+ * the hit is floored, so that the arithmetic tapers instead of ending -- see
+ * MIN_DAMAGE_FRACTION.
  */
 export function applyHit(
   w: World,
@@ -653,12 +699,21 @@ export function applyHit(
   if (!e.alive) return;
   const d = ENEMIES[e.def];
 
-  const dealt = Math.max(0, damage - d.armour - e.shield);
+  // Never below a fifth of the hit once a shield is involved: see
+  // MIN_DAMAGE_FRACTION for why the one part of the subtraction that stacks is
+  // the one part that needs a floor under it.
+  const floor = e.shield > 0 ? Math.ceil(damage * MIN_DAMAGE_FRACTION) : 0;
+  const dealt = damage <= 0 ? 0 : Math.max(floor, damage - d.armour - e.shield);
   if (dealt > 0) {
     e.hp -= dealt;
     e.flash = FLASH_TICKS;
     emit(w, 'hit', e.x, e.y);
-  } else if (damage > 0) {
+  }
+  // The floor means a hit is never wholly eaten any more, so this now marks
+  // the hits that the floor is all that is left of: the subtraction alone
+  // would have taken the whole thing. The player still needs to see it, and it
+  // is still the sign to bring something that hits harder.
+  if (damage > 0 && damage - d.armour - e.shield < floor) {
     emit(w, 'hit', e.x, e.y, 'absorbed');
   }
 
