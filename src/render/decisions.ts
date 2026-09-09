@@ -611,7 +611,7 @@ export function hintText(opts: {
   // Ahead of the idle line on purpose: between rounds it is the more useful
   // of the two, because it is when a board can still be changed.
   if (opts.absorbing) {
-    return 'Armour and shields take a fixed bite out of every single hit, so light hits vanish entirely. Bring one that hits harder.';
+    return 'Armour and shields take a fixed bite out of every single hit, so a light hit has almost nothing left. Bring one that hits harder.';
   }
   if (opts.idle) return 'Place a neighbour, then start the round.';
   return 'Tap anyone on the board to see what they are.';
@@ -635,7 +635,9 @@ export function enemyReadout(e: Pick<Enemy, 'def' | 'hp' | 'scale' | 'shield'>):
   }
   const soak = d.armour + e.shield;
   if (soak > 0) {
-    lines.push(`So a hit under ${soak + 1} damage does nothing. Hit harder, not more often.`);
+    lines.push(
+      `So a hit under ${soak + 1} damage is nearly all eaten -- a fifth of it lands and no more. Hit harder, not more often.`,
+    );
   }
   if (d.stunImmune) lines.push('Cannot be stopped by shouting.');
   if (d.slowResist > 0) {

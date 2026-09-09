@@ -21,6 +21,8 @@ import {
   createWorld,
   MAX_RANGE_MULT,
   MAX_RATE_MULT,
+  MAX_SHIELD,
+  MIN_DAMAGE_FRACTION,
   placeTower,
   purchaseUpgrade,
   sellTower,
@@ -130,6 +132,54 @@ describe('armour and shields', () => {
     const start = mike.hp;
     applyHit(w, mike, 1, NO_EFFECT);
     expect(mike.hp).toBe(start);
+  });
+
+  it('keeps armour a cliff when no shield is involved', () => {
+    // The floor is confined to the shield on purpose. Armour on its own has
+    // nothing to floor: the heaviest is Duke's 4 and the lightest hit on the
+    // board is Pete's 5, so nothing today falls off it.
+    const w = rich();
+    const duke = spawnEnemy(w, 'duke', 100);
+    const start = duke.hp;
+    applyHit(w, duke, ENEMIES.duke.armour, NO_EFFECT);
+    expect(duke.hp).toBe(start);
+  });
+
+  it('leaves a fifth of a hit standing, however heavy the armour and shield', () => {
+    const w = rich();
+    const mike = spawnEnemy(w, 'mike', 100);
+    // Armour 3 plus a full shield would take all of 7 and more besides.
+    mike.shield = MAX_SHIELD;
+    const start = mike.hp;
+    applyHit(w, mike, 7, NO_EFFECT);
+    // Not zero, and not much: the floor is what is left of the hit.
+    expect(start - mike.hp).toBe(Math.ceil(7 * MIN_DAMAGE_FRACTION));
+  });
+
+  it('still pays a big hit in full, so the floor never becomes the better deal', () => {
+    const w = rich();
+    const mike = spawnEnemy(w, 'mike', 100);
+    mike.shield = MAX_SHIELD;
+    const start = mike.hp;
+    applyHit(w, mike, 60, NO_EFFECT);
+    expect(start - mike.hp).toBe(60 - ENEMIES.mike.armour - MAX_SHIELD);
+  });
+
+  it('rails the shield however many carriers crowd around one troublemaker', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 100);
+    // Far more Bens than the rail allows, all standing on the same spot as the
+    // one they are shielding. A knot like this is what a board full of
+    // blockades gathers, and it used to sum without limit.
+    const carriers = 20;
+    for (let i = 0; i < carriers; i++) {
+      const ben = spawnEnemy(w, 'ben', 100);
+      ben.x = sam.x;
+      ben.y = sam.y;
+    }
+    step(w);
+    expect(carriers * ENEMIES.ben.shieldAura).toBeGreaterThan(MAX_SHIELD);
+    expect(sam.shield).toBe(MAX_SHIELD);
   });
 
   it('a shield carrier shields its neighbours but never itself', () => {
