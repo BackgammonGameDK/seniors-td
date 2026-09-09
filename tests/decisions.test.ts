@@ -11,6 +11,7 @@ import {
   ABSORB_HINT_MS,
   absorbHintLeft,
   advanceFades,
+  staleKeys,
   armTower,
   boardAction,
   capstoneLocked,
@@ -941,6 +942,34 @@ describe('the renderer ages what it draws in ticks, not in frames', () => {
     for (let i = 0; i < 3; i++) threeFramesOfOne = easeAngle(threeFramesOfOne, 1, 0.2);
     expect(oneFrameOfThree).toBeCloseTo(threeFramesOfOne, 12);
     expect(easeAngleOver(0.5, 1, 0.2, 0)).toBe(0.5);
+  });
+});
+
+describe('the renderer forgets towers that have left the board', () => {
+  // What the renderer keeps per tower id -- last cooldown, recoil, facing --
+  // was never dropped when a tower was sold or a blocker fell. Piling up is
+  // the small half of it: a restart begins ids again at one, so a leftover
+  // entry is not unused memory but somebody else's recoil.
+  const kept = () => new Map([
+    [1, 0.5],
+    [2, 0.5],
+    [3, 0.5],
+  ]);
+
+  it('names the ids no tower answers for, and only those', () => {
+    expect(staleKeys(kept().keys(), new Set([1, 3]))).toEqual([2]);
+  });
+
+  it('keeps everything when every id is still on the board', () => {
+    expect(staleKeys(kept().keys(), new Set([1, 2, 3]))).toEqual([]);
+  });
+
+  it('names everything when the board is empty', () => {
+    expect(staleKeys(kept().keys(), new Set())).toEqual([1, 2, 3]);
+  });
+
+  it('has nothing to say about an empty map', () => {
+    expect(staleKeys(new Map<number, number>().keys(), new Set([1]))).toEqual([]);
   });
 });
 

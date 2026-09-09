@@ -799,6 +799,22 @@ export function advanceFades<T extends { life: number }>(items: T[], ticks: numb
   return items.filter((item) => item.life > 0);
 }
 
+/**
+ * Which of a per-tower map's keys belong to no tower on the board.
+ *
+ * The renderer keeps a few things per tower id -- last cooldown, recoil,
+ * facing -- and nothing in the simulation announces a tower being sold or a
+ * blocker falling. Left alone those entries only pile up, which is small. The
+ * reason to sweep them is the other one: a restart builds a fresh world whose
+ * ids begin again at one, and an entry left over from the run before would
+ * then be read as belonging to a tower that never fired.
+ */
+export function staleKeys(keys: Iterable<number>, live: ReadonlySet<number>): number[] {
+  const gone: number[] = [];
+  for (const key of keys) if (!live.has(key)) gone.push(key);
+  return gone;
+}
+
 /** How long the absorbed-hit explanation stays up after the last such hit. */
 export const ABSORB_HINT_MS = 3000;
 

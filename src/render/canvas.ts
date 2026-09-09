@@ -16,6 +16,7 @@ import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
 import {
   advanceFades,
   easeAngleOver,
+  staleKeys,
   facingAngle,
   focusMark,
   hudReadouts,
@@ -401,6 +402,11 @@ export class Renderer {
    * screen and three times too long at 3x speed.
    */
   advance(world: World, ticks: number): void {
+    // A sold tower, a fallen blocker or a restart leaves behind entries no
+    // tower answers for. Comparing sizes is the trigger so the ordinary frame
+    // costs one comparison and allocates nothing.
+    if (this.lastCooldown.size > world.towers.length) this.forget(world);
+
     // Sampled every frame, even one worth no ticks, because a shot is spotted
     // by the cooldown jumping back up and the sample it is compared against
     // has to keep up with the world.
@@ -427,6 +433,30 @@ export class Renderer {
 
     this.bursts = advanceFades(this.bursts, ticks);
     this.floaters = advanceFades(this.floaters, ticks);
+  }
+
+  /** Drop what was remembered about towers that have left the board. */
+  private forget(world: World): void {
+    const live = new Set(world.towers.map((t) => t.id));
+    for (const map of [this.lastCooldown, this.recoil, this.facing]) {
+      for (const id of staleKeys(map.keys(), live)) map.delete(id);
+    }
+  }
+
+  /**
+   * Forget the whole run.
+   *
+   * Restarting builds a fresh world whose ids begin again at one, so an entry
+   * kept from the old run is not stale in any way `forget` could see: it
+   * belongs to a different tower wearing the same id, and the first tower
+   * placed would start out already recoiling and already facing somewhere.
+   */
+  reset(): void {
+    this.lastCooldown.clear();
+    this.recoil.clear();
+    this.facing.clear();
+    this.floaters = [];
+    this.bursts = [];
   }
 
   draw(
