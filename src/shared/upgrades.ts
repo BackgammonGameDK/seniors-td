@@ -154,6 +154,46 @@ export const UPGRADE_LOOK: { [T in TowerId]: TowerUpgradeLook<T> } = {
       secondRound: { name: 'Second Round', blurb: 'Reaches much further, and also extends the range of anyone she buffs.' },
     },
   },
+  harold: {
+    pathA: {
+      name: 'Pressure',
+      tiers: [
+        { name: 'Thumb on the End', blurb: 'Hits harder.' },
+        { name: 'Tap Full On', blurb: 'Hits harder again.' },
+      ],
+    },
+    pathB: {
+      name: 'Wet Road',
+      tiers: [
+        { name: 'Puddles', blurb: 'More of them slip on the water.' },
+        { name: 'Flooded', blurb: 'More of them slip again.' },
+      ],
+    },
+    capstones: {
+      fullMains: { name: 'Full Mains', blurb: 'Hits much harder and much more often, but no more of them slip.' },
+      soapyWater: { name: 'Soapy Water', blurb: 'Nearly everyone he hits slips, and they slide much further back.' },
+    },
+  },
+  betty: {
+    pathA: {
+      name: 'Weight',
+      tiers: [
+        { name: 'Heavier Ball', blurb: 'Hits harder.' },
+        { name: 'Two Hands', blurb: 'Hits harder again.' },
+      ],
+    },
+    pathB: {
+      name: 'The Line',
+      tiers: [
+        { name: 'Straighter Roll', blurb: 'Carries on through one more behind the first.' },
+        { name: 'Flat Road', blurb: 'Carries on through one more again.' },
+      ],
+    },
+    capstones: {
+      solidBall: { name: 'Solid Ball', blurb: 'Hits much harder, but rolls through no more of them.' },
+      theWholeLot: { name: 'The Whole Lot', blurb: 'Rolls all the way through four of them standing in a line.' },
+    },
+  },
 };
 
 /**

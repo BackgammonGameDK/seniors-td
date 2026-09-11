@@ -3,7 +3,7 @@ import type { CapstoneId, CapstoneIds, TowerId } from './types.ts';
 import { UPGRADES } from './upgrades.ts';
 
 /**
- * Seven boards a player might actually build, written as spending plans.
+ * Eleven boards a player might actually build, written as spending plans.
  *
  * The question this project keeps asking is not "is the game winnable" but
  * "does more than one build win", and that cannot be answered by a single
@@ -166,6 +166,8 @@ const TOWERS_RANGE: Record<TowerId, number> = {
   bill: 225,
   walter: 0,
   clara: 90,
+  harold: 75,
+  betty: 155,
 };
 
 const s = <T extends TowerId>(def: T, capstone?: CapstoneIds[T]): Slot => ({ def, capstone });
@@ -188,6 +190,60 @@ const SPECS: Record<string, BuildSpec> = {
       s('norah', 'longYarn'),
       s('norah', 'tripleKnit'),
       s('norah', 'longYarn'),
+    ],
+  },
+
+  /**
+   * Hoses at the hairpin, where sending someone backwards costs them the most.
+   *
+   * A slip is worth exactly as much street as sits behind the hose, so the
+   * knot where the road doubles back is the place it pays twice: a troublemaker
+   * pushed back there walks the same stretch again past the same guns. The two
+   * Norahs and the Bill are not decoration -- a board of nothing but Harolds
+   * pushes people around without finishing any of them, which is the same
+   * failure a board of nothing but Petes had.
+   */
+  slip: {
+    blurb: 'hoses at the hairpin, walking them back over ground they have covered',
+    anchor: 900,
+    slots: [
+      s('harold', 'soapyWater'),
+      s('harold', 'fullMains'),
+      s('norah', 'longYarn'),
+      s('harold', 'soapyWater'),
+      s('clara', 'doubleEspresso'),
+      s('harold', 'fullMains'),
+      s('norah', 'longYarn'),
+      s('harold', 'soapyWater'),
+      s('bill', 'deadeye'),
+      s('harold', 'fullMains'),
+    ],
+  },
+
+  /**
+   * Bowling balls down a straight, with a wall to line the targets up.
+   *
+   * Betty is paid for a queue the way Barbara is paid for a clump, and a
+   * blockade is the cheapest way to make a queue happen on purpose: everything
+   * that stops at Walter is standing in single file behind him by the time the
+   * ball arrives.
+   */
+  bowling: {
+    blurb: 'bowling balls down a straight, with a wall to line them up',
+    anchor: 1180,
+    slots: [
+      s('betty', 'theWholeLot'),
+      s('betty', 'solidBall'),
+      s('walter', 'stoneWall'),
+      s('betty', 'theWholeLot'),
+      s('clara', 'doubleEspresso'),
+      s('betty', 'solidBall'),
+      s('betty', 'theWholeLot'),
+      s('norah', 'longYarn'),
+      s('betty', 'solidBall'),
+      s('betty', 'theWholeLot'),
+      s('barbara', 'bigBatch'),
+      s('betty', 'solidBall'),
     ],
   },
 

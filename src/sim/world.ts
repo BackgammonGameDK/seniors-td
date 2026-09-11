@@ -65,6 +65,16 @@ const MAX_STUN_FATIGUE = 4;
  */
 const STUN_RECOVERY_TICKS = 60;
 /**
+ * Ticks of footing a troublemaker gets after being knocked off it.
+ *
+ * A second, which is longer than any hose's gap between shots -- so the ground
+ * a slip costs is paid once per second however much water is falling on them,
+ * and stacking hoses buys more damage and a better chance of the *first* slip
+ * rather than an ever-longer push. That is what keeps a defender who sends
+ * people backwards from being a way to stop the street outright.
+ */
+const SLIP_COOLDOWN_TICKS = 60;
+/**
  * The most a tower's rate of fire can be multiplied, however much coffee is
  * standing near it.
  *
@@ -178,7 +188,8 @@ export interface World {
   pendingHits: {
     enemyId: number;
     damage: number;
-    effect: Pick<TowerDef, 'slowTicks' | 'slowFactor' | 'stunTicks'>;
+    effect: HitEffect;
+    pierceFalloff: number;
     pierceRemaining: number;
     /** Which tower gets the credit if this one finishes an enemy off. */
     sourceId: number;
@@ -415,6 +426,7 @@ export function spawnEnemy(w: World, def: EnemyId, dist: number, scale = 1): Ene
     stunRecovery: 0,
     dropCooldown: d.dropInterval,
     regenCd: d.regenDelayTicks,
+    slipCooldown: 0,
     speedMult: 1,
     shield: 0,
     blockedBy: null,
@@ -531,6 +543,7 @@ function advanceEffects(w: World): void {
       if (e.slowTicks === 0) e.slowFactor = 0;
     }
     if (e.stunTicks > 0) e.stunTicks--;
+    if (e.slipCooldown > 0) e.slipCooldown--;
     // Only counts while nobody is shouting, so fatigue eases off during a lull
     // rather than during the stun it is already shortening.
     if (e.stunTicks === 0 && e.stunFatigue > 0) {
@@ -711,11 +724,24 @@ function advanceEnemies(w: World): void {
  * the hit is floored, so that the arithmetic tapers instead of ending -- see
  * MIN_DAMAGE_FRACTION.
  */
+/**
+ * Everything a hit carries besides its damage.
+ *
+ * Taken from `TowerDef` rather than written out again so a new rider on a
+ * defender cannot reach `applyHit` without also being a real stat somewhere a
+ * player can read it. The slip fields are optional there, so a caller that
+ * passes a whole `TowerDef` -- which is what a pulse does -- needs no change.
+ */
+export type HitEffect = Pick<
+  TowerDef,
+  'slowTicks' | 'slowFactor' | 'stunTicks' | 'slipChance' | 'slipPush'
+>;
+
 export function applyHit(
   w: World,
   e: Enemy,
   damage: number,
-  effect: Pick<TowerDef, 'slowTicks' | 'slowFactor' | 'stunTicks'>,
+  effect: HitEffect,
   sourceId?: number,
 ): void {
   if (!e.alive) return;
@@ -756,6 +782,27 @@ export function applyHit(
     e.stunTicks = Math.max(e.stunTicks, shortened);
     e.stunFatigue = Math.min(MAX_STUN_FATIGUE, e.stunFatigue + 1);
     e.stunRecovery = STUN_RECOVERY_TICKS;
+  }
+
+  // Losing your footing. Rolled here, with the other things a hit resolves
+  // once, so it can never be re-entered by anything ticking down afterwards.
+  //
+  // The cooldown is the rail. A slip that could land on every hit would let a
+  // line of hoses push the street backwards faster than it walks forwards, and
+  // nothing would ever arrive; with a second of footing in between, a slip
+  // costs ground once and then they walk whatever else lands on them.
+  const slipChance = effect.slipChance ?? 0;
+  const slipPush = effect.slipPush ?? 0;
+  if (slipChance > 0 && slipPush > 0 && e.slipCooldown === 0 && w.rng.next() < slipChance) {
+    e.dist = Math.max(0, e.dist - slipPush);
+    const p = pointAt(e.dist);
+    e.x = p.x;
+    e.y = p.y;
+    e.slipCooldown = SLIP_COOLDOWN_TICKS;
+    // Sliding back can only take them away from whatever they had walked up
+    // to, so the blockade they were stopped at is no longer the one ahead.
+    e.blockedBy = null;
+    emit(w, 'slip', e.x, e.y);
   }
 
   if (e.hp <= 0) kill(w, e, sourceId);
@@ -895,7 +942,10 @@ function fireTowers(w: World): void {
         slowTicks: d.slowTicks,
         slowFactor: d.slowFactor,
         stunTicks: d.stunTicks,
+        slipChance: d.slipChance ?? 0,
+        slipPush: d.slipPush ?? 0,
         pierceRemaining: d.pierce ?? 0,
+        pierceFalloff: d.pierceFalloff ?? 1,
         from: t.def,
         sourceId: t.id,
       });
@@ -908,10 +958,12 @@ function fireTowers(w: World): void {
 }
 
 function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy | null): void {
-  const effect = {
+  const effect: HitEffect = {
     slowTicks: p.slowTicks,
     slowFactor: p.slowFactor,
     stunTicks: p.stunTicks,
+    slipChance: p.slipChance,
+    slipPush: p.slipPush,
   };
   if (p.splash > 0) {
     // Snapshot the list: a splash must not reach anything created by the same
@@ -926,9 +978,10 @@ function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy |
       if (next) {
         w.pendingHits.push({
           enemyId: next.id,
-          damage: p.damage,
+          damage: Math.round(p.damage * p.pierceFalloff),
           effect,
           pierceRemaining: p.pierceRemaining - 1,
+          pierceFalloff: p.pierceFalloff,
           sourceId: p.sourceId,
         });
       }
@@ -950,9 +1003,10 @@ function flushPierceHits(w: World): void {
       if (next) {
         w.pendingHits.push({
           enemyId: next.id,
-          damage: h.damage,
+          damage: Math.round(h.damage * h.pierceFalloff),
           effect: h.effect,
           pierceRemaining: h.pierceRemaining - 1,
+          pierceFalloff: h.pierceFalloff,
           sourceId: h.sourceId,
         });
       }

@@ -98,6 +98,7 @@ const EVENT_COLOR: Record<SimEvent['type'], string> = {
   drop: '#ffb300',
   blockerDown: '#8d6e63',
   stun: '#7986cb',
+  slip: '#4fc3f7',
 };
 
 /**
@@ -979,6 +980,40 @@ export class Renderer {
           g.stroke();
         }
         g.restore();
+      } else if (p.from === 'harold') {
+        // A jet rather than a pellet: a tapering streak along the direction of
+        // travel, so a wall of Harolds reads as water and not as confetti.
+        g.strokeStyle = color;
+        g.lineCap = 'round';
+        g.lineWidth = 4;
+        g.beginPath();
+        g.moveTo(p.x - 7, p.y - 3);
+        g.lineTo(p.x + 2, p.y + 1);
+        g.stroke();
+        g.lineWidth = 2;
+        g.beginPath();
+        g.moveTo(p.x + 2, p.y + 1);
+        g.lineTo(p.x + 8, p.y + 3);
+        g.stroke();
+        g.lineCap = 'butt';
+      } else if (p.from === 'betty') {
+        // A bowling ball: bigger than anything else in the air, and the three
+        // finger holes are what say at a glance that it is heavy.
+        g.fillStyle = color;
+        g.beginPath();
+        g.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = 'rgba(0,0,0,.55)';
+        const holes: [number, number][] = [
+          [-2, -2],
+          [1.5, -2.5],
+          [0, 1],
+        ];
+        for (const [dx, dy] of holes) {
+          g.beginPath();
+          g.arc(p.x + dx, p.y + dy, 1.3, 0, Math.PI * 2);
+          g.fill();
+        }
       } else {
         g.fillStyle = color;
         g.beginPath();

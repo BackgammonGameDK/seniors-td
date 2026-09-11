@@ -49,7 +49,32 @@ expensive, slow and sees a long way down the street. Baking Barbara is weak per 
 lands across a crowd, so she is paid for density and wasted on a lone target.
 None of them is *for* a particular troublemaker.
 
-## Two of the six defenders never deal damage
+## The two that came later fill holes the first six left
+
+Everything cheap saw about 95 px and everything that saw further cost 95
+coins, so there was a wide band of street -- and a wide band of the player's
+purse -- with nothing to spend it on. **Bowling Betty** is that purchase. She
+rolls a ball 155 px down the road and it carries on through whoever is queued
+up behind the first person it hits, so she is paid for a *queue* the way
+Barbara is paid for a clump: worth little against one walker, worth a great
+deal against a line stopped at a blockade.
+
+**Hose Harold** goes the other way and sees less than Norah does. What he buys
+with that short sight is the only effect on the board that sends anyone
+*backwards*: some fraction of his hits knocks them off their feet and slides
+them back down the street. The pixels are not the point. What he is really
+selling is a second go for every defender standing behind him, which makes him
+worth almost nothing at the mouth of the street and a great deal at the far end
+of a long board -- a placement decision rather than a matchup.
+
+Two rails keep him from becoming a way to stop the street outright. The push is
+a *chance* rather than a certainty, so it cannot be relied on to hold anybody;
+and a troublemaker who has been knocked down gets a second of footing during
+which nothing can knock them down again, so a line of hoses pushes the street
+back once per second however much water is falling. Stacking Harolds therefore
+buys damage and a better chance of the *first* slip, never a longer push.
+
+## Two of the eight defenders never deal damage
 
 Protest Pete buys time and Coffee Clara buys rate, and both are worth their
 cost only in the company of defenders that actually do damage. This is
@@ -313,7 +338,7 @@ The curve is graded rather than flat-then-vertical:
 
 The three numbers worth holding on to, all enforced by `tests/balance.test.ts`:
 
-- **More than one board finishes.** At least three of the six clear round
+- **More than one board finishes.** At least three of the cohort clear round
   twenty-one at least half the time. One build clearing is a solved game, not a balanced one.
 - **Nobody finishes untouched.** A clear leaves at most about seventy per cent of
   the starting points. A board that never felt the wall was never tested by it.

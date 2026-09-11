@@ -499,11 +499,24 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
   if ((def.multiShot ?? 1) > 1) {
     rows.push({ label: 'Picks', value: `${def.multiShot} of them at once` });
   }
+  if ((def.slipChance ?? 0) > 0) {
+    rows.push({
+      label: 'Makes them slip',
+      value: `${Math.round((def.slipChance ?? 0) * 100)}% of hits`,
+    });
+    rows.push({ label: 'Sliding them back', value: `${def.slipPush} px` });
+  }
   if ((def.pierce ?? 0) > 0) {
     rows.push({
       label: 'Carries on through',
       value: `${def.pierce} more behind the first`,
     });
+    if ((def.pierceFalloff ?? 1) < 1) {
+      rows.push({
+        label: 'Each one behind takes',
+        value: `${Math.round((def.pierceFalloff ?? 1) * 100)}% of what the one in front did`,
+      });
+    }
   }
   return rows;
 }
@@ -878,7 +891,7 @@ export function absorbHintLeft(leftMs: number, elapsedMs: number, absorbed: bool
  * `loadout.ts` states the rule this serves: a build that cannot be typed at the
  * command line cannot be reproduced, and a measurement nobody can reproduce is
  * a rumour. Until now that cut one way only -- a written plan could be played,
- * but a played board could not be written down, so the six boards in
+ * but a played board could not be written down, so every board in
  * `builds.ts` were all generated rather than observed, and none of them had
  * ever been near a human.
  *

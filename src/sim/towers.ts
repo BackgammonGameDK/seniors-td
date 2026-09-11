@@ -9,10 +9,18 @@ import type { TowerDef, TowerId } from './types.ts';
  * is no table that says a tower is strong against one enemy and useless
  * against another.
  *
- * Two of the six never deal damage. That is intentional -- Pete buys time and
- * Clara buys rate, and both are worth gold only in the company of towers that
- * do. A board of nothing but support loses, which is what stops support from
- * being a free purchase.
+ * Two of the eight never deal damage. That is intentional -- Pete buys time
+ * and Clara buys rate, and both are worth gold only in the company of towers
+ * that do. A board of nothing but support loses, which is what stops support
+ * from being a free purchase.
+ *
+ * Harold and Betty fill the two holes the first six left. Everything cheap
+ * saw about 95 px and everything that saw further cost 95 coins, so there was
+ * no mid-range purchase to make; Betty is that purchase, and she is paid for a
+ * queue the way Barbara is paid for a clump. Harold goes the other way -- he
+ * sees less than Norah does -- and is the only defender who sends anyone
+ * *backwards*, which is worth gold in proportion to how much street sits
+ * behind him.
  */
 export const TOWERS: Record<TowerId, TowerDef> = {
   norah: {
@@ -115,5 +123,58 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     stunTicks: 0,
     buffRate: 1.25,
     maxHp: 0,
+  },
+  harold: {
+    id: 'harold',
+    mode: 'projectile',
+    cost: 65,
+    damage: 10,
+    // Shorter than Norah's 95 on purpose. He is the close-in one, and the
+    // short sight is what he pays with for an effect no one else has.
+    range: 75,
+    cooldown: 34,
+    splash: 0,
+    slowTicks: 0,
+    slowFactor: 0,
+    stunTicks: 0,
+    buffRate: 1,
+    maxHp: 0,
+    // One hit in five puts them on the floor and slides them back down the
+    // street. The value of that is not in the pixels: it is that everything
+    // standing behind Harold gets another go at someone it had already lost,
+    // so a Harold in front of a gun line is worth more than a Harold alone.
+    slipChance: 0.2,
+    slipPush: 45,
+  },
+  betty: {
+    id: 'betty',
+    mode: 'projectile',
+    cost: 75,
+    damage: 18,
+    // The empty ground: Barbara saw 105 and Bill saw 225, with nothing between.
+    range: 155,
+    // Slow, and measured into being so. At 72 she cleared the campaign with
+    // 21.7 of 25 points still in hand, which is the one thing this project
+    // calls a failure outright -- a board that finishes untouched makes every
+    // other board a mistake rather than a choice. A ball that rolls through a
+    // queue multiplies its damage by however long the queue is, so the rate is
+    // the only place that multiplication can be paid for.
+    cooldown: 84,
+    splash: 0,
+    slowTicks: 0,
+    slowFactor: 0,
+    stunTicks: 0,
+    buffRate: 1,
+    maxHp: 0,
+    // The ball keeps rolling. One body behind the first at baseline, which is
+    // deliberately no more than Bill's Piercing Shot buys him -- what differs
+    // is the scale each grows to. Bill stays one enormous hit that clips a
+    // second person; Betty grows into many modest hits down a queue.
+    pierce: 1,
+    // The ball loses its weight through a crowd. Without this a line shot
+    // multiplies instead of adding -- six Betties behind a wall shoot the same
+    // queue, so each is worth the whole queue again, and the measured result
+    // was a campaign cleared without losing a single point.
+    pierceFalloff: 0.55,
   },
 };
