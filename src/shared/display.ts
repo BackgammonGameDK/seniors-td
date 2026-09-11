@@ -79,6 +79,7 @@ export const ENEMY_LOOK: Record<EnemyId, EnemyLook> = {
   skye: { name: 'Skateboard Skye', color: '#ff8a65', radius: 10, glyph: '🛹' },
   duke: { name: 'Party Bus Duke', color: '#c62828', radius: 18, glyph: '🚌' },
   walker: { name: 'Runaway', color: '#aed581', radius: 8, glyph: '🏃' },
+  paul: { name: 'Pizza Paul', color: '#e8a33d', radius: 12, glyph: '🍕' },
 };
 
 /** Board furniture. Kept here so the renderer has one palette to read. */

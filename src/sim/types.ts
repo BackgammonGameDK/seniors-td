@@ -10,7 +10,16 @@
 
 export type TowerId = 'norah' | 'barbara' | 'pete' | 'bill' | 'walter' | 'clara';
 
-export type EnemyId = 'sam' | 'mike' | 'ben' | 'tina' | 'gang' | 'skye' | 'duke' | 'walker';
+export type EnemyId =
+  | 'sam'
+  | 'mike'
+  | 'ben'
+  | 'tina'
+  | 'gang'
+  | 'skye'
+  | 'duke'
+  | 'walker'
+  | 'paul';
 
 export const TOWER_IDS: TowerId[] = ['norah', 'barbara', 'pete', 'bill', 'walter', 'clara'];
 
@@ -43,7 +52,17 @@ export type CapstoneId = CapstoneIds[TowerId];
 
 /** What can be bought on a tower that already has one: a tier, or the fork. */
 export type UpgradeChoice = 'pathA' | 'pathB' | CapstoneId;
-export const ENEMY_IDS: EnemyId[] = ['sam', 'mike', 'ben', 'tina', 'gang', 'skye', 'duke', 'walker'];
+export const ENEMY_IDS: EnemyId[] = [
+  'sam',
+  'mike',
+  'ben',
+  'tina',
+  'gang',
+  'skye',
+  'duke',
+  'walker',
+  'paul',
+];
 
 /**
  * How a tower acts on its turn.
@@ -148,6 +167,20 @@ export interface EnemyDef {
   blockerDps: number;
   /** True if it walks straight through a blockade instead of stopping at it. */
   ignoresBlockers: boolean;
+  /**
+   * Hit points won back each second while nothing is hurting it. 0 never heals.
+   *
+   * Capped at what it spawned with, so a round's toughness multiplier is the
+   * ceiling too and nothing ever climbs above the health it arrived on.
+   */
+  regenPerSec: number;
+  /**
+   * Ticks after the last hit that *landed* before healing resumes.
+   *
+   * Damage interrupts it and nothing else does: a shout that lands no damage
+   * leaves it eating, so no single defender is the answer to a healer.
+   */
+  regenDelayTicks: number;
 }
 
 export interface Enemy {
@@ -203,6 +236,14 @@ export interface Enemy {
    * kept on a field that only Duke ever uses.
    */
   dropCooldown: number;
+  /**
+   * Ticks until this enemy starts healing again, for whichever enemy heals.
+   *
+   * Maintained wherever `regenCd` is written, which is `spawnEnemy`,
+   * `applyHit` and `advanceRegen` and nowhere else -- the same discipline
+   * `dropCooldown` gets above, kept on a field that only Paul ever uses.
+   */
+  regenCd: number;
   /** Derived from the two above every tick. Never written directly. */
   speedMult: number;
   /** Derived from nearby shield carriers every tick. Never written directly. */

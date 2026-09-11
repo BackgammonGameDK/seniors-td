@@ -19,6 +19,7 @@ import cinnamonRollPng from '../assets/cinnamon-roll.png';
 import coinPng from '../assets/coin.png';
 import heartPng from '../assets/heart.png';
 import norahPng from '../assets/norah.png';
+import paulPng from '../assets/paul.png';
 import petePng from '../assets/pete.png';
 import samPng from '../assets/sam.png';
 import skyePng from '../assets/skye.png';
@@ -47,6 +48,7 @@ const TOWER_DOWN_ART: Partial<Record<TowerId, string>> = {
 };
 
 const ENEMY_ART: Partial<Record<EnemyId, string>> = {
+  paul: paulPng,
   sam: samPng,
   skye: skyePng,
 };

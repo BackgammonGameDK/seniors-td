@@ -646,6 +646,11 @@ export function enemyReadout(e: Pick<Enemy, 'def' | 'hp' | 'scale' | 'shield'>):
   if (d.shieldAura > 0) lines.push(`Shields nearby troublemakers by ${d.shieldAura} a hit.`);
   if (d.disablesTowers) lines.push('Nearby defenders stop working.');
   if (d.splitsInto) lines.push(`Breaks into ${d.splitCount} on the way down.`);
+  if (d.regenPerSec > 0) {
+    lines.push(
+      `Stop hurting him for a second and a half and he eats, winning ${d.regenPerSec} health a second back. Keep something on him and he never gets a bite.`,
+    );
+  }
   return { name: ENEMY_LOOK[e.def].name, lines };
 }
 

@@ -260,6 +260,49 @@ describe('status effects', () => {
   });
 });
 
+describe('Pizza Paul eats', () => {
+  const none = { slowTicks: 0, slowFactor: 0, stunTicks: 0 };
+
+  it('wins health back once nothing has hurt him for a while, and stops at full', () => {
+    const w = rich();
+    const paul = spawnEnemy(w, 'paul', 100);
+    const full = ENEMIES.paul.hp;
+    applyHit(w, paul, 40, none);
+    expect(paul.hp).toBe(full - 40);
+
+    // Nothing happens while the countdown runs.
+    for (let i = 0; i < ENEMIES.paul.regenDelayTicks; i++) step(w);
+    expect(paul.hp).toBe(full - 40);
+
+    // Then it climbs, at the rate on the card.
+    for (let i = 0; i < 60; i++) step(w);
+    expect(paul.hp).toBeCloseTo(full - 40 + ENEMIES.paul.regenPerSec);
+
+    // And never past the health he walked on with.
+    for (let i = 0; i < 60 * 20; i++) step(w);
+    expect(paul.hp).toBe(full);
+  });
+
+  it('never climbs while something is still hurting him', () => {
+    const w = rich();
+    const paul = spawnEnemy(w, 'paul', 100);
+    const full = ENEMIES.paul.hp;
+    for (let i = 0; i < 120; i++) {
+      applyHit(w, paul, 0.1, none);
+      step(w);
+    }
+    expect(paul.hp).toBeLessThan(full - 11);
+  });
+
+  it('leaves everyone else alone', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 100);
+    applyHit(w, sam, 5, none);
+    for (let i = 0; i < 600; i++) step(w);
+    expect(sam.hp).toBe(ENEMIES.sam.hp - 5);
+  });
+});
+
 describe('splitting', () => {
   it('leaves two runners behind, and not before the tick is over', () => {
     const w = rich();
@@ -604,7 +647,16 @@ describe('the authored rounds', () => {
     const seen = new Set<EnemyId>();
     for (const wave of WAVES) for (const g of wave.groups) seen.add(g.enemy);
     // `walker` only ever arrives by splitting, so it is never in the table.
-    expect([...seen].sort()).toEqual(['ben', 'duke', 'gang', 'mike', 'sam', 'skye', 'tina']);
+    expect([...seen].sort()).toEqual([
+      'ben',
+      'duke',
+      'gang',
+      'mike',
+      'paul',
+      'sam',
+      'skye',
+      'tina',
+    ]);
   });
 
   it('introduce each one on its own before burying it in a crowd', () => {
