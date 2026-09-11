@@ -11,6 +11,9 @@ import {
   ABSORB_HINT_MS,
   absorbHintLeft,
   advanceFades,
+  afterFrameError,
+  BREAKDOWN,
+  FRAME_FAILURE_LIMIT,
   staleKeys,
   armTower,
   boardAction,
@@ -1029,5 +1032,35 @@ describe('the board marks whatever was tapped, range or no range', () => {
 
   it('marks nothing when nothing is selected', () => {
     expect(focusMark(null)).toBeNull();
+  });
+});
+
+
+describe('a frame that threw', () => {
+  // The loop this serves used to book the next frame after the work rather
+  // than before it, so one exception anywhere below ended it for good and the
+  // board froze with every button still responding. These are the two halves
+  // of the policy that replaced that: survive a flicker, give up on a fault.
+  it('carries on after the first one, because one bad frame is a flicker', () => {
+    expect(afterFrameError(1)).toBe('carryOn');
+  });
+
+  it('carries on right up to the limit', () => {
+    expect(afterFrameError(FRAME_FAILURE_LIMIT - 1)).toBe('carryOn');
+  });
+
+  it('gives up at the limit, rather than throwing sixty times a second', () => {
+    expect(afterFrameError(FRAME_FAILURE_LIMIT)).toBe('stop');
+  });
+
+  it('stays given up past the limit', () => {
+    expect(afterFrameError(FRAME_FAILURE_LIMIT + 20)).toBe('stop');
+  });
+
+  it('says what happened in words a player can act on', () => {
+    // The exception belongs in the console. What goes on screen is the one
+    // thing the person holding the mouse can do about it.
+    expect(BREAKDOWN.title).toBeTruthy();
+    expect(BREAKDOWN.body).toMatch(/again/);
   });
 });

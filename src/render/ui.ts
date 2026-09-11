@@ -494,6 +494,22 @@ export class Ui {
     this.recordingText.select();
   }
 
+  /**
+   * Say that the loop has given up, in the place a run already ends.
+   *
+   * The same three elements `syncOverlay` writes, so there is no second panel
+   * to keep in step and the Restart button under it is already wired. Nothing
+   * has to put it away again either: `syncOverlay` runs every frame and hides
+   * the overlay on an idle world, so the first frame after a restart clears
+   * this by itself.
+   */
+  showBreakdown(title: string, body: string): void {
+    this.overlayTitle.textContent = title;
+    this.overlayBody.textContent = body;
+    this.keepGoing.hidden = true;
+    this.overlay.hidden = false;
+  }
+
   /** Hand the loadout over as a file, which nothing can shorten on the way. */
   private saveRecording(): void {
     const blob = new Blob([this.recordingText.value], { type: 'text/plain' });

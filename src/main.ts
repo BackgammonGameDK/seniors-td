@@ -9,7 +9,9 @@
 import { createClock, nextSpeed, ticksFor, TICK_MS } from './render/clock.ts';
 import type { Speed } from './render/clock.ts';
 import {
+  afterFrameError,
   boardAction,
+  BREAKDOWN,
   enemyTypeView,
   focusAfterTap,
   focusedTowerId,
@@ -123,6 +125,16 @@ const handlers: UiHandlers = {
     focus = null;
     bought.length = 0;
     sold = 0;
+    // Starting again is also the way back from a loop that gave up: the button
+    // under the breakdown notice is this one. `last` goes with it so the first
+    // frame after the wait is worth a tick rather than however long the notice
+    // was on screen.
+    failures = 0;
+    if (stopped) {
+      stopped = false;
+      last = 0;
+      requestAnimationFrame(frame);
+    }
   },
   onCloseInspect() {
     focus = null;
@@ -270,25 +282,54 @@ function showRecording(): void {
 
 const clock = createClock();
 let last = 0;
+/** Set once the loop has given up. See `frame`. */
+let stopped = false;
+/** Frames that have thrown since the last one that did not. */
+let failures = 0;
 
+/**
+ * One frame, and the containment around it.
+ *
+ * The next frame is booked *before* the work, not after. Booking it afterwards
+ * meant that anything throwing below -- in `step`, in the renderer, in the
+ * panel -- ended the loop outright and for good: the board froze on whatever
+ * it had last painted while every button on the page went on responding, so
+ * the game looked alive and simply was not. A dropped frame should cost a
+ * flicker.
+ *
+ * A fault that repeats is a different thing from a fault that happens, so a
+ * run of them stops the loop deliberately and says so, rather than throwing
+ * sixty times a second into a console nobody playing the game is reading.
+ */
 function frame(now: number): void {
-  const elapsed = last === 0 ? TICK_MS : now - last;
-  last = now;
-  const ticks = ticksFor(clock, elapsed, paused ? 0 : speed);
-  for (let i = 0; i < ticks; i++) {
-    step(world);
-    renderer.ingest(world.events);
-  }
-  // The renderer fades things in simulated ticks, not in frames drawn, so it
-  // is told how many just happened -- none, on a paused frame or a 120Hz one
-  // that fell between two ticks.
-  renderer.advance(world, ticks);
-  // Resolved once, after the ticks: a tower knocked down or a troublemaker
-  // sent home during them simply stops resolving, and the panel closes itself.
-  const view = viewOf();
-  renderer.draw(world, { selected, hover, focus: view, previewRange: ui.previewRange });
-  ui.sync(world, { selected, focus: view, paused, speed, elapsedMs: elapsed });
+  if (stopped) return;
   requestAnimationFrame(frame);
+  try {
+    const elapsed = last === 0 ? TICK_MS : now - last;
+    last = now;
+    const ticks = ticksFor(clock, elapsed, paused ? 0 : speed);
+    for (let i = 0; i < ticks; i++) {
+      step(world);
+      renderer.ingest(world.events);
+    }
+    // The renderer fades things in simulated ticks, not in frames drawn, so it
+    // is told how many just happened -- none, on a paused frame or a 120Hz one
+    // that fell between two ticks.
+    renderer.advance(world, ticks);
+    // Resolved once, after the ticks: a tower knocked down or a troublemaker
+    // sent home during them simply stops resolving, and the panel closes itself.
+    const view = viewOf();
+    renderer.draw(world, { selected, hover, focus: view, previewRange: ui.previewRange });
+    ui.sync(world, { selected, focus: view, paused, speed, elapsedMs: elapsed });
+    failures = 0;
+  } catch (err) {
+    failures++;
+    console.error(err);
+    if (afterFrameError(failures) === 'stop') {
+      stopped = true;
+      ui.showBreakdown(BREAKDOWN.title, BREAKDOWN.body);
+    }
+  }
 }
 requestAnimationFrame(frame);
 
