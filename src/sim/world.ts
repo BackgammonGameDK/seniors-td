@@ -17,7 +17,7 @@ import {
   pointAt,
 } from './path.ts';
 import { Rng } from './rng.ts';
-import { DEFAULT_PROJECTILE_SPEED, TOWERS } from './towers.ts';
+import { DEFAULT_PIERCE_REACH, DEFAULT_PROJECTILE_SPEED, TOWERS } from './towers.ts';
 import { effectiveDef, UPGRADES } from './upgrades.ts';
 import type {
   Enemy,
@@ -848,44 +848,15 @@ function findTargets(w: World, t: Tower, range: number, count: number): Enemy[] 
   return inRange.slice(0, count);
 }
 
-/** How far behind a pierced enemy a shot may still reach the next one. */
-// The lane is single file, so "behind" reads as a smaller `dist`. The window
-// is wide enough to catch the next body queued in a tight column (enemies
-// bunch up a few pixels apart behind a blockade or a corner) without also
-// reaching past it to a straggler that the shot never actually flew near.
-const PIERCE_WINDOW = 40;
-
-function findPierceTarget(w: World, hit: Enemy): Enemy | null {
-  let best: Enemy | null = null;
-  for (const e of w.enemies) {
-    if (!e.alive || e.id === hit.id) continue;
-    if (e.dist >= hit.dist || hit.dist - e.dist > PIERCE_WINDOW) continue;
-    if (best === null || e.dist > best.dist) best = e;
-  }
-  return best;
-}
-
 /**
- * Whoever a shot that has lost its mark rolls into next.
+ * How close along the lane a rolling shot has to come to knock somebody down.
  *
- * Measured from where the shot is rather than from a place in the queue, since
- * there is no body to be behind: the mark died mid-flight and the ball is out
- * in the street on its own. The same window as a pierce, so a shot that lost
- * its mark reaches exactly as far for a replacement as one that went through
- * somebody.
+ * The lane is single file, so this is measured in distance travelled rather
+ * than in pixels between two points: a ball rolling up the street and a
+ * troublemaker walking down it are on the same line, and the only question is
+ * whether they are at the same place on it.
  */
-function findRollOnTarget(w: World, x: number, y: number): Enemy | null {
-  let best: Enemy | null = null;
-  let bestDist = PIERCE_WINDOW;
-  for (const e of w.enemies) {
-    if (!e.alive) continue;
-    const d = Math.hypot(e.x - x, e.y - y);
-    if (d > bestDist) continue;
-    best = e;
-    bestDist = d;
-  }
-  return best;
-}
+const ROLL_CONTACT = 12;
 
 function fireTowers(w: World): void {
   for (const t of w.towers) {
@@ -949,6 +920,10 @@ function fireTowers(w: World): void {
         slipPush: d.slipPush ?? 0,
         pierceRemaining: d.pierce ?? 0,
         pierceFalloff: d.pierceFalloff ?? 1,
+        rollDist: null,
+        rollLeft: (d.pierce ?? 0) > 0 ? (d.rollOut ?? d.pierceReach ?? DEFAULT_PIERCE_REACH) : 0,
+        biteLeft: (d.pierce ?? 0) > 0 ? (d.pierceReach ?? DEFAULT_PIERCE_REACH) : 0,
+        hitIds: [],
         from: t.def,
         sourceId: t.id,
       });
@@ -961,9 +936,9 @@ function fireTowers(w: World): void {
 }
 
 /**
- * Land a shot. Returns whether it carries on -- a shot that went through
- * somebody and is still owed a body is not finished, and `advanceProjectiles`
- * puts it back on the street rather than deleting it.
+ * Land a shot. Returns whether it carries on -- a shot that can roll is not
+ * finished when it lands, and `advanceProjectiles` puts it back on the street
+ * rather than deleting it.
  */
 function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy | null): boolean {
   const effect: HitEffect = {
@@ -984,48 +959,89 @@ function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy |
   if (!direct) return false;
 
   applyHit(w, direct, p.damage, effect, p.sourceId);
-  if (p.pierceRemaining === 0) return false;
+  if (p.rollLeft <= 0) return false;
 
-  // Through one body and on to the next. The carried hit is not dealt here:
-  // the shot is aimed at whoever is behind, loses the falloff, and has to
-  // travel the gap like any other shot, which is the whole of what a player
-  // sees when a bowling ball goes down a queue.
-  //
-  // `findPierceTarget` only ever looks backwards down the lane, so a chain
-  // cannot double back, and `pierceRemaining` falls by one every time it hops
-  // whether or not anything is found.
-  const next = findPierceTarget(w, direct);
-  if (!next) return false;
-  p.targetId = next.id;
+  // Through the first body and on up the street. Nothing is looked up here:
+  // the shot stops aiming and becomes a thing rolling along the lane, and
+  // whoever it meets is whoever happens to be standing where it gets to. It
+  // rolls its whole reach whether or not there is a queue -- a ball that
+  // blinked out because nobody was behind the first one was the thing the
+  // player could see was wrong.
+  p.rollDist = direct.dist;
+  p.hitIds.push(direct.id);
   p.damage = Math.round(p.damage * p.pierceFalloff);
-  p.pierceRemaining--;
   return true;
+}
+
+/**
+ * One tick of a shot that is rolling rather than flying.
+ *
+ * It travels back up the lane against the traffic, which is the direction the
+ * queue it was fired into is coming from, and knocks down anybody it reaches
+ * while it still has both bodies and weight. `biteLeft` is the weight, and it
+ * is short: a sweep that keeps its weight for the length of the street stops
+ * being a carried hit and becomes a second range. What is left afterwards is
+ * `rollLeft`, a spent ball rolling to a stop, which is there to be looked at.
+ * Returns whether it is still on the board.
+ */
+function advanceRoll(w: World, p: Projectile): boolean {
+  const travelled = Math.min(p.speed, p.rollLeft);
+  p.rollLeft -= travelled;
+  p.biteLeft = Math.max(0, p.biteLeft - travelled);
+  p.rollDist = (p.rollDist ?? 0) - travelled;
+  if (p.rollDist <= 0) return false;
+  const at = pointAt(p.rollDist);
+  p.x = at.x;
+  p.y = at.y;
+
+  if (p.pierceRemaining > 0 && p.biteLeft > 0) {
+    const effect: HitEffect = {
+      slowTicks: p.slowTicks,
+      slowFactor: p.slowFactor,
+      stunTicks: p.stunTicks,
+      slipChance: p.slipChance,
+      slipPush: p.slipPush,
+    };
+    // Snapshot, for the same reason a splash does: a body knocked down here
+    // can split, and the halves must wait for a later tick to be rolled into.
+    const struck = w.enemies.filter(
+      (e) =>
+        e.alive && !p.hitIds.includes(e.id) && Math.abs(e.dist - (p.rollDist ?? 0)) <= ROLL_CONTACT,
+    );
+    for (const e of struck) {
+      if (p.pierceRemaining === 0) break;
+      applyHit(w, e, p.damage, effect, p.sourceId);
+      p.hitIds.push(e.id);
+      p.pierceRemaining--;
+      p.damage = Math.round(p.damage * p.pierceFalloff);
+    }
+  }
+
+  return p.rollLeft > 0;
 }
 
 function advanceProjectiles(w: World): void {
   const keep: Projectile[] = [];
   for (const p of w.projectiles) {
-    let target = w.enemies.find((e) => e.id === p.targetId && e.alive);
+    if (p.rollDist !== null) {
+      if (advanceRoll(w, p)) keep.push(p);
+      continue;
+    }
 
-    // A shot still owed a body does not care which body. Betty's ball spends
-    // most of a second in the street, so its mark dying to somebody else is
-    // ordinary rather than unlucky, and a ball that stopped dead at an empty
-    // patch of road would make her slowness a punishment for the rest of the
-    // board doing its job.
-    //
-    // It costs a body off the line, which is what keeps this from quietly
-    // meaning "a piercing shot is never wasted". Bill carries one, so a dead
-    // mark spends it and he lands one whole round on somebody else; Betty
-    // carries up to five, so a ball goes on rolling. The falloff is not
-    // charged -- the shot has been through nobody -- so what it loses is
-    // length rather than weight.
-    if (!target && p.pierceRemaining > 0) {
-      const next = findRollOnTarget(w, p.x, p.y);
-      if (next) {
-        p.targetId = next.id;
-        p.pierceRemaining--;
-        target = next;
-      }
+    const target = w.enemies.find((e) => e.id === p.targetId && e.alive);
+
+    // A mark that dies mid-flight does not stop a ball. Betty's spends most of
+    // a second in the street, so somebody else finishing its mark is ordinary
+    // rather than unlucky, and a ball that stopped dead at an empty patch of
+    // road would make her slowness a punishment for the rest of the board
+    // doing its job. It drops onto the lane where it had got to and rolls the
+    // rest of the way at full weight, having been through nobody.
+    if (!target && p.rollLeft > 0) {
+      p.rollDist = distanceAlong({ x: p.x, y: p.y });
+      p.pierceRemaining--;
+      p.damage = Math.round(p.damage * p.pierceFalloff);
+      if (advanceRoll(w, p)) keep.push(p);
+      continue;
     }
 
     // A shot already in the air keeps going to where its mark was, so a kill
