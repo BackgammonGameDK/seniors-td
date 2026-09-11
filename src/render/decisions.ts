@@ -544,14 +544,20 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
     rows.push({ label: 'Sliding them back', value: `${def.slipPush} px` });
   }
   if ((def.pierce ?? 0) > 0) {
+    // "Anyone in the way" rather than "behind the first": the shot hurts
+    // everybody along its line, on the way to whoever it was aimed at as well
+    // as after, so where the line falls is the whole of what it is worth.
     rows.push({
-      label: 'Carries on through',
-      value: `${def.pierce} more behind the first`,
+      label: 'Knocks down',
+      value: `${(def.pierce ?? 0) + 1} in a line, whoever is in the way`,
     });
+    if ((def.rollOut ?? 0) > 0) {
+      rows.push({ label: 'Then keeps going', value: `${def.rollOut} px, in a straight line` });
+    }
     if ((def.pierceFalloff ?? 1) < 1) {
       rows.push({
-        label: 'Each one behind takes',
-        value: `${Math.round((def.pierceFalloff ?? 1) * 100)}% of what the one in front did`,
+        label: 'Each one after the first takes',
+        value: `${Math.round((def.pierceFalloff ?? 1) * 100)}% of the one before`,
       });
     }
   }
