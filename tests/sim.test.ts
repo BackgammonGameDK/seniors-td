@@ -1171,29 +1171,52 @@ describe('a shot that carries down a line', () => {
     expect(TOWERS.betty.pierceFalloff!).toBeLessThan(1);
   });
 
+  /** Steps until `done`, and gives back the tick it became true on. */
+  function until(w: World, done: () => boolean, limit = 600): number {
+    for (let i = 0; i < limit; i++) {
+      step(w);
+      if (done()) return w.tick;
+    }
+    throw new Error('it never happened');
+  }
+
   it('is spent down the queue rather than copied along it', () => {
     const w = rich();
+    put(w, 'betty', buildCellNear(400));
     const [front, behind] = queue(w);
     const startFront = front.hp;
     const startBehind = behind.hp;
+    const damage = TOWERS.betty.damage;
     const falloff = TOWERS.betty.pierceFalloff!;
 
-    // One roll, resolved the way `detonate` resolves one: the direct hit now,
-    // the carried hit queued and flushed by the tick.
-    applyHit(w, front, 40, NO_EFFECT);
-    w.pendingHits.push({
-      enemyId: behind.id,
-      damage: Math.round(40 * falloff),
-      effect: NO_EFFECT,
-      pierceRemaining: 0,
-      pierceFalloff: falloff,
-      sourceId: -1,
-    });
-    step(w);
+    const firstHit = until(w, () => front.hp < startFront);
+    // The point of the whole thing: the ball is still on the street after the
+    // first body, and the second one has not been touched yet.
+    expect(w.projectiles.length).toBe(1);
+    expect(behind.hp).toBe(startBehind);
+
+    const secondHit = until(w, () => behind.hp < startBehind);
+    expect(secondHit).toBeGreaterThan(firstHit);
 
     const armour = ENEMIES.sam.armour;
-    expect(startFront - front.hp).toBe(40 - armour);
-    expect(startBehind - behind.hp).toBe(Math.round(40 * falloff) - armour);
+    expect(startFront - front.hp).toBe(damage - armour);
+    expect(startBehind - behind.hp).toBe(Math.round(damage * falloff) - armour);
     expect(startBehind - behind.hp).toBeLessThan(startFront - front.hp);
+  });
+
+  it('keeps rolling when whoever it was aimed at falls to somebody else', () => {
+    const w = rich();
+    put(w, 'betty', buildCellNear(400));
+    const [front, behind] = queue(w);
+    const startBehind = behind.hp;
+
+    until(w, () => w.projectiles.length > 0);
+    applyHit(w, front, 1000, NO_EFFECT);
+    expect(front.alive).toBe(false);
+
+    until(w, () => behind.hp < startBehind);
+    // At full weight: it rolled past an empty patch of road, not through a
+    // body, so there is nothing for the falloff to take off it.
+    expect(startBehind - behind.hp).toBe(TOWERS.betty.damage - ENEMIES.sam.armour);
   });
 });

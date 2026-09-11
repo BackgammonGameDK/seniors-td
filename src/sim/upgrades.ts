@@ -1,4 +1,4 @@
-import { TOWERS } from './towers.ts';
+import { DEFAULT_PROJECTILE_SPEED, TOWERS } from './towers.ts';
 import type { CapstoneId, CapstoneIds, Tower, TowerDef, TowerId } from './types.ts';
 
 /**
@@ -171,6 +171,7 @@ const EXTRAS_DEFAULT = {
   multiShot: 1,
   pierce: 0,
   pierceFalloff: 1,
+  projectileSpeed: DEFAULT_PROJECTILE_SPEED,
   rangeBuffBonus: 0,
   slipChance: 0,
   slipPush: 0,

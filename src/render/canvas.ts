@@ -998,10 +998,17 @@ export class Renderer {
         g.lineCap = 'butt';
       } else if (p.from === 'betty') {
         // A bowling ball: bigger than anything else in the air, and the three
-        // finger holes are what say at a glance that it is heavy.
+        // finger holes are what say at a glance that it is heavy. They turn,
+        // because a ball that crosses the street this slowly without rotating
+        // reads as a sticker being dragged rather than a weight rolling. Half
+        // the speed Barbara's bun tumbles at -- the bun is thrown, the ball is
+        // bowled.
+        g.save();
+        g.translate(p.x, p.y);
+        g.rotate((world.tick % 120) * 0.05);
         g.fillStyle = color;
         g.beginPath();
-        g.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        g.arc(0, 0, 7, 0, Math.PI * 2);
         g.fill();
         g.fillStyle = 'rgba(0,0,0,.55)';
         const holes: [number, number][] = [
@@ -1011,9 +1018,10 @@ export class Renderer {
         ];
         for (const [dx, dy] of holes) {
           g.beginPath();
-          g.arc(p.x + dx, p.y + dy, 1.3, 0, Math.PI * 2);
+          g.arc(dx, dy, 1.3, 0, Math.PI * 2);
           g.fill();
         }
+        g.restore();
       } else {
         g.fillStyle = color;
         g.beginPath();
