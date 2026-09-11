@@ -21,7 +21,7 @@
  * ordering is a finding, not a bug in the harness.
  */
 import { parseArgs } from 'node:util';
-import { loadoutText } from './harness-args.ts';
+import { loadoutText, run, wholeNumberArg } from './harness-args.ts';
 import { BUILDS, buildNamed } from './sim/builds.ts';
 import { ECONOMY } from './sim/economy.ts';
 import { describePlacement, parseLoadout } from './sim/loadout.ts';
@@ -300,7 +300,7 @@ function main(): void {
     },
   });
 
-  const runs = Number(values.runs ?? 20);
+  const runs = wholeNumberArg('--runs', values.runs, 20);
   const written = loadoutText(values);
   const chosen =
     written !== null
@@ -358,4 +358,4 @@ function main(): void {
   }
 }
 
-if (process.argv[1]?.endsWith('campaign.ts')) main();
+if (process.argv[1]?.endsWith('campaign.ts')) run(main);

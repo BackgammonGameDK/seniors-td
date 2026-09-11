@@ -15,7 +15,7 @@
  * actually afford is `npm run campaign`.
  */
 import { parseArgs } from 'node:util';
-import { loadoutText } from './harness-args.ts';
+import { loadoutText, run, wholeNumberArg } from './harness-args.ts';
 import { ECONOMY } from './sim/economy.ts';
 import { describePlacement, parseLoadout } from './sim/loadout.ts';
 import type { Placement } from './sim/loadout.ts';
@@ -137,13 +137,15 @@ function main(): void {
     },
   });
 
-  const runs = Number(values.runs ?? 20);
+  const runs = wholeNumberArg('--runs', values.runs, 20);
   const written = loadoutText(values);
   const plan = written === null ? defaultPlan() : parseLoadout(written);
   const waves = values['all-waves']
     ? WAVES.map((_, i) => i)
-    : [Number(values.wave ?? 1) - 1];
+    : [wholeNumberArg('--wave', values.wave, 1) - 1];
 
+  // Two checks rather than one: `wholeNumberArg` above says the argument is a
+  // round number at all, this says there is a round by that number.
   for (const i of waves) {
     if (!WAVES[i]) throw new Error(`no round ${i + 1}; there are ${WAVES.length}`);
   }
@@ -170,4 +172,4 @@ function main(): void {
   }
 }
 
-main();
+run(main);

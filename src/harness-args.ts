@@ -41,3 +41,50 @@ export function loadoutText(args: LoadoutArgs): string | null {
   if (path !== undefined) return readFileSync(path, 'utf8');
   return args.loadout ?? null;
 }
+
+/**
+ * Runs a harness, and turns a refusal into a refusal rather than a crash.
+ *
+ * Everything here and in the parsers below it reports a bad argument by
+ * throwing, which Node prints as ten lines of its own internals with the
+ * sentence that was actually written for the reader buried at the top. The
+ * messages are the useful part -- which flag, what it wanted, what it got, and
+ * for a build or a capstone the list of names that would have worked -- so
+ * they are printed on their own and the stack is dropped.
+ *
+ * Only the two entry points call this. A thrown error still behaves normally
+ * anywhere a harness is imported as a module, which is how `tests/` uses it.
+ */
+export function run(main: () => void): void {
+  try {
+    main();
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
+}
+
+/** Digits and nothing else. `Number` is far too willing; this is not. */
+const WHOLE = /^\d+$/;
+
+/**
+ * A count given on the command line, or the default when it was not given.
+ *
+ * `Number('abc')` is NaN, and every average taken from it is NaN too, so
+ * `--runs abc` used to print a whole report of `NaN%` held and `NaN` lives per
+ * round rather than refusing. `--runs 0` did the same by a different route: no
+ * seeds ran, and the summary was taken over an empty list. In a project where
+ * the measurement *is* the argument, a table that reads as confident and means
+ * nothing is worse than one that never appeared.
+ *
+ * The flag names itself in the message so one check serves `--runs` and
+ * `--wave` without either caller writing its own wording.
+ */
+export function wholeNumberArg(flag: string, raw: string | undefined, fallback: number): number {
+  if (raw === undefined) return fallback;
+  const text = raw.trim();
+  if (!WHOLE.test(text) || Number(text) < 1) {
+    throw new Error(`${flag} takes a whole number of at least 1, not "${raw}"`);
+  }
+  return Number(text);
+}

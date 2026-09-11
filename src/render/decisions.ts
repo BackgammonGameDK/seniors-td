@@ -386,6 +386,43 @@ export function endOverlay(opts: {
 }
 
 /**
+ * How many frames in a row may throw before the loop gives up.
+ *
+ * Five rather than one because the point of catching at all is that a single
+ * bad frame should cost a flicker, not the run. Five rather than forever
+ * because a fault that repeats is not going to fix itself, and a loop that
+ * throws sixty times a second forever is a hot laptop and a silent game.
+ * At 60Hz five frames is under a tenth of a second, so a real fault still
+ * reaches the player straight away.
+ */
+export const FRAME_FAILURE_LIMIT = 5;
+
+/**
+ * What to do about a frame that threw, given how many have thrown in a row.
+ *
+ * Here rather than in the loop for the usual reason: inside a
+ * requestAnimationFrame callback no test can reach it.
+ */
+export function afterFrameError(consecutive: number): 'carryOn' | 'stop' {
+  return consecutive >= FRAME_FAILURE_LIMIT ? 'stop' : 'carryOn';
+}
+
+/**
+ * What the overlay says when the loop has given up.
+ *
+ * Beside `endOverlay` because it is shown in the same place, by the same
+ * elements, and read by a player rather than by whoever wrote the bug -- so
+ * it says what happened and what to do, and leaves the exception to the
+ * console.
+ */
+export const BREAKDOWN: { title: string; body: string } = {
+  title: 'The street stopped',
+  body:
+    'Something went wrong and the game could not keep going. ' +
+    'Nothing is broken on your end -- start again below.',
+};
+
+/**
  * Which enemy a tap landed on, if any.
  *
  * Nearest first, so overlapping sprites resolve to the one on top rather than
