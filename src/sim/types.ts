@@ -129,6 +129,15 @@ export interface TowerDef {
   buffRate: number;
   /** Blocker only: how much it can absorb before it goes down. */
   maxHp: number;
+  /**
+   * Pixels a shot of this tower's covers per tick, if not the default nine.
+   *
+   * Only Betty sets it, and only downwards: a bowling ball that arrived as
+   * fast as a knitting needle was a dot that blinked out on contact, which is
+   * the one thing she is not. Nothing in the upgrade tree buys it, so it is
+   * the same number for a bought Betty as for a fresh one.
+   */
+  projectileSpeed?: number;
 
   /**
    * The upgrade tree's own fields. Every one of these is a no-op at its

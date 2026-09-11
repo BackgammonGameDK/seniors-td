@@ -17,7 +17,7 @@ import {
   pointAt,
 } from './path.ts';
 import { Rng } from './rng.ts';
-import { TOWERS } from './towers.ts';
+import { DEFAULT_PROJECTILE_SPEED, TOWERS } from './towers.ts';
 import { effectiveDef, UPGRADES } from './upgrades.ts';
 import type {
   Enemy,
@@ -34,7 +34,6 @@ import type {
 import { ENEMY_IDS } from './types.ts';
 import { AUTHORED_ROUNDS, waveAt } from './waves.ts';
 
-const PROJECTILE_SPEED = 9;
 /** How close a projectile must get to its mark to count as arrived. */
 const HIT_RADIUS = 9;
 const FLASH_TICKS = 8;
@@ -177,23 +176,6 @@ export interface World {
    * and theirs. Queue, then flush once nothing is iterating.
    */
   pendingSpawns: { enemy: EnemyId; dist: number; scale: number }[];
-  /**
-   * A pierce that connected, held until the tick's main loops are done.
-   *
-   * Same reason as `pendingSpawns`: a chained hit resolved immediately could
-   * land on an enemy something earlier in the same tick had already killed,
-   * or double-count a hit that hasn't actually happened yet from the shooter's
-   * point of view. It waits for the quiet moment at the end of the tick.
-   */
-  pendingHits: {
-    enemyId: number;
-    damage: number;
-    effect: HitEffect;
-    pierceFalloff: number;
-    pierceRemaining: number;
-    /** Which tower gets the credit if this one finishes an enemy off. */
-    sourceId: number;
-  }[];
   stats: Stats;
   /** Cleared at the top of every step. The renderer reads these for feedback. */
   events: SimEvent[];
@@ -220,7 +202,6 @@ export function createWorld(seed = 1): World {
     endless: false,
     spawnQueue: [],
     pendingSpawns: [],
-    pendingHits: [],
     stats: {
       kills: 0,
       leaks: 0,
@@ -884,6 +865,28 @@ function findPierceTarget(w: World, hit: Enemy): Enemy | null {
   return best;
 }
 
+/**
+ * Whoever a shot that has lost its mark rolls into next.
+ *
+ * Measured from where the shot is rather than from a place in the queue, since
+ * there is no body to be behind: the mark died mid-flight and the ball is out
+ * in the street on its own. The same window as a pierce, so a shot that lost
+ * its mark reaches exactly as far for a replacement as one that went through
+ * somebody.
+ */
+function findRollOnTarget(w: World, x: number, y: number): Enemy | null {
+  let best: Enemy | null = null;
+  let bestDist = PIERCE_WINDOW;
+  for (const e of w.enemies) {
+    if (!e.alive) continue;
+    const d = Math.hypot(e.x - x, e.y - y);
+    if (d > bestDist) continue;
+    best = e;
+    bestDist = d;
+  }
+  return best;
+}
+
 function fireTowers(w: World): void {
   for (const t of w.towers) {
     const d = effectiveDef(t);
@@ -937,7 +940,7 @@ function fireTowers(w: World): void {
         y: t.y,
         targetId: target.id,
         damage: d.damage,
-        speed: PROJECTILE_SPEED,
+        speed: d.projectileSpeed ?? DEFAULT_PROJECTILE_SPEED,
         splash: d.splash,
         slowTicks: d.slowTicks,
         slowFactor: d.slowFactor,
@@ -957,7 +960,12 @@ function fireTowers(w: World): void {
   }
 }
 
-function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy | null): void {
+/**
+ * Land a shot. Returns whether it carries on -- a shot that went through
+ * somebody and is still owed a body is not finished, and `advanceProjectiles`
+ * puts it back on the street rather than deleting it.
+ */
+function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy | null): boolean {
   const effect: HitEffect = {
     slowTicks: p.slowTicks,
     slowFactor: p.slowFactor,
@@ -971,54 +979,55 @@ function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy |
     // whole family in the previous project.
     const caught = w.enemies.filter((e) => e.alive && within(e.x, e.y, x, y, p.splash));
     for (const e of caught) applyHit(w, e, p.damage, effect, p.sourceId);
-  } else if (direct) {
-    applyHit(w, direct, p.damage, effect, p.sourceId);
-    if (p.pierceRemaining > 0) {
-      const next = findPierceTarget(w, direct);
-      if (next) {
-        w.pendingHits.push({
-          enemyId: next.id,
-          damage: Math.round(p.damage * p.pierceFalloff),
-          effect,
-          pierceRemaining: p.pierceRemaining - 1,
-          pierceFalloff: p.pierceFalloff,
-          sourceId: p.sourceId,
-        });
-      }
-    }
+    return false;
   }
-}
+  if (!direct) return false;
 
-/** Pierce hits queued by `detonate`, resolved once nothing is mid-tick. */
-function flushPierceHits(w: World): void {
-  if (w.pendingHits.length === 0) return;
-  const queued = w.pendingHits;
-  w.pendingHits = [];
-  for (const h of queued) {
-    const e = w.enemies.find((x) => x.id === h.enemyId && x.alive);
-    if (!e) continue;
-    applyHit(w, e, h.damage, h.effect, h.sourceId);
-    if (h.pierceRemaining > 0) {
-      const next = findPierceTarget(w, e);
-      if (next) {
-        w.pendingHits.push({
-          enemyId: next.id,
-          damage: Math.round(h.damage * h.pierceFalloff),
-          effect: h.effect,
-          pierceRemaining: h.pierceRemaining - 1,
-          pierceFalloff: h.pierceFalloff,
-          sourceId: h.sourceId,
-        });
-      }
-    }
-  }
-  flushPierceHits(w);
+  applyHit(w, direct, p.damage, effect, p.sourceId);
+  if (p.pierceRemaining === 0) return false;
+
+  // Through one body and on to the next. The carried hit is not dealt here:
+  // the shot is aimed at whoever is behind, loses the falloff, and has to
+  // travel the gap like any other shot, which is the whole of what a player
+  // sees when a bowling ball goes down a queue.
+  //
+  // `findPierceTarget` only ever looks backwards down the lane, so a chain
+  // cannot double back, and `pierceRemaining` falls by one every time it hops
+  // whether or not anything is found.
+  const next = findPierceTarget(w, direct);
+  if (!next) return false;
+  p.targetId = next.id;
+  p.damage = Math.round(p.damage * p.pierceFalloff);
+  p.pierceRemaining--;
+  return true;
 }
 
 function advanceProjectiles(w: World): void {
   const keep: Projectile[] = [];
   for (const p of w.projectiles) {
-    const target = w.enemies.find((e) => e.id === p.targetId && e.alive);
+    let target = w.enemies.find((e) => e.id === p.targetId && e.alive);
+
+    // A shot still owed a body does not care which body. Betty's ball spends
+    // most of a second in the street, so its mark dying to somebody else is
+    // ordinary rather than unlucky, and a ball that stopped dead at an empty
+    // patch of road would make her slowness a punishment for the rest of the
+    // board doing its job.
+    //
+    // It costs a body off the line, which is what keeps this from quietly
+    // meaning "a piercing shot is never wasted". Bill carries one, so a dead
+    // mark spends it and he lands one whole round on somebody else; Betty
+    // carries up to five, so a ball goes on rolling. The falloff is not
+    // charged -- the shot has been through nobody -- so what it loses is
+    // length rather than weight.
+    if (!target && p.pierceRemaining > 0) {
+      const next = findRollOnTarget(w, p.x, p.y);
+      if (next) {
+        p.targetId = next.id;
+        p.pierceRemaining--;
+        target = next;
+      }
+    }
+
     // A shot already in the air keeps going to where its mark was, so a kill
     // half a second earlier does not silently delete a cinnamon roll.
     const tx = target ? target.x : p.x;
@@ -1028,7 +1037,9 @@ function advanceProjectiles(w: World): void {
     const dist = Math.hypot(dx, dy);
 
     if (!target || dist <= HIT_RADIUS) {
-      detonate(w, p, tx, ty, target ?? null);
+      p.x = tx;
+      p.y = ty;
+      if (detonate(w, p, tx, ty, target ?? null)) keep.push(p);
       continue;
     }
     p.x += (dx / dist) * p.speed;
@@ -1058,7 +1069,6 @@ export function step(w: World): void {
   advanceDrops(w);
   fireTowers(w);
   advanceProjectiles(w);
-  flushPierceHits(w);
   flushSpawns(w);
   w.enemies = w.enemies.filter((e) => e.alive);
 

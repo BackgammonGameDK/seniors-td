@@ -22,6 +22,15 @@ import type { TowerDef, TowerId } from './types.ts';
  * *backwards*, which is worth gold in proportion to how much street sits
  * behind him.
  */
+/**
+ * Pixels a shot covers per tick unless its tower says otherwise.
+ *
+ * Nine is fast enough that for every defender but one the flight is a flourish
+ * rather than a delay, which is what lets the rest of the design talk about
+ * cooldowns and ignore travel time.
+ */
+export const DEFAULT_PROJECTILE_SPEED = 9;
+
 export const TOWERS: Record<TowerId, TowerDef> = {
   norah: {
     id: 'norah',
@@ -153,19 +162,30 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     damage: 18,
     // The empty ground: Barbara saw 105 and Bill saw 225, with nothing between.
     range: 155,
-    // Slow, and measured into being so. At 72 she cleared the campaign with
-    // 21.7 of 25 points still in hand, which is the one thing this project
-    // calls a failure outright -- a board that finishes untouched makes every
-    // other board a mistake rather than a choice. A ball that rolls through a
-    // queue multiplies its damage by however long the queue is, so the rate is
-    // the only place that multiplication can be paid for.
-    cooldown: 84,
+    // Slow, and measured into being so. A ball that rolls through a queue
+    // multiplies its damage by however long the queue is, so the rate is the
+    // only place that multiplication can be paid for.
+    //
+    // It was 84 while the ball arrived instantly, because at 72 she cleared
+    // the campaign with 21.7 of 25 points still in hand -- the one thing this
+    // project calls a failure outright, since a board that finishes untouched
+    // makes every other board a mistake rather than a choice. Giving the ball
+    // its real travel time took that back out again: the same 72 now finishes
+    // the campaign on 11 points from 78% of seeds, which is where 84 sat
+    // before. The rate did not change its mind; the ball started taking a
+    // second to get there.
+    cooldown: 72,
     splash: 0,
     slowTicks: 0,
     slowFactor: 0,
     stunTicks: 0,
     buffRate: 1,
     maxHp: 0,
+    // A heavy thing on the ground, at a bit over a third of everyone else's
+    // speed. It is the difference between a hit and a roll: at nine the ball
+    // arrived before the eye found it, and a ball nobody watches travel is a
+    // ball nobody sees go through anyone.
+    projectileSpeed: 3.5,
     // The ball keeps rolling. One body behind the first at baseline, which is
     // deliberately no more than Bill's Piercing Shot buys him -- what differs
     // is the scale each grows to. Bill stays one enormous hit that clips a
