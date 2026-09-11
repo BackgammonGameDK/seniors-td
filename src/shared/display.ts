@@ -60,6 +60,18 @@ export const TOWER_LOOK: Record<TowerId, TowerLook> = {
     color: '#8d6e63',
     glyph: '☕',
   },
+  harold: {
+    name: 'Hose Harold',
+    blurb: 'Sprays water close by. Some of them slip and slide back down the street.',
+    color: '#4fc3f7',
+    glyph: '💦',
+  },
+  betty: {
+    name: 'Bowling Betty',
+    blurb: 'Rolls a ball down the street. It carries on through whoever is behind the first.',
+    color: '#ba68c8',
+    glyph: '🎳',
+  },
 };
 
 export interface EnemyLook {

@@ -47,7 +47,7 @@ hex colours, display names or blurbs in `src/sim/`.
 | `src/sim/path.ts` | Board dimensions, the street, and which cells take a tower or a blockade. |
 | `src/sim/upgrades.ts` | Two paths per defender and the final fork between them, plus `effectiveDef()` -- the only way to read a defender's bought stats. |
 | `src/sim/economy.ts` | Bounties, the round clear bonus, and what selling returns. |
-| `src/sim/builds.ts` | Seven named boards the campaign harness plays: six archetypes, plus `corner`, a board played by hand and kept verbatim. |
+| `src/sim/builds.ts` | Eleven named boards the campaign harness plays: eight archetypes, plus `corner`, `binoculars` and `wall`, boards played by hand and kept verbatim. |
 | `src/sim/loadout.ts` | The `towerId@col,row` grammar the harnesses parse. |
 | `src/harness-args.ts` | Where a harness gets its board from: `--loadout`, or `--loadout-file`. |
 | `src/shared/display.ts` | Names, colours, radii, emoji. Both layers may read it. |

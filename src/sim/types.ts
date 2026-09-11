@@ -8,7 +8,15 @@
  * a lookup, so no tower is ever the answer to one troublemaker in particular.
  */
 
-export type TowerId = 'norah' | 'barbara' | 'pete' | 'bill' | 'walter' | 'clara';
+export type TowerId =
+  | 'norah'
+  | 'barbara'
+  | 'pete'
+  | 'bill'
+  | 'walter'
+  | 'clara'
+  | 'harold'
+  | 'betty';
 
 export type EnemyId =
   | 'sam'
@@ -21,7 +29,23 @@ export type EnemyId =
   | 'walker'
   | 'paul';
 
-export const TOWER_IDS: TowerId[] = ['norah', 'barbara', 'pete', 'bill', 'walter', 'clara'];
+/**
+ * Every defender, in the order the shop lists them and the number keys select
+ * them. This is the one entry in the whole registry a compiler cannot check:
+ * it is a hand-written array, so a defender left out of it still exists in the
+ * simulation and in a loadout string while never appearing in the shop at all.
+ * `tests/towers.test.ts` holds it against `TOWERS` for exactly that reason.
+ */
+export const TOWER_IDS: TowerId[] = [
+  'norah',
+  'barbara',
+  'pete',
+  'bill',
+  'walter',
+  'clara',
+  'harold',
+  'betty',
+];
 
 /**
  * Which capstone belongs to which defender.
@@ -45,6 +69,8 @@ export interface CapstoneIds {
   bill: 'deadeye' | 'piercingShot';
   walter: 'stoneWall' | 'rally';
   clara: 'doubleEspresso' | 'secondRound';
+  harold: 'fullMains' | 'soapyWater';
+  betty: 'solidBall' | 'theWholeLot';
 }
 
 /** Any capstone, whoever it belongs to. */
@@ -119,8 +145,34 @@ export interface TowerDef {
   multiShot?: number;
   /** Extra enemies a projectile hits in a line behind the first. 0 stops at one. */
   pierce?: number;
+  /**
+   * What fraction of the hit is left for each further body a pierce passes
+   * through. 1 carries the whole hit all the way down the line.
+   *
+   * The rail under a line shot, and it exists because a line shot multiplies
+   * rather than adds: every body in the queue is another copy of the same
+   * damage, so a second tower shooting the same queue is not twice as good but
+   * twice as good *again*. Six bowling balls through one queue behind a
+   * blockade cleared the whole campaign without losing a single point.
+   *
+   * A stat rather than a rule for all pierce, so the two towers that own a
+   * line can mean different things by it: a bowling ball loses its weight
+   * through a crowd, while Bill's one carried shot does not.
+   */
+  pierceFalloff?: number;
   /** Support only: extra range fraction granted to buffed neighbours. */
   rangeBuffBonus?: number;
+  /**
+   * Chance, from 0 to 1, that a hit knocks the target off their feet and sends
+   * them back down the street. 0 never does.
+   *
+   * A roll rather than a flat effect on purpose: a certainty would let a row of
+   * these hold the street still, whereas a chance makes a defender who pushes
+   * people backwards a matter of how long they stand in the water.
+   */
+  slipChance?: number;
+  /** Pixels back along the lane a slip sends them. 0 moves nobody. */
+  slipPush?: number;
 }
 
 export interface EnemyDef {
@@ -193,8 +245,9 @@ export interface Enemy {
    * the lane is a polyline that has to be walked to convert one to the other
    * and targeting reads a position several times per tick per tower.
    *
-   * Maintained wherever `dist` is written, which is `spawnEnemy` and
-   * `advanceEnemies` and nowhere else.
+   * Maintained wherever `dist` is written, which is `spawnEnemy`,
+   * `advanceEnemies` and `applyHit` -- the last of those only to send someone
+   * who has slipped back down the street -- and nowhere else.
    */
   x: number;
   y: number;
@@ -244,6 +297,16 @@ export interface Enemy {
    * `dropCooldown` gets above, kept on a field that only Paul ever uses.
    */
   regenCd: number;
+  /**
+   * Ticks before this troublemaker can be knocked off their feet again.
+   *
+   * The rail under the slip. Without it a line of hoses would push someone
+   * backwards on every hit and the street would never advance -- with it, a
+   * slip costs them ground once and then they walk for a second whatever else
+   * lands. Maintained wherever it is written, which is `spawnEnemy`,
+   * `applyHit` and `advanceEffects` and nowhere else.
+   */
+  slipCooldown: number;
   /** Derived from the two above every tick. Never written directly. */
   speedMult: number;
   /** Derived from nearby shield carriers every tick. Never written directly. */
@@ -327,6 +390,10 @@ export interface Projectile {
   stunTicks: number;
   /** Extra enemies still owed a hit behind whichever one this lands on. */
   pierceRemaining: number;
+  /** What each further body in the line keeps of the hit. See `TowerDef`. */
+  pierceFalloff: number;
+  slipChance: number;
+  slipPush: number;
   /** Only so the renderer can draw the right sprite. Not read by the sim. */
   from: TowerId;
   /**
@@ -338,7 +405,15 @@ export interface Projectile {
   sourceId: number;
 }
 
-export type SimEventType = 'hit' | 'kill' | 'leak' | 'split' | 'drop' | 'blockerDown' | 'stun';
+export type SimEventType =
+  | 'hit'
+  | 'kill'
+  | 'leak'
+  | 'split'
+  | 'drop'
+  | 'blockerDown'
+  | 'stun'
+  | 'slip';
 
 export interface SimEvent {
   type: SimEventType;

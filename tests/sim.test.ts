@@ -10,8 +10,8 @@ import {
   pointAt,
 } from '../src/sim/path.ts';
 import { TOWERS } from '../src/sim/towers.ts';
-import { ENEMY_IDS } from '../src/sim/types.ts';
-import type { EnemyId, TowerId } from '../src/sim/types.ts';
+import { ENEMY_IDS, TOWER_IDS } from '../src/sim/types.ts';
+import type { Enemy, EnemyId, TowerId } from '../src/sim/types.ts';
 import { effectiveDef } from '../src/sim/upgrades.ts';
 import { AUTHORED_ROUNDS, waveAt, WAVES } from '../src/sim/waves.ts';
 import {
@@ -1053,5 +1053,147 @@ describe('shouting wears off', () => {
     }
     // Was 89% before fatigue existed, and 100% with a capstone.
     expect(stunned / 1800).toBeLessThan(0.7);
+  });
+});
+
+describe('the registry', () => {
+  // The one entry in the whole tower registry a compiler cannot check. Every
+  // other table is a mapped type over TowerId, so leaving a defender out of it
+  // is a type error; TOWER_IDS is a hand-written array, so leaving one out of
+  // *that* compiles cleanly and produces a defender who exists in the
+  // simulation and in loadout strings while never appearing in the shop or on
+  // a number key. Verified to fail by deleting an id from the array.
+  it('lists every defender the stat table defines, and no others', () => {
+    expect([...TOWER_IDS].sort()).toEqual(Object.keys(TOWERS).sort());
+  });
+
+  it('never lists one twice, since the array is also the shop order', () => {
+    expect(new Set(TOWER_IDS).size).toBe(TOWER_IDS.length);
+  });
+});
+
+describe('slipping', () => {
+  /** A hit that always slips, so the roll is not what is under test. */
+  const ALWAYS_SLIP = { ...NO_EFFECT, slipChance: 1, slipPush: 45 };
+
+  it('sends them back down the street, and moves them where they now are', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 400);
+    const where = pointAt(400 - 45);
+
+    applyHit(w, sam, 1, ALWAYS_SLIP);
+
+    expect(sam.dist).toBe(355);
+    // `dist` and the position derived from it are written together or the
+    // renderer draws them somewhere they are not.
+    expect(sam.x).toBeCloseTo(where.x);
+    expect(sam.y).toBeCloseTo(where.y);
+  });
+
+  it('never pushes anyone back past the start of the street', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 10);
+    applyHit(w, sam, 1, ALWAYS_SLIP);
+    expect(sam.dist).toBe(0);
+  });
+
+  it('gives them a second of footing, so a wall of hoses cannot hold the street', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 400);
+
+    applyHit(w, sam, 1, ALWAYS_SLIP);
+    const afterFirst = sam.dist;
+
+    // Nine more certain slips inside the same second move them not one pixel.
+    for (let i = 0; i < 9; i++) applyHit(w, sam, 1, ALWAYS_SLIP);
+    expect(sam.dist).toBe(afterFirst);
+
+    // And once the footing is back, the next one lands.
+    sam.slipCooldown = 0;
+    applyHit(w, sam, 1, ALWAYS_SLIP);
+    expect(sam.dist).toBe(afterFirst - 45);
+  });
+
+  it('ticks that footing back on its own', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 400);
+    applyHit(w, sam, 1, ALWAYS_SLIP);
+    expect(sam.slipCooldown).toBeGreaterThan(0);
+
+    for (let i = 0; i < 60; i++) step(w);
+    expect(sam.slipCooldown).toBe(0);
+  });
+
+  it('does nothing at all to a tower that has no slip on it', () => {
+    const w = rich();
+    const sam = spawnEnemy(w, 'sam', 400);
+    applyHit(w, sam, 1, { ...NO_EFFECT, ...TOWERS.norah });
+    expect(sam.dist).toBe(400);
+    expect(sam.slipCooldown).toBe(0);
+  });
+
+  it('is rolled on the world seed, so the same run slips in the same places', () => {
+    const chance = { ...NO_EFFECT, slipChance: 0.5, slipPush: 45 };
+    const run = (seed: number): number[] => {
+      const w = rich(seed);
+      const marks: number[] = [];
+      for (let i = 0; i < 40; i++) {
+        const sam = spawnEnemy(w, 'sam', 400);
+        applyHit(w, sam, 1, chance);
+        marks.push(sam.dist);
+      }
+      return marks;
+    };
+    expect(run(7)).toEqual(run(7));
+    expect(run(7)).not.toEqual(run(8));
+    // And it really is a chance, not a certainty dressed as one.
+    expect(new Set(run(7)).size).toBe(2);
+  });
+});
+
+describe('a shot that carries down a line', () => {
+  /** Two enemies close enough together for a pierce to reach the second. */
+  function queue(w: World): [Enemy, Enemy] {
+    const front = spawnEnemy(w, 'sam', 400);
+    const behind = spawnEnemy(w, 'sam', 380);
+    return [front, behind];
+  }
+
+  it('keeps a rifle round whole, so Bill still hits the second one as hard', () => {
+    expect(TOWERS.bill.pierceFalloff ?? 1).toBe(1);
+  });
+
+  it('takes weight off a bowling ball for every body it goes through', () => {
+    // The rail under a line shot. Six Betties behind a blockade all roll
+    // through the same queue, so without this each one is worth the whole
+    // queue again rather than one more ball -- measured as a campaign cleared
+    // without losing a single point.
+    expect(TOWERS.betty.pierceFalloff!).toBeLessThan(1);
+  });
+
+  it('is spent down the queue rather than copied along it', () => {
+    const w = rich();
+    const [front, behind] = queue(w);
+    const startFront = front.hp;
+    const startBehind = behind.hp;
+    const falloff = TOWERS.betty.pierceFalloff!;
+
+    // One roll, resolved the way `detonate` resolves one: the direct hit now,
+    // the carried hit queued and flushed by the tick.
+    applyHit(w, front, 40, NO_EFFECT);
+    w.pendingHits.push({
+      enemyId: behind.id,
+      damage: Math.round(40 * falloff),
+      effect: NO_EFFECT,
+      pierceRemaining: 0,
+      pierceFalloff: falloff,
+      sourceId: -1,
+    });
+    step(w);
+
+    const armour = ENEMIES.sam.armour;
+    expect(startFront - front.hp).toBe(40 - armour);
+    expect(startBehind - behind.hp).toBe(Math.round(40 * falloff) - armour);
+    expect(startBehind - behind.hp).toBeLessThan(startFront - front.hp);
   });
 });
