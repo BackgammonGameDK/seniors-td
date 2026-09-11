@@ -414,6 +414,7 @@ export function spawnEnemy(w: World, def: EnemyId, dist: number, scale = 1): Ene
     stunFatigue: 0,
     stunRecovery: 0,
     dropCooldown: d.dropInterval,
+    regenCd: d.regenDelayTicks,
     speedMult: 1,
     shield: 0,
     blockedBy: null,
@@ -540,6 +541,27 @@ function advanceEffects(w: World): void {
       }
     }
     e.speedMult = e.stunTicks > 0 ? 0 : 1 - Math.min(MAX_SLOW, e.slowFactor);
+  }
+}
+
+/**
+ * Healing, as flat arithmetic on hit points already lost.
+ *
+ * It never re-enters `applyHit` -- healing is the same kind of thing a slow
+ * ticking down is, a number changed in place -- and it never climbs above what
+ * the enemy spawned with, which is the round's toughness multiplier already
+ * folded into `scale`. `regenCd` is reset by every hit that lands, so this
+ * only ever runs on something nobody has touched for a while.
+ */
+function advanceRegen(w: World): void {
+  for (const e of w.enemies) {
+    const d = ENEMIES[e.def];
+    if (d.regenPerSec <= 0 || !e.alive) continue;
+    if (e.regenCd > 0) {
+      e.regenCd--;
+      continue;
+    }
+    e.hp = Math.min(d.hp * e.scale, e.hp + d.regenPerSec / 60);
   }
 }
 
@@ -708,6 +730,9 @@ export function applyHit(
     e.hp -= dealt;
     e.flash = FLASH_TICKS;
     emit(w, 'hit', e.x, e.y);
+    // Only damage interrupts a healer. A shout that lands no damage leaves him
+    // eating, so no one defender is the answer to him.
+    e.regenCd = d.regenDelayTicks;
   }
   // The floor means a hit is never wholly eaten any more, so this now marks
   // the hits that the floor is all that is left of: the subtraction alone
@@ -973,6 +998,7 @@ export function step(w: World): void {
 
   advanceAuras(w);
   advanceEffects(w);
+  advanceRegen(w);
   advanceBlockers(w);
   advanceEnemies(w);
   advanceDrops(w);

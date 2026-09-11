@@ -7,15 +7,18 @@ import type { EnemyDef, EnemyId } from './types.ts';
  * the answer to a particular tower or has a particular tower as its answer.
  * Sam arrives in numbers, Mike arrives armoured, the Gang arrives twice, Ben
  * makes his neighbours harder to chip down, Tina makes towers stop and Skye
- * arrives too fast for a slow to hold, and Duke arrives once, slowly, dropping
- * Runaways behind him the whole way down the street. A board that only does
- * one thing well will find one of them expensive; a board that does two or
- * three things will not.
+ * arrives too fast for a slow to hold, Paul eats his way back up whenever
+ * nothing is hurting him, and Duke arrives once, slowly, dropping Runaways
+ * behind him the whole way down the street. A board that only does one thing
+ * well will find one of them expensive; a board that does two or three things
+ * will not.
  *
  * Armour subtracts from every hit, which is the honest way to make a slow
  * heavy hit and a fast light one genuinely different without any lookup table
- * existing. Ben's shield does the same job from the other side, and Skye's
- * slow resistance does it for the effect rather than the damage.
+ * existing. Ben's shield does the same job from the other side, Skye's slow
+ * resistance does it for the effect rather than the damage, and Paul's healing
+ * does it over time: it asks whether a board can finish something, not whether
+ * it brought the right tower.
  */
 export const ENEMIES: Record<EnemyId, EnemyDef> = {
   sam: {
@@ -36,6 +39,8 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropInterval: 0,
     blockerDps: 12,
     ignoresBlockers: false,
+    regenPerSec: 0,
+    regenDelayTicks: 0,
   },
   mike: {
     id: 'mike',
@@ -56,6 +61,8 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropInterval: 0,
     blockerDps: 30,
     ignoresBlockers: false,
+    regenPerSec: 0,
+    regenDelayTicks: 0,
   },
   ben: {
     id: 'ben',
@@ -103,6 +110,8 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropInterval: 0,
     blockerDps: 18,
     ignoresBlockers: false,
+    regenPerSec: 0,
+    regenDelayTicks: 0,
   },
   tina: {
     id: 'tina',
@@ -122,6 +131,8 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropInterval: 0,
     blockerDps: 14,
     ignoresBlockers: false,
+    regenPerSec: 0,
+    regenDelayTicks: 0,
   },
   gang: {
     id: 'gang',
@@ -141,6 +152,8 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropInterval: 0,
     blockerDps: 20,
     ignoresBlockers: false,
+    regenPerSec: 0,
+    regenDelayTicks: 0,
   },
   skye: {
     id: 'skye',
@@ -162,6 +175,8 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropInterval: 0,
     blockerDps: 16,
     ignoresBlockers: false,
+    regenPerSec: 0,
+    regenDelayTicks: 0,
   },
   duke: {
     id: 'duke',
@@ -186,6 +201,8 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropInterval: 240,
     blockerDps: 40,
     ignoresBlockers: true,
+    regenPerSec: 0,
+    regenDelayTicks: 0,
   },
   walker: {
     id: 'walker',
@@ -205,5 +222,37 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     dropInterval: 0,
     blockerDps: 8,
     ignoresBlockers: false,
+    regenPerSec: 0,
+    regenDelayTicks: 0,
+  },
+  paul: {
+    id: 'paul',
+    hp: 110,
+    speed: 1.5,
+    armour: 0,
+    bounty: 5,
+    leakCost: 2,
+    stunImmune: false,
+    slowResist: 0,
+    shieldAura: 0,
+    disablesTowers: false,
+    auraRange: 0,
+    splitsInto: null,
+    splitCount: 0,
+    dropsInto: null,
+    dropInterval: 0,
+    blockerDps: 22,
+    ignoresBlockers: false,
+    // Twenty a second back, but only once a second and a half has passed with
+    // nothing hurting him. That is deliberately not "a tower that beats him":
+    // anything at all landing hits keeps the delay reset and he never heals, so
+    // a board that keeps something on him kills him at his face value. What he
+    // taxes is the gap -- a board whose guns are all busy elsewhere, or whose
+    // one long-range tower is reloading, hands back what it had already done.
+    //
+    // Measured at round 13 with the sweep board: 2.0 Pauls a run reach the end
+    // with the healing switched off, 3.0 with it on.
+    regenPerSec: 20,
+    regenDelayTicks: 90,
   },
 };

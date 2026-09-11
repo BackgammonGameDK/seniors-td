@@ -19,9 +19,11 @@ import cinnamonRollPng from '../assets/cinnamon-roll.png';
 import coinPng from '../assets/coin.png';
 import heartPng from '../assets/heart.png';
 import norahPng from '../assets/norah.png';
+import paulPng from '../assets/paul.png';
 import petePng from '../assets/pete.png';
 import samPng from '../assets/sam.png';
 import skyePng from '../assets/skye.png';
+import walterFallenPng from '../assets/walter-fallen.png';
 import walterPng from '../assets/walter.png';
 
 /** Only the characters that have been drawn. The rest fall back to emoji. */
@@ -32,7 +34,21 @@ const TOWER_ART: Partial<Record<TowerId, string>> = {
   walter: walterPng,
 };
 
+/**
+ * What a blocker looks like once it has been knocked down.
+ *
+ * A second picture rather than a rotation of the first: Walter on his face
+ * with his stick out of reach is a drawing, not a transform. Optional on the
+ * same terms as everything else here -- a blocker with no fallen picture
+ * keeps the standing one while it is down, which is what the board did before
+ * this picture existed.
+ */
+const TOWER_DOWN_ART: Partial<Record<TowerId, string>> = {
+  walter: walterFallenPng,
+};
+
 const ENEMY_ART: Partial<Record<EnemyId, string>> = {
+  paul: paulPng,
   sam: samPng,
   skye: skyePng,
 };
@@ -109,6 +125,16 @@ export function enemyArtUrl(id: EnemyId): string | null {
 /** The tower's picture, or `null` while it loads or if it was never drawn. */
 export function towerSprite(id: TowerId): HTMLImageElement | null {
   return ready(TOWER_ART[id]);
+}
+
+/**
+ * The picture for a blocker that is down, or `null` if it has none.
+ *
+ * The caller falls back to `towerSprite` rather than to an emoji, so a blocker
+ * without one simply stays standing while it waits to get up.
+ */
+export function towerDownSprite(id: TowerId): HTMLImageElement | null {
+  return ready(TOWER_DOWN_ART[id]);
 }
 
 /** The troublemaker's picture, on the same terms. */

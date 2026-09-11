@@ -62,20 +62,44 @@ export const WAVES: Wave[] = [
   },
   // 12: splitting at volume. Every Gang that falls is two more problems.
   { groups: [g('gang', 17, 106), g('tina', 8, 200, 365)], scale: 1.46 },
-  // 13: armour behind a shield. The round that asks for real damage per hit.
-  { groups: [g('mike', 13, 149), g('ben', 6, 200, 382)], scale: 1.51 },
+  // 13: armour behind a shield, the round that asks for real damage per hit --
+  // and now Pizza Paul at the head of it, asking the same question from the
+  // other side. Every other round here was left exactly as it was authored:
+  // Paul is added pressure, not a round made room for.
+  {
+    groups: [g('paul', 4, 200), g('mike', 13, 149), g('ben', 6, 200, 382)],
+    scale: 1.51,
+  },
   // 14: the swarm round. A question about rate of fire, not damage per shot.
   { groups: [g('sam', 63, 30), g('gang', 14, 145, 399)], scale: 1.55 },
   // 15: three awkward things at once, none of them cheap to remove.
   { groups: [g('tina', 15, 141), g('ben', 12, 180, 416), g('mike', 12, 180, 773)], scale: 1.59 },
-  // 16: splitters under a shield, with runners threading through them.
-  { groups: [g('gang', 19, 115), g('mike', 11, 200, 434), g('skye', 9, 200, 807)], scale: 1.63 },
+  // 16: splitters under a shield, with runners threading through them, and
+  // Pauls behind them soaking up whatever attention is left over.
+  {
+    groups: [
+      g('gang', 19, 115),
+      g('mike', 11, 200, 434),
+      g('skye', 9, 200, 807),
+      g('paul', 5, 200, 1100),
+    ],
+    scale: 1.63,
+  },
   // 17: the armour round, with Tinas turning off whatever is handling it.
   { groups: [g('ben', 13, 181), g('mike', 22, 103, 451), g('tina', 10, 200, 842)], scale: 1.67 },
   // 18: Duke, who keeps dropping Runaways for as long as he's up.
   { groups: [g('sam', 14, 110), g('duke', 1, 0, 700)], scale: 1.70 },
-  // 19: mass. Mikes and Gangs, arriving for half a minute without a gap.
-  { groups: [g('mike', 26, 91), g('gang', 21, 113, 468), g('duke', 1, 0, 1600)], scale: 1.72 },
+  // 19: mass. Mikes and Gangs, arriving for half a minute without a gap, with
+  // Pauls in the middle of it where a board has least attention to spare.
+  {
+    groups: [
+      g('mike', 26, 91),
+      g('gang', 21, 113, 468),
+      g('paul', 7, 170, 900),
+      g('duke', 1, 0, 1600),
+    ],
+    scale: 1.72,
+  },
   // 20: the swarm again, much larger, with everything awkward mixed in.
   {
     groups: [
@@ -96,6 +120,7 @@ export const WAVES: Wave[] = [
       g('tina', 10, 200, 946),
       g('gang', 18, 145, 1388),
       g('skye', 13, 200, 1831),
+      g('paul', 8, 180, 2100),
       g('duke', 2, 700, 2400),
     ],
     scale: 1.8,
