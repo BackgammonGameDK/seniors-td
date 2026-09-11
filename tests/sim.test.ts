@@ -1204,6 +1204,46 @@ describe('a shot that carries down a line', () => {
     expect(startBehind - behind.hp).toBeLessThan(startFront - front.hp);
   });
 
+  it('keeps rolling when there is nobody behind the first one at all', () => {
+    const w = rich();
+    put(w, 'betty', buildCellNear(400));
+    const lone = spawnEnemy(w, 'sam', 400);
+    const startHp = lone.hp;
+
+    until(w, () => lone.hp < startHp);
+    // The ball has been through the only person on the street. It is still
+    // there, and it is still going somewhere: the reach is what it has left,
+    // not a queue it failed to find.
+    const ball = w.projectiles[0];
+    expect(ball).toBeDefined();
+    const wasAt = { x: ball!.x, y: ball!.y };
+
+    // Well past the point where it has any weight left, and still going.
+    for (let i = 0; i < 40; i++) step(w);
+    const still = w.projectiles[0];
+    expect(still).toBeDefined();
+    // 40 ticks of roll is 140 px of street; the lane bends, so the straight
+    // line between the two points is shorter than that but not by much.
+    expect(Math.hypot(still!.x - wasAt.x, still!.y - wasAt.y)).toBeGreaterThan(80);
+  });
+
+  it('cannot knock the same person down twice on one roll', () => {
+    const w = rich();
+    put(w, 'betty', buildCellNear(400));
+    const lone = spawnEnemy(w, 'sam', 400);
+    const startHp = lone.hp;
+
+    until(w, () => lone.hp < startHp);
+    const afterFirst = lone.hp;
+    // Most of the ball's reach, and short of Betty's next shot, so anything
+    // that lands here is this same ball rolling over somebody it has already
+    // knocked down -- which without a memory it would do for several ticks
+    // running, since it travels at 3.5 and the person it hit at 1.9.
+    for (let i = 0; i < 60; i++) step(w);
+    expect(lone.alive).toBe(true);
+    expect(lone.hp).toBe(afterFirst);
+  });
+
   it('keeps rolling when whoever it was aimed at falls to somebody else', () => {
     const w = rich();
     put(w, 'betty', buildCellNear(400));

@@ -169,6 +169,29 @@ export interface TowerDef {
    * through a crowd, while Bill's one carried shot does not.
    */
   pierceFalloff?: number;
+  /**
+   * How far along the street a carrying shot keeps going after its first hit,
+   * in pixels. Only read when `pierce` is above zero.
+   *
+   * This is the difference between a rifle round and a bowling ball, said as a
+   * number rather than as a branch. Bill's round carries just past the body it
+   * went through; Betty's ball rolls on up the street whether or not anybody
+   * is standing there, which is the whole of what she looks like. A shot that
+   * has spent its bodies keeps rolling out the rest of this, harmlessly --
+   * a ball that vanished the moment it ran out of people to knock down would
+   * be the lookup showing through again.
+   */
+  pierceReach?: number;
+  /**
+   * How far the shot travels in total after its first hit, in pixels. Defaults
+   * to `pierceReach`, which is a shot that stops the moment it stops mattering.
+   *
+   * The stretch past `pierceReach` is a ball with nothing left in it, rolling
+   * to a stop. It knocks nobody down, and it exists because a ball that
+   * vanished the instant it ran out of weight was the thing the player could
+   * see was wrong -- a bowling ball comes to rest, it does not blink out.
+   */
+  rollOut?: number;
   /** Support only: extra range fraction granted to buffed neighbours. */
   rangeBuffBonus?: number;
   /**
@@ -399,6 +422,18 @@ export interface Projectile {
   stunTicks: number;
   /** Extra enemies still owed a hit behind whichever one this lands on. */
   pierceRemaining: number;
+  /**
+   * Where along the lane this is rolling, or null while it is still flying at
+   * the mark it was fired at. A shot that has hit something, or lost its mark,
+   * stops homing and becomes a thing travelling up the street.
+   */
+  rollDist: number | null;
+  /** Pixels of roll left, weight or no weight. Zero on a shot that cannot carry. */
+  rollLeft: number;
+  /** Pixels of roll left in which it can still knock somebody down. */
+  biteLeft: number;
+  /** Everyone already knocked down by this one, so a roll cannot hit twice. */
+  hitIds: number[];
   /** What each further body in the line keeps of the hit. See `TowerDef`. */
   pierceFalloff: number;
   slipChance: number;

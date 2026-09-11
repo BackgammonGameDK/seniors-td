@@ -31,6 +31,15 @@ import type { TowerDef, TowerId } from './types.ts';
  */
 export const DEFAULT_PROJECTILE_SPEED = 9;
 
+/**
+ * How far a carrying shot travels past its first body when its tower does not
+ * say otherwise, in pixels.
+ *
+ * Forty is roughly one queued body behind another, which is what a rifle round
+ * that clips a second person should reach and no further.
+ */
+export const DEFAULT_PIERCE_REACH = 40;
+
 export const TOWERS: Record<TowerId, TowerDef> = {
   norah: {
     id: 'norah',
@@ -191,6 +200,24 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     // is the scale each grows to. Bill stays one enormous hit that clips a
     // second person; Betty grows into many modest hits down a queue.
     pierce: 1,
+    // Sixteen pixels of weight, and then two hundred and twenty of rolling.
+    //
+    // The short number is the one the campaign is sensitive to, and violently:
+    // the same board holds twenty rounds from 0% of seeds at a bite of nothing,
+    // 45% at fourteen, 90% at sixteen and 100% without losing a point at
+    // twenty-four. That is because a bite is not a distance behind one body,
+    // it is a sweep against the traffic -- the ball covers its own length of
+    // street and the queue walks into the rest -- so a long one quietly stops
+    // being a carried hit and becomes a second, wider range. Sixteen is a
+    // queue pressed up against the body that was hit, which is what the line
+    // was always meant to mean.
+    //
+    // The long number costs nothing and is the whole point of the exercise: a
+    // ball that stopped dead the moment it ran out of people to knock down was
+    // the thing a player could see was wrong. It rolls this far whether or not
+    // anybody is there.
+    pierceReach: 16,
+    rollOut: 220,
     // The ball loses its weight through a crowd. Without this a line shot
     // multiplies instead of adding -- six Betties behind a wall shoot the same
     // queue, so each is worth the whole queue again, and the measured result
