@@ -9,6 +9,7 @@
 import { ENEMIES } from './enemies.ts';
 import { ECONOMY } from './economy.ts';
 import {
+  BOARD,
   cellCentre,
   distanceAlong,
   isBlockerCell,
@@ -17,7 +18,7 @@ import {
   pointAt,
 } from './path.ts';
 import { Rng } from './rng.ts';
-import { DEFAULT_PIERCE_REACH, DEFAULT_PROJECTILE_SPEED, TOWERS } from './towers.ts';
+import { DEFAULT_PROJECTILE_SPEED, DEFAULT_ROLL_OUT, TOWERS } from './towers.ts';
 import { effectiveDef, UPGRADES } from './upgrades.ts';
 import type {
   Enemy,
@@ -848,15 +849,11 @@ function findTargets(w: World, t: Tower, range: number, count: number): Enemy[] 
   return inRange.slice(0, count);
 }
 
-/**
- * How close along the lane a rolling shot has to come to knock somebody down.
- *
- * The lane is single file, so this is measured in distance travelled rather
- * than in pixels between two points: a ball rolling up the street and a
- * troublemaker walking down it are on the same line, and the only question is
- * whether they are at the same place on it.
- */
+/** How close a rolling shot has to come to somebody to knock them down. */
 const ROLL_CONTACT = 12;
+
+/** How far off the garden a rolling shot may get before it is gone. */
+const OFF_BOARD = 30;
 
 function fireTowers(w: World): void {
   for (const t of w.towers) {
@@ -904,7 +901,15 @@ function fireTowers(w: World): void {
     const live = targets.filter((e): e is Enemy => e !== null);
     const primary = live[0];
     if (primary === undefined) continue;
+    // A carrying shot is a different animal: it hurts everybody along its line
+    // rather than only the one it was aimed at, so it is flown by
+    // `advanceCarry` instead of the ordinary fly-and-land.
+    const carries = (d.pierce ?? 0) > 0 && d.splash === 0;
     for (const target of live) {
+      const ax = target.x - t.x;
+      const ay = target.y - t.y;
+      const alen = Math.hypot(ax, ay) || 1;
+      const aim = { x: ax / alen, y: ay / alen };
       w.projectiles.push({
         id: w.nextId++,
         x: t.x,
@@ -918,11 +923,13 @@ function fireTowers(w: World): void {
         stunTicks: d.stunTicks,
         slipChance: d.slipChance ?? 0,
         slipPush: d.slipPush ?? 0,
-        pierceRemaining: d.pierce ?? 0,
         pierceFalloff: d.pierceFalloff ?? 1,
-        rollDist: null,
-        rollLeft: (d.pierce ?? 0) > 0 ? (d.rollOut ?? d.pierceReach ?? DEFAULT_PIERCE_REACH) : 0,
-        biteLeft: (d.pierce ?? 0) > 0 ? (d.pierceReach ?? DEFAULT_PIERCE_REACH) : 0,
+        carries,
+        bodiesLeft: carries ? (d.pierce ?? 0) + 1 : 1,
+        rolling: false,
+        dirX: aim.x,
+        dirY: aim.y,
+        rollLeft: carries ? (d.rollOut ?? DEFAULT_ROLL_OUT) : 0,
         hitIds: [],
         from: t.def,
         sourceId: t.id,
@@ -935,115 +942,115 @@ function fireTowers(w: World): void {
   }
 }
 
-/**
- * Land a shot. Returns whether it carries on -- a shot that can roll is not
- * finished when it lands, and `advanceProjectiles` puts it back on the street
- * rather than deleting it.
- */
-function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy | null): boolean {
-  const effect: HitEffect = {
-    slowTicks: p.slowTicks,
-    slowFactor: p.slowFactor,
-    stunTicks: p.stunTicks,
-    slipChance: p.slipChance,
-    slipPush: p.slipPush,
-  };
+function detonate(w: World, p: Projectile, x: number, y: number, direct: Enemy | null): void {
+  const effect = effectOf(p);
   if (p.splash > 0) {
     // Snapshot the list: a splash must not reach anything created by the same
     // splash, which is exactly the bug that let one shot cascade through a
     // whole family in the previous project.
     const caught = w.enemies.filter((e) => e.alive && within(e.x, e.y, x, y, p.splash));
     for (const e of caught) applyHit(w, e, p.damage, effect, p.sourceId);
-    return false;
+  } else if (direct) {
+    applyHit(w, direct, p.damage, effect, p.sourceId);
   }
-  if (!direct) return false;
+}
 
-  applyHit(w, direct, p.damage, effect, p.sourceId);
-  if (p.rollLeft <= 0) return false;
-
-  // Through the first body and on up the street. Nothing is looked up here:
-  // the shot stops aiming and becomes a thing rolling along the lane, and
-  // whoever it meets is whoever happens to be standing where it gets to. It
-  // rolls its whole reach whether or not there is a queue -- a ball that
-  // blinked out because nobody was behind the first one was the thing the
-  // player could see was wrong.
-  p.rollDist = direct.dist;
-  p.hitIds.push(direct.id);
-  p.damage = Math.round(p.damage * p.pierceFalloff);
-  return true;
+function effectOf(p: Projectile): HitEffect {
+  return {
+    slowTicks: p.slowTicks,
+    slowFactor: p.slowFactor,
+    stunTicks: p.stunTicks,
+    slipChance: p.slipChance,
+    slipPush: p.slipPush,
+  };
 }
 
 /**
- * One tick of a shot that is rolling rather than flying.
+ * Knock down whoever a carrying shot is touching.
  *
- * It travels back up the lane against the traffic, which is the direction the
- * queue it was fired into is coming from, and knocks down anybody it reaches
- * while it still has both bodies and weight. `biteLeft` is the weight, and it
- * is short: a sweep that keeps its weight for the length of the street stops
- * being a carried hit and becomes a second range. What is left afterwards is
- * `rollLeft`, a spent ball rolling to a stop, which is there to be looked at.
- * Returns whether it is still on the board.
+ * It is dangerous for the whole of its line, on the way to its mark as much as
+ * after it, because that is what a ball rolled down a street does: there is no
+ * moment at which it starts counting. `bodiesLeft` is all that stops it, and
+ * `hitIds` is why it cannot knock the same person down twice -- it travels at
+ * 3.5 and they walk at 1.9, so without a memory it would hit the same person
+ * for several ticks running.
  */
-function advanceRoll(w: World, p: Projectile): boolean {
-  const travelled = Math.min(p.speed, p.rollLeft);
-  p.rollLeft -= travelled;
-  p.biteLeft = Math.max(0, p.biteLeft - travelled);
-  p.rollDist = (p.rollDist ?? 0) - travelled;
-  if (p.rollDist <= 0) return false;
-  const at = pointAt(p.rollDist);
-  p.x = at.x;
-  p.y = at.y;
+function strike(w: World, p: Projectile): void {
+  if (p.bodiesLeft === 0) return;
+  const effect = effectOf(p);
+  // Snapshot, for the same reason a splash does: a body knocked down here can
+  // split, and the halves must wait for a later tick to be rolled into.
+  const struck = w.enemies.filter(
+    (e) => e.alive && !p.hitIds.includes(e.id) && within(e.x, e.y, p.x, p.y, ROLL_CONTACT),
+  );
+  for (const e of struck) {
+    if (p.bodiesLeft === 0) break;
+    applyHit(w, e, p.damage, effect, p.sourceId);
+    p.hitIds.push(e.id);
+    p.bodiesLeft--;
+    p.damage = Math.round(p.damage * p.pierceFalloff);
+  }
+}
 
-  if (p.pierceRemaining > 0 && p.biteLeft > 0) {
-    const effect: HitEffect = {
-      slowTicks: p.slowTicks,
-      slowFactor: p.slowFactor,
-      stunTicks: p.stunTicks,
-      slipChance: p.slipChance,
-      slipPush: p.slipPush,
-    };
-    // Snapshot, for the same reason a splash does: a body knocked down here
-    // can split, and the halves must wait for a later tick to be rolled into.
-    const struck = w.enemies.filter(
-      (e) =>
-        e.alive && !p.hitIds.includes(e.id) && Math.abs(e.dist - (p.rollDist ?? 0)) <= ROLL_CONTACT,
-    );
-    for (const e of struck) {
-      if (p.pierceRemaining === 0) break;
-      applyHit(w, e, p.damage, effect, p.sourceId);
-      p.hitIds.push(e.id);
-      p.pierceRemaining--;
-      p.damage = Math.round(p.damage * p.pierceFalloff);
+/**
+ * One tick of a shot that carries.
+ *
+ * It flies at its mark like any other shot, and once it has arrived -- or lost
+ * the mark to somebody else -- it stops aiming and holds the heading it had.
+ * The street bending away from it is the street's business: a ball that went
+ * round corners was being steered, and looked it.
+ *
+ * `rollOut` is how much street it has after that, and the stretch of it left
+ * once the bodies are gone is a spent ball rolling to a stop, which is there
+ * to be looked at rather than to do anything. Returns whether it is still on
+ * the board.
+ */
+function advanceCarry(w: World, p: Projectile): boolean {
+  if (!p.rolling) {
+    const target = w.enemies.find((e) => e.id === p.targetId && e.alive);
+    if (!target) {
+      p.rolling = true;
+    } else {
+      const dx = target.x - p.x;
+      const dy = target.y - p.y;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= HIT_RADIUS) {
+        p.rolling = true;
+      } else {
+        p.dirX = dx / dist;
+        p.dirY = dy / dist;
+      }
     }
   }
 
-  return p.rollLeft > 0;
+  let step = p.speed;
+  if (p.rolling) {
+    step = Math.min(p.speed, p.rollLeft);
+    p.rollLeft -= step;
+  }
+  p.x += p.dirX * step;
+  p.y += p.dirY * step;
+
+  strike(w, p);
+
+  const off =
+    p.x < -OFF_BOARD ||
+    p.x > BOARD.width + OFF_BOARD ||
+    p.y < -OFF_BOARD ||
+    p.y > BOARD.height + OFF_BOARD;
+  if (off) return false;
+  return !p.rolling || p.rollLeft > 0;
 }
 
 function advanceProjectiles(w: World): void {
   const keep: Projectile[] = [];
   for (const p of w.projectiles) {
-    if (p.rollDist !== null) {
-      if (advanceRoll(w, p)) keep.push(p);
+    if (p.carries) {
+      if (advanceCarry(w, p)) keep.push(p);
       continue;
     }
 
     const target = w.enemies.find((e) => e.id === p.targetId && e.alive);
-
-    // A mark that dies mid-flight does not stop a ball. Betty's spends most of
-    // a second in the street, so somebody else finishing its mark is ordinary
-    // rather than unlucky, and a ball that stopped dead at an empty patch of
-    // road would make her slowness a punishment for the rest of the board
-    // doing its job. It drops onto the lane where it had got to and rolls the
-    // rest of the way at full weight, having been through nobody.
-    if (!target && p.rollLeft > 0) {
-      p.rollDist = distanceAlong({ x: p.x, y: p.y });
-      p.pierceRemaining--;
-      p.damage = Math.round(p.damage * p.pierceFalloff);
-      if (advanceRoll(w, p)) keep.push(p);
-      continue;
-    }
-
     // A shot already in the air keeps going to where its mark was, so a kill
     // half a second earlier does not silently delete a cinnamon roll.
     const tx = target ? target.x : p.x;
@@ -1053,9 +1060,7 @@ function advanceProjectiles(w: World): void {
     const dist = Math.hypot(dx, dy);
 
     if (!target || dist <= HIT_RADIUS) {
-      p.x = tx;
-      p.y = ty;
-      if (detonate(w, p, tx, ty, target ?? null)) keep.push(p);
+      detonate(w, p, tx, ty, target ?? null);
       continue;
     }
     p.x += (dx / dist) * p.speed;

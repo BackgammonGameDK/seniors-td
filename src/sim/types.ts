@@ -170,26 +170,16 @@ export interface TowerDef {
    */
   pierceFalloff?: number;
   /**
-   * How far along the street a carrying shot keeps going after its first hit,
-   * in pixels. Only read when `pierce` is above zero.
+   * How far a carrying shot travels after it stops aiming, in pixels. Only
+   * read when `pierce` is above zero.
    *
    * This is the difference between a rifle round and a bowling ball, said as a
-   * number rather than as a branch. Bill's round carries just past the body it
-   * went through; Betty's ball rolls on up the street whether or not anybody
-   * is standing there, which is the whole of what she looks like. A shot that
-   * has spent its bodies keeps rolling out the rest of this, harmlessly --
-   * a ball that vanished the moment it ran out of people to knock down would
-   * be the lookup showing through again.
-   */
-  pierceReach?: number;
-  /**
-   * How far the shot travels in total after its first hit, in pixels. Defaults
-   * to `pierceReach`, which is a shot that stops the moment it stops mattering.
-   *
-   * The stretch past `pierceReach` is a ball with nothing left in it, rolling
-   * to a stop. It knocks nobody down, and it exists because a ball that
-   * vanished the instant it ran out of weight was the thing the player could
-   * see was wrong -- a bowling ball comes to rest, it does not blink out.
+   * number rather than as a branch. Bill's round carries a little past the
+   * body it went through; Betty's ball holds its heading across the garden,
+   * whether or not anybody is standing in the way. The stretch of it left
+   * after the bodies run out is a spent ball rolling to a stop, which exists
+   * because a ball that vanished the moment it ran out of people to knock
+   * down was the thing a player could see was wrong.
    */
   rollOut?: number;
   /** Support only: extra range fraction granted to buffed neighbours. */
@@ -420,18 +410,31 @@ export interface Projectile {
   slowTicks: number;
   slowFactor: number;
   stunTicks: number;
-  /** Extra enemies still owed a hit behind whichever one this lands on. */
-  pierceRemaining: number;
   /**
-   * Where along the lane this is rolling, or null while it is still flying at
-   * the mark it was fired at. A shot that has hit something, or lost its mark,
-   * stops homing and becomes a thing travelling up the street.
+   * Whether this hurts everybody along its line rather than only its mark.
+   * True for a shot whose tower carries; false for a bun or a needle.
    */
-  rollDist: number | null;
-  /** Pixels of roll left, weight or no weight. Zero on a shot that cannot carry. */
+  carries: boolean;
+  /** People this can still knock down, the first one included. */
+  bodiesLeft: number;
+/**
+   * Whether this has stopped aiming at anybody. A shot that has hit something,
+   * or lost its mark, becomes a thing travelling in a straight line.
+   */
+  rolling: boolean;
+  /**
+   * The way it is going, as a unit vector, kept current while it is still
+   * flying so that the roll can carry on along it.
+   *
+   * A rolling ball holds its heading and lets the street bend away from it,
+   * which is why this is a direction and not a place in the lane: it was
+   * following the road around corners, and a ball that is steered is a ball
+   * nobody believes.
+   */
+  dirX: number;
+  dirY: number;
+  /** Pixels of roll left after it stopped aiming. Zero on a shot that cannot carry. */
   rollLeft: number;
-  /** Pixels of roll left in which it can still knock somebody down. */
-  biteLeft: number;
   /** Everyone already knocked down by this one, so a roll cannot hit twice. */
   hitIds: number[];
   /** What each further body in the line keeps of the hit. See `TowerDef`. */

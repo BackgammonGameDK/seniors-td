@@ -744,14 +744,20 @@ describe('upgrades', () => {
     for (let i = 0; i < 4; i++) expect(purchaseUpgrade(w, bill.id, i < 2 ? 'pathA' : 'pathB')).toBe(true);
     expect(purchaseUpgrade(w, bill.id, 'piercingShot')).toBe(true);
 
-    const front = spawnEnemy(w, 'mike', 300);
-    const behind = spawnEnemy(w, 'mike', 280);
-    const frontStart = front.hp;
-    const behindStart = behind.hp;
+    // A column, because the round hurts everybody along its line rather than
+    // whoever happens to be a fixed distance behind its mark: two people
+    // standing beside the tower are not on the same line as each other.
+    const column = [];
+    for (let i = 0; i < 6; i++) column.push(spawnEnemy(w, 'mike', 300 + i * 20));
+    const start = new Map(column.map((e) => [e.id, e.hp]));
 
-    for (let i = 0; i < 60; i++) step(w);
-    expect(front.hp).toBeLessThan(frontStart);
-    expect(behind.hp).toBeLessThan(behindStart);
+    let carried = false;
+    for (let i = 0; i < 300 && !carried; i++) {
+      step(w);
+      carried = w.projectiles.some((p) => p.hitIds.length > 1);
+    }
+    expect(carried).toBe(true);
+    expect(column.filter((e) => e.hp < start.get(e.id)!).length).toBeGreaterThan(1);
   });
 
   it("tier two is locked until tier one on the same path is bought", () => {
@@ -1152,11 +1158,20 @@ describe('slipping', () => {
 });
 
 describe('a shot that carries down a line', () => {
-  /** Two enemies close enough together for a pierce to reach the second. */
-  function queue(w: World): [Enemy, Enemy] {
-    const front = spawnEnemy(w, 'sam', 400);
-    const behind = spawnEnemy(w, 'sam', 380);
-    return [front, behind];
+  /** A column dense enough that a line drawn through it touches more than one. */
+  function queue(w: World): Enemy[] {
+    const column: Enemy[] = [];
+    for (let i = 0; i < 6; i++) column.push(spawnEnemy(w, 'sam', 360 + i * 20));
+    return column;
+  }
+
+  /** Steps until `done`, and gives back the tick it became true on. */
+  function until(w: World, done: () => boolean, limit = 600): number {
+    for (let i = 0; i < limit; i++) {
+      step(w);
+      if (done()) return w.tick;
+    }
+    throw new Error('it never happened');
   }
 
   it('keeps a rifle round whole, so Bill still hits the second one as hard', () => {
@@ -1171,60 +1186,63 @@ describe('a shot that carries down a line', () => {
     expect(TOWERS.betty.pierceFalloff!).toBeLessThan(1);
   });
 
-  /** Steps until `done`, and gives back the tick it became true on. */
-  function until(w: World, done: () => boolean, limit = 600): number {
-    for (let i = 0; i < limit; i++) {
-      step(w);
-      if (done()) return w.tick;
-    }
-    throw new Error('it never happened');
-  }
-
-  it('is spent down the queue rather than copied along it', () => {
+  it('is spent down the line rather than copied along it', () => {
     const w = rich();
     put(w, 'betty', buildCellNear(400));
-    const [front, behind] = queue(w);
-    const startFront = front.hp;
-    const startBehind = behind.hp;
-    const damage = TOWERS.betty.damage;
-    const falloff = TOWERS.betty.pierceFalloff!;
+    const column = queue(w);
+    const start = new Map(column.map((e) => [e.id, e.hp]));
 
-    const firstHit = until(w, () => front.hp < startFront);
-    // The point of the whole thing: the ball is still on the street after the
-    // first body, and the second one has not been touched yet.
-    expect(w.projectiles.length).toBe(1);
-    expect(behind.hp).toBe(startBehind);
+    // One ball that has been through two people. Which two is the line's
+    // business: the ball is dangerous the whole way along it, so being aimed
+    // at somebody is not the same as being the one it gets to.
+    const ball = () => w.projectiles.find((p) => p.hitIds.length === 2);
+    until(w, () => ball() !== undefined);
 
-    const secondHit = until(w, () => behind.hp < startBehind);
-    expect(secondHit).toBeGreaterThan(firstHit);
-
+    const [firstId, secondId] = ball()!.hitIds as [number, number];
+    const took = (id: number) => start.get(id)! - column.find((e) => e.id === id)!.hp;
     const armour = ENEMIES.sam.armour;
-    expect(startFront - front.hp).toBe(damage - armour);
-    expect(startBehind - behind.hp).toBe(Math.round(damage * falloff) - armour);
-    expect(startBehind - behind.hp).toBeLessThan(startFront - front.hp);
+    expect(took(firstId)).toBe(TOWERS.betty.damage - armour);
+    expect(took(secondId)).toBe(Math.round(TOWERS.betty.damage * TOWERS.betty.pierceFalloff!) - armour);
+    expect(took(secondId)).toBeLessThan(took(firstId));
   });
 
-  it('keeps rolling when there is nobody behind the first one at all', () => {
+  it('keeps rolling when there is nobody left in front of it at all', () => {
     const w = rich();
     put(w, 'betty', buildCellNear(400));
     const lone = spawnEnemy(w, 'sam', 400);
     const startHp = lone.hp;
 
     until(w, () => lone.hp < startHp);
-    // The ball has been through the only person on the street. It is still
-    // there, and it is still going somewhere: the reach is what it has left,
-    // not a queue it failed to find.
     const ball = w.projectiles[0];
     expect(ball).toBeDefined();
     const wasAt = { x: ball!.x, y: ball!.y };
 
-    // Well past the point where it has any weight left, and still going.
+    // Well past the point where it has anybody left to knock down, and still
+    // going: the reach is what it has left, not a queue it failed to find.
     for (let i = 0; i < 40; i++) step(w);
     const still = w.projectiles[0];
     expect(still).toBeDefined();
-    // 40 ticks of roll is 140 px of street; the lane bends, so the straight
-    // line between the two points is shorter than that but not by much.
-    expect(Math.hypot(still!.x - wasAt.x, still!.y - wasAt.y)).toBeGreaterThan(80);
+    // 40 ticks of roll is 140 px of garden, in a straight line.
+    expect(Math.hypot(still!.x - wasAt.x, still!.y - wasAt.y)).toBeGreaterThan(100);
+  });
+
+  it('holds its heading instead of following the street round a corner', () => {
+    const w = rich();
+    put(w, 'betty', buildCellNear(400));
+    spawnEnemy(w, 'sam', 400);
+    until(w, () => w.projectiles.length > 0 && w.projectiles[0]!.rolling);
+
+    const p = w.projectiles[0]!;
+    const from = { x: p.x, y: p.y };
+    const heading = { x: p.dirX, y: p.dirY };
+    for (let i = 0; i < 30; i++) step(w);
+
+    const now = w.projectiles[0]!;
+    const gone = Math.hypot(now.x - from.x, now.y - from.y);
+    // Every pixel of it in the direction it set off in: a ball that went round
+    // corners was being steered, and looked it.
+    expect(now.x).toBeCloseTo(from.x + heading.x * gone, 4);
+    expect(now.y).toBeCloseTo(from.y + heading.y * gone, 4);
   });
 
   it('cannot knock the same person down twice on one roll', () => {
@@ -1235,28 +1253,12 @@ describe('a shot that carries down a line', () => {
 
     until(w, () => lone.hp < startHp);
     const afterFirst = lone.hp;
-    // Most of the ball's reach, and short of Betty's next shot, so anything
+    // Most of the ball's roll, and short of Betty's next shot, so anything
     // that lands here is this same ball rolling over somebody it has already
     // knocked down -- which without a memory it would do for several ticks
     // running, since it travels at 3.5 and the person it hit at 1.9.
     for (let i = 0; i < 60; i++) step(w);
     expect(lone.alive).toBe(true);
     expect(lone.hp).toBe(afterFirst);
-  });
-
-  it('keeps rolling when whoever it was aimed at falls to somebody else', () => {
-    const w = rich();
-    put(w, 'betty', buildCellNear(400));
-    const [front, behind] = queue(w);
-    const startBehind = behind.hp;
-
-    until(w, () => w.projectiles.length > 0);
-    applyHit(w, front, 1000, NO_EFFECT);
-    expect(front.alive).toBe(false);
-
-    until(w, () => behind.hp < startBehind);
-    // At full weight: it rolled past an empty patch of road, not through a
-    // body, so there is nothing for the falloff to take off it.
-    expect(startBehind - behind.hp).toBe(TOWERS.betty.damage - ENEMIES.sam.armour);
   });
 });
