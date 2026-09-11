@@ -23,7 +23,14 @@ import {
   roundReadout,
 } from './decisions.ts';
 import type { FocusView, Readout } from './decisions.ts';
-import { enemySprite, iconGlyph, iconSprite, shotSprite, towerSprite } from './sprites.ts';
+import {
+  enemySprite,
+  iconGlyph,
+  iconSprite,
+  shotSprite,
+  towerDownSprite,
+  towerSprite,
+} from './sprites.ts';
 
 /**
  * How wide Barbara's cinnamon roll is on the board, in pixels.
@@ -788,7 +795,13 @@ export class Renderer {
     g.save();
     g.rotate(angle);
 
-    const sprite = towerSprite(t.def);
+    // A blocker on nought hit points is still on the board, waiting on Second
+    // Wind, and until now was drawn standing with an empty bar under him. The
+    // fallen picture is the frame that was missing; a blocker without one
+    // keeps the standing picture, the same way a tower without any picture
+    // keeps its disc.
+    const down = d.mode === 'blocker' && t.hp <= 0;
+    const sprite = (down ? towerDownSprite(t.def) : null) ?? towerSprite(t.def);
     if (sprite !== null) {
       g.globalAlpha = t.disabled ? 0.45 : 1;
       g.drawImage(sprite, -SPRITE_SIZE / 2, -SPRITE_SIZE / 2, SPRITE_SIZE, SPRITE_SIZE);
