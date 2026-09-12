@@ -21,8 +21,6 @@ import {
   carryReach,
   cardState,
   describeStats,
-  easeAngle,
-  easeAngleOver,
   enemyTypeView,
   hintText,
   hoveredStat,
@@ -88,6 +86,9 @@ const tower = (over: Partial<Tower> = {}): Tower => ({
   revivesUsed: 0,
   reviveAt: null,
   targetId: null,
+  aimAngle: null,
+  jetOn: false,
+  jetReach: 0,
   sentHome: 0,
   ...over,
 });
@@ -292,6 +293,21 @@ describe('build cards', () => {
     expect(slow?.value).toMatch(/%/);
     expect(slow?.value).toMatch(/s$/);
     expect(rows.some((r) => /slowFactor|slowTicks/.test(r.value))).toBe(false);
+  });
+
+  it('describes the jet as water standing on people rather than as a gun', () => {
+    const rows = describeStats(TOWERS.harold);
+    // "a hit" and "shots a second" would read as a gun that happens to be
+    // blue. He does not hit anybody: he stands water on them.
+    expect(rows.find((r) => r.label === 'Damage')?.value).toMatch(/soaking/);
+    expect(rows.some((r) => r.label === 'Rate')).toBe(false);
+    expect(rows.find((r) => r.label === 'Soaks them')).toBeDefined();
+    expect(rows.find((r) => r.label === 'Catches')?.value).toMatch(/everyone/);
+    // The push is Full Mains and nothing before it, and it is said per second
+    // rather than per tick -- 21 px a second is a fact about the street.
+    expect(rows.some((r) => r.label === 'Pushes them back')).toBe(false);
+    const full = describeStats(effectiveDef(tower({ def: 'harold', capstone: 'fullMains' })));
+    expect(full.find((r) => r.label === 'Pushes them back')?.value).toMatch(/px a second/);
   });
 
   it('describes the two towers that never shoot without pretending they do', () => {
@@ -728,23 +744,16 @@ describe('which way a tower looks', () => {
   it('turns a head-on sprite towards the target', () => {
     expect(facingAngle(100, 100, 100, 200)).toBeCloseTo(0);
     // Half a turn, expressed as the negative half -- `rotate` cannot tell the
-    // two apart, and `easeAngle` wraps either into the shorter route.
+    // two apart, and the simulation's `easeAngle` wraps either into the
+    // shorter route.
     expect(facingAngle(100, 100, 100, 0)).toBeCloseTo(-Math.PI);
     expect(facingAngle(100, 100, 200, 100)).toBeCloseTo(-Math.PI / 2);
     expect(facingAngle(100, 100, 0, 100)).toBeCloseTo(Math.PI / 2);
   });
 
-  it('eases part of the way, not all of it', () => {
-    expect(easeAngle(0, 1, 0.25)).toBeCloseTo(0.25);
-    expect(easeAngle(0, 0, 0.25)).toBeCloseTo(0);
-  });
-
-  it('takes the short way round when the turn crosses the half circle', () => {
-    // Just under half a turn one way to just over it the other is a couple of
-    // degrees of travel, not most of a circle.
-    const stepped = easeAngle(Math.PI - 0.1, -Math.PI + 0.1, 0.5);
-    expect(stepped).toBeGreaterThan(Math.PI - 0.1);
-  });
+  // The easing itself moved into `src/sim/` when Harold became a jet -- his
+  // water lands where he is looking, so the heading stopped being decoration.
+  // Its tests went with it, to `tests/sim.test.ts`.
 });
 
 describe('the game explains why a hit did nothing', () => {
@@ -1040,13 +1049,10 @@ describe('the renderer ages what it draws in ticks, not in frames', () => {
     expect(advanceFades(fades(), 0)).toEqual(fades());
   });
 
-  it('turns a tower by the same amount however the frames fall', () => {
-    const oneFrameOfThree = easeAngleOver(0, 1, 0.2, 3);
-    let threeFramesOfOne = 0;
-    for (let i = 0; i < 3; i++) threeFramesOfOne = easeAngle(threeFramesOfOne, 1, 0.2);
-    expect(oneFrameOfThree).toBeCloseTo(threeFramesOfOne, 12);
-    expect(easeAngleOver(0.5, 1, 0.2, 0)).toBe(0.5);
-  });
+  // `easeAngleOver` used to live here, to keep a tower's turn the same length
+  // in game-time however the frames fell. It is gone: the simulation eases
+  // once per tick now, so a frame worth three ticks and three frames worth one
+  // cannot come apart in the first place. See `tests/sim.test.ts`.
 });
 
 describe('the renderer forgets towers that have left the board', () => {

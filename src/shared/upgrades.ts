@@ -170,7 +170,11 @@ export const UPGRADE_LOOK: { [T in TowerId]: TowerUpgradeLook<T> } = {
       ],
     },
     capstones: {
-      fullMains: { name: 'Full Mains', blurb: 'Hits much harder and much more often, but no more of them slip.' },
+      fullMains: {
+        name: 'Full Mains',
+        blurb:
+          'Hits harder and much more often, and the pressure holds them back while the water is on them.',
+      },
       soapyWater: { name: 'Soapy Water', blurb: 'Nearly everyone he hits slips, and they slide much further back.' },
     },
   },

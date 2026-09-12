@@ -144,12 +144,21 @@ export const TOWERS: Record<TowerId, TowerDef> = {
   },
   harold: {
     id: 'harold',
-    mode: 'projectile',
+    // The only jet. He does not throw anything: he holds a column of water on
+    // the street and everybody standing in it gets wet, which is why he is the
+    // one defender whose damage depends on where the queue happens to be
+    // rather than on who he picked.
+    mode: 'jet',
     cost: 65,
     damage: 10,
     // Shorter than Norah's 95 on purpose. He is the close-in one, and the
-    // short sight is what he pays with for an effect no one else has.
+    // short sight is what he pays with for an effect no one else has. It is
+    // also how far the water reaches, so the ring drawn round him is an honest
+    // promise: the column is a ray of this length from the middle of that
+    // circle and can never touch anybody outside it.
     range: 75,
+    // For a jet this is not a reload. The water is on every tick; this is how
+    // often it has done enough work to count.
     cooldown: 34,
     splash: 0,
     slowTicks: 0,

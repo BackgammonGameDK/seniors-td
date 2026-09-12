@@ -19,6 +19,10 @@ import {
   canPlace,
   continueEndless,
   createWorld,
+  easeAngle,
+  JET_HALF_FAR,
+  JET_HALF_NEAR,
+  underJet,
   MAX_RANGE_MULT,
   MAX_RATE_MULT,
   MAX_SHIELD,
@@ -1154,6 +1158,301 @@ describe('slipping', () => {
     expect(run(7)).not.toEqual(run(8));
     // And it really is a chance, not a certainty dressed as one.
     expect(new Set(run(7)).size).toBe(2);
+  });
+});
+
+describe('which way a defender is looking', () => {
+  // The easing lives in the simulation rather than the renderer because
+  // Harold's water lands where he is looking: the column that is drawn and the
+  // column that soaks people have to be one column with one heading.
+  it('eases part of the way, not all of it', () => {
+    expect(easeAngle(0, 1, 0.25)).toBeCloseTo(0.25);
+    expect(easeAngle(0, 0, 0.25)).toBeCloseTo(0);
+  });
+
+  it('takes the short way round when the turn crosses the half circle', () => {
+    // Just under half a turn one way to just over it the other is a couple of
+    // degrees of travel, not most of a circle.
+    const stepped = easeAngle(Math.PI - 0.1, -Math.PI + 0.1, 0.5);
+    expect(stepped).toBeGreaterThan(Math.PI - 0.1);
+  });
+
+  it('snaps round to a first target rather than sweeping from nowhere', () => {
+    const w = rich();
+    const t = put(w, 'harold', buildCellNear(400));
+    expect(t.aimAngle).toBeNull();
+    const sam = spawnEnemy(w, 'sam', 400);
+    step(w);
+    expect(t.aimAngle).toBeCloseTo(Math.atan2(sam.y - t.y, sam.x - t.x), 1);
+  });
+
+  it('keeps the heading it had when the street empties', () => {
+    const w = rich();
+    const t = put(w, 'harold', buildCellNear(400));
+    spawnEnemy(w, 'sam', 400);
+    step(w);
+    const held = t.aimAngle;
+    w.enemies = [];
+    step(w);
+    expect(t.aimAngle).toBe(held);
+  });
+});
+
+describe('the water jet', () => {
+  const HAROLD = TOWERS.harold;
+  const JET_PUSH = 0.35;
+
+  /**
+   * Distinct buildable cells, nearest first, around one point on the lane --
+   * so several hoses can be pointed at the same person rather than strung out
+   * down the street.
+   */
+  function around(dist: number, count: number): { col: number; row: number }[] {
+    const p = pointAt(dist);
+    const cells: { col: number; row: number; d: number }[] = [];
+    for (let col = 0; col < BOARD.cols; col++) {
+      for (let row = 0; row < BOARD.rows; row++) {
+        if (!isBuildableCell(col, row)) continue;
+        const c = cellCentre(col, row);
+        cells.push({ col, row, d: Math.hypot(c.x - p.x, c.y - p.y) });
+      }
+    }
+    cells.sort((a, b) => a.d - b.d);
+    expect(cells.length).toBeGreaterThanOrEqual(count);
+    return cells.slice(0, count).map(({ col, row }) => ({ col, row }));
+  }
+
+  /**
+   * A Harold pointed at somebody, stepped once so `advanceAim` has settled his
+   * heading onto them.
+   */
+  function aimed(seed = 1): { w: World; t: Tower; mark: Enemy } {
+    const w = rich(seed);
+    const t = put(w, 'harold', buildCellNear(400));
+    const mark = spawnEnemy(w, 'sam', 400);
+    step(w);
+    return { w, t, mark };
+  }
+
+  // --- the shape of the column, tested on the geometry itself ---------------
+  //
+  // Directly rather than through the world, because a troublemaker's position
+  // is rebuilt from how far down the lane they are on every tick: standing one
+  // beside the water to see whether they get wet would only move them back on
+  // to the road before the hoses ever ran.
+
+  it('soaks along its length and nowhere behind the nozzle', () => {
+    expect(underJet(20, 0, 0, 0, 1, 0, 75)).toBe(true);
+    expect(underJet(74, 0, 0, 0, 1, 0, 75)).toBe(true);
+    // Past the end of the water, and behind the man holding it.
+    expect(underJet(76, 0, 0, 0, 1, 0, 75)).toBe(false);
+    expect(underJet(-2, 0, 0, 0, 1, 0, 75)).toBe(false);
+  });
+
+  it('widens on the way out', () => {
+    // One offset, between the two half-widths: outside the column at the
+    // nozzle and inside it at the far end. This is the whole difference
+    // between a hose and a laser.
+    const off = (JET_HALF_NEAR + JET_HALF_FAR) / 2;
+    expect(underJet(1, off, 0, 0, 1, 0, 75)).toBe(false);
+    expect(underJet(74, off, 0, 0, 1, 0, 75)).toBe(true);
+    expect(underJet(74, JET_HALF_FAR + 1, 0, 0, 1, 0, 75)).toBe(false);
+    expect(underJet(1, JET_HALF_NEAR - 1, 0, 0, 1, 0, 75)).toBe(true);
+  });
+
+  it('can never touch anybody outside the ring drawn around him', () => {
+    // The column is a ray of `range` from the middle of a circle of `range`,
+    // so the ring is an honest promise about what the water can reach.
+    for (let a = 0; a < Math.PI * 2; a += 0.3) {
+      const dirX = Math.cos(a);
+      const dirY = Math.sin(a);
+      for (let d = 0; d < 120; d += 3) {
+        for (let off = 0; off < 30; off += 3) {
+          const px = dirX * d - dirY * off;
+          const py = dirY * d + dirX * off;
+          if (!underJet(px, py, 0, 0, dirX, dirY, 75)) continue;
+          expect(Math.hypot(px, py)).toBeLessThanOrEqual(75.0001);
+        }
+      }
+    }
+  });
+
+  // --- what it does on the street ------------------------------------------
+
+  it('soaks everyone standing in it, not only the mark', () => {
+    const { w, t } = aimed();
+    // A tight knot of them where the water crosses the road. This is the whole
+    // change: the pellet he used to throw could only ever land on one.
+    const queue = [0, 4, 8].map((d) => spawnEnemy(w, 'sam', 400 + d));
+    const before = queue.map((e) => e.hp);
+    t.cooldown = 0;
+    step(w);
+    const soaked = queue.filter((e, i) => e.hp < before[i]!).length;
+    expect(soaked).toBeGreaterThan(1);
+  });
+
+  it('counts on the cooldown rhythm rather than every tick', () => {
+    const w = rich();
+    const t = put(w, 'harold', buildCellNear(400));
+    // Somebody who can stand in the water long enough to be counted twice.
+    const duke = spawnEnemy(w, 'duke', 400);
+    t.cooldown = 0;
+    step(w);
+    const afterOne = duke.hp;
+    expect(afterOne).toBeLessThan(ENEMIES.duke.hp);
+    // The water is on him every one of these ticks; it simply has not done
+    // enough to count again until the gap is up.
+    for (let i = 0; i < HAROLD.cooldown; i++) step(w);
+    expect(duke.hp).toBe(afterOne);
+    step(w);
+    expect(duke.hp).toBeLessThan(afterOne);
+  });
+
+  it('counts the first person into the water at once, not after a stale gap', () => {
+    const w = rich();
+    const t = put(w, 'harold', buildCellNear(400));
+    // Nobody about for a good while.
+    for (let i = 0; i < 50; i++) step(w);
+    expect(t.cooldown).toBe(0);
+    expect(t.jetOn).toBe(false);
+    const first = spawnEnemy(w, 'sam', 400);
+    const before = first.hp;
+    step(w);
+    expect(first.hp).toBeLessThan(before);
+  });
+
+  it('turns the water off when there is nobody in range', () => {
+    const w = rich();
+    const t = put(w, 'harold', buildCellNear(400));
+    step(w);
+    expect(t.jetOn).toBe(false);
+    spawnEnemy(w, 'sam', 400);
+    step(w);
+    expect(t.jetOn).toBe(true);
+    w.enemies = [];
+    step(w);
+    expect(t.jetOn).toBe(false);
+  });
+
+  it('never turns the water on for anybody who is not a jet', () => {
+    const w = rich();
+    const norah = put(w, 'norah', buildCellNear(400));
+    const walter = put(w, 'walter', roadCellNear(400));
+    spawnEnemy(w, 'sam', 400);
+    for (let i = 0; i < 30; i++) {
+      step(w);
+      expect(norah.jetOn).toBe(false);
+      expect(walter.jetOn).toBe(false);
+      expect(norah.jetReach).toBe(0);
+    }
+  });
+
+  // --- the shove, which is Full Mains and nothing else ----------------------
+
+  it('pushes nobody until Full Mains is bought', () => {
+    const { w, t, mark } = aimed();
+    // No slip for the length of this test, so the only thing that could take
+    // ground off him is the shove.
+    mark.slipCooldown = 10000;
+    const before = mark.dist;
+    step(w);
+    expect(mark.dist - before).toBeCloseTo(ENEMIES.sam.speed, 5);
+    expect(t.jetOn).toBe(true);
+  });
+
+  it('takes ground off them every tick under Full Mains', () => {
+    const { w, t, mark } = aimed();
+    t.capstone = 'fullMains';
+    mark.slipCooldown = 10000;
+    const before = mark.dist;
+    step(w);
+    expect(mark.dist - before).toBeCloseTo(ENEMIES.sam.speed - JET_PUSH, 5);
+  });
+
+  it('shoves on the ticks the water does not count as well as the ones it does', () => {
+    const { w, t, mark } = aimed();
+    t.capstone = 'fullMains';
+    mark.slipCooldown = 10000;
+    // Mid-gap: nothing is about to be counted, and the water is still on him.
+    t.cooldown = 20;
+    const before = mark.dist;
+    const hp = mark.hp;
+    step(w);
+    expect(t.cooldown).toBe(19);
+    expect(mark.hp).toBe(hp);
+    expect(mark.dist - before).toBeCloseTo(ENEMIES.sam.speed - JET_PUSH, 5);
+  });
+
+  it('shoves somebody who has just been knocked down, where a slip could not', () => {
+    const { w, t, mark } = aimed();
+    t.capstone = 'fullMains';
+    // Footing is what the slip's cooldown holds on to. A shove takes ground
+    // rather than footing, so the water keeps working on somebody who has only
+    // just got up -- which is what a player watching it would expect.
+    mark.slipCooldown = 30;
+    const before = mark.dist;
+    step(w);
+    expect(mark.dist - before).toBeCloseTo(ENEMIES.sam.speed - JET_PUSH, 5);
+    expect(mark.slipCooldown).toBe(29);
+  });
+
+  it('never walks anybody backwards, however many hoses are on them', () => {
+    const w = rich();
+    for (const cell of around(400, 6)) {
+      const t = put(w, 'harold', cell);
+      t.capstone = 'fullMains';
+    }
+    // The slowest thing on the street, which is where a flat push would have
+    // parked somebody and stopped the street arriving altogether.
+    const duke = spawnEnemy(w, 'duke', 400);
+    duke.slipCooldown = 10000;
+    let last = duke.dist;
+    for (let i = 0; i < 120; i++) {
+      step(w);
+      expect(duke.dist).toBeGreaterThan(last);
+      last = duke.dist;
+    }
+  });
+
+  it('caps the push per tick rather than per hose', () => {
+    /** How far one tick of water moves a Duke, given `count` hoses on him. */
+    const movedBy = (count: number): number => {
+      const w = rich(3);
+      for (const cell of around(400, count)) {
+        const t = put(w, 'harold', cell);
+        t.capstone = 'fullMains';
+      }
+      // Somebody who survives being soaked by all of them at once, so what is
+      // being compared is the push and not how fast he died.
+      const duke = spawnEnemy(w, 'duke', 400);
+      duke.slipCooldown = 10000;
+      step(w);
+      expect(w.towers.filter((t) => t.jetOn)).toHaveLength(count);
+      const before = duke.dist;
+      step(w);
+      return duke.dist - before;
+    };
+
+    // Three of them on the same person buy damage and a better chance of the
+    // slip, never a longer push.
+    expect(movedBy(3)).toBeCloseTo(movedBy(1), 5);
+    // And the cap really is biting, rather than the two agreeing by accident
+    // because neither pushed at all.
+    expect(movedBy(1)).toBeLessThan(ENEMIES.duke.speed);
+  });
+
+  it('plays out the same way twice on one seed', () => {
+    const run = () => {
+      const w = rich(4);
+      for (const cell of around(400, 3)) {
+        const t = put(w, 'harold', cell);
+        t.capstone = 'fullMains';
+      }
+      startWave(w);
+      for (let i = 0; i < 600; i++) step(w);
+      return w.enemies.map((e) => e.dist);
+    };
+    expect(run()).toEqual(run());
   });
 });
 

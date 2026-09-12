@@ -10,14 +10,13 @@ import { BOARD, cellCentre, PATH_POINTS } from '../sim/path.ts';
 import { TOWERS } from '../sim/towers.ts';
 import type { Enemy, SimEvent, Tower, TowerDef, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
-import { canPlace } from '../sim/world.ts';
+import { canPlace, JET_HALF_FAR, JET_HALF_NEAR } from '../sim/world.ts';
 import type { World } from '../sim/world.ts';
 import { ENEMY_LOOK, PALETTE, TOWER_LOOK } from '../shared/display.ts';
 import {
   advanceFades,
-  easeAngleOver,
   staleKeys,
-  facingAngle,
+  SPRITE_FRONT,
   carryReach,
   focusMark,
   hudReadouts,
@@ -48,14 +47,6 @@ const ROLL_SIZE = 15;
  * person on the pavement rather than a tile that has been filled in.
  */
 const SPRITE_SIZE = 42;
-/**
- * How much of the turn towards a new target a tower covers each tick.
- *
- * Low enough that the swing is visible rather than instant, high enough that
- * the character is looking the right way well before the shot lands.
- */
-const TURN_RATE = 0.2;
-
 /** The readout panel on the board: where it sits and how it is spaced. */
 const HUD = {
   x: 12,
@@ -293,16 +284,6 @@ export class Renderer {
    */
   private lastCooldown = new Map<number, number>();
   private recoil = new Map<number, number>();
-  /**
-   * Which way each tower is currently turned, in radians, eased towards its
-   * target rather than snapped -- two enemies trading places at the front of
-   * the queue would otherwise flick the character back and forth every tick.
-   *
-   * A tower with nothing in range keeps the angle it had, so a street that has
-   * just been cleared is left facing where the last shot went instead of all
-   * springing back to attention at once.
-   */
-  private facing = new Map<number, number>();
   private floor: HTMLCanvasElement | null = null;
 
   /**
@@ -421,23 +402,20 @@ export class Renderer {
     // has to keep up with the world.
     for (const t of world.towers) {
       const prev = this.lastCooldown.get(t.id) ?? 0;
-      if (t.cooldown > prev) this.recoil.set(t.id, RECOIL_TICKS);
+      // A jet's cooldown is not a reload, so the jump back up is not a shot
+      // going off and there is nothing to recoil from. He leans into the hose
+      // instead; see `drawTower`. The sample is still kept so `forget` and
+      // `staleKeys` need no special case.
+      if (t.cooldown > prev && TOWERS[t.def].mode !== 'jet') {
+        this.recoil.set(t.id, RECOIL_TICKS);
+      }
       this.lastCooldown.set(t.id, t.cooldown);
     }
     if (ticks <= 0) return;
 
-    const byId = new Map(world.enemies.map((e) => [e.id, e]));
     for (const t of world.towers) {
       const kick = this.recoil.get(t.id) ?? 0;
       if (kick > 0) this.recoil.set(t.id, Math.max(0, kick - ticks));
-
-      const target = t.targetId === null ? undefined : byId.get(t.targetId);
-      // A tower with nothing in range keeps the angle it had. See `facing`.
-      if (target !== undefined) {
-        const held = this.facing.get(t.id) ?? 0;
-        const desired = facingAngle(t.x, t.y, target.x, target.y);
-        this.facing.set(t.id, easeAngleOver(held, desired, TURN_RATE, ticks));
-      }
     }
 
     this.bursts = advanceFades(this.bursts, ticks);
@@ -447,7 +425,7 @@ export class Renderer {
   /** Drop what was remembered about towers that have left the board. */
   private forget(world: World): void {
     const live = new Set(world.towers.map((t) => t.id));
-    for (const map of [this.lastCooldown, this.recoil, this.facing]) {
+    for (const map of [this.lastCooldown, this.recoil]) {
       for (const id of staleKeys(map.keys(), live)) map.delete(id);
     }
   }
@@ -463,7 +441,6 @@ export class Renderer {
   reset(): void {
     this.lastCooldown.clear();
     this.recoil.clear();
-    this.facing.clear();
     this.floaters = [];
     this.bursts = [];
   }
@@ -497,7 +474,10 @@ export class Renderer {
     // Before the characters, so the pool lies under whatever it marks and the
     // caret sits over the lawn rather than over a face.
     this.drawSelectionMark(opts.focus);
-    for (const t of world.towers) this.drawTower(t, focused?.id === t.id);
+    for (const t of world.towers) this.drawTower(t, focused?.id === t.id, world.tick);
+    // After the characters so the water leaves their hands, before the
+    // troublemakers so they still read clearly through it.
+    this.drawJets(world);
     for (const e of world.enemies) this.drawEnemy(e);
     this.drawProjectiles(world);
     this.drawEffects();
@@ -792,17 +772,35 @@ export class Renderer {
     }
   }
 
-  private drawTower(t: Tower, isInspected: boolean): void {
+  private drawTower(t: Tower, isInspected: boolean, tick: number): void {
     const g = this.g;
     const d = TOWERS[t.def];
     const look = TOWER_LOOK[t.def];
 
-    // Both were worked out in `advance`; this only reads them.
     const lift = (this.recoil.get(t.id) ?? 0) * 0.5;
-    const angle = this.facing.get(t.id) ?? 0;
+    // The heading comes from the simulation now rather than from a map kept
+    // here. It has to: Harold's water lands where he is looking, so the column
+    // that is drawn and the column that soaks people are one column with one
+    // heading. `SPRITE_FRONT` stays a render constant -- which way a drawing
+    // faces is the drawing's business -- and a defender who has never had
+    // anybody to look at keeps it.
+    const angle = t.aimAngle === null ? 0 : t.aimAngle - SPRITE_FRONT;
+
+    // Bracing against the hose, in place of the recoil a jet never gets: a
+    // small lean along the water and a shake across it. Keyed off the tick
+    // rather than the clock, so it stops when the game is paused.
+    let leanX = 0;
+    let leanY = 0;
+    if (t.jetOn && t.aimAngle !== null) {
+      const dirX = Math.cos(t.aimAngle);
+      const dirY = Math.sin(t.aimAngle);
+      const shake = Math.sin(tick * 0.7) * 0.6;
+      leanX = dirX * 1.5 - dirY * shake;
+      leanY = dirY * 1.5 + dirX * shake;
+    }
 
     g.save();
-    g.translate(t.x, t.y - lift);
+    g.translate(t.x + leanX, t.y - lift + leanY);
 
     g.beginPath();
     g.ellipse(0, 15, 15, 5, 0, 0, Math.PI * 2);
@@ -976,6 +974,83 @@ export class Renderer {
    * distinction at all for a colour-blind player, and reads as sameness to
    * everybody else.
    */
+  /**
+   * The water, drawn as the same wedge the simulation soaks with.
+   *
+   * `JET_HALF_NEAR` and `JET_HALF_FAR` come from `src/sim/`, and that is the
+   * point of the whole change: a renderer with its own idea of how wide the
+   * column is would be drawing something that is not the thing hurting anybody.
+   * The heading and the reach come from the tower for the same reason.
+   *
+   * Overlapping jets are stacked with ordinary alpha and never with `lighter`.
+   * Additive blending blows three columns out to a white blob; stacked alpha
+   * reads as deeper water where they cross, which is both truer and the only
+   * version in which a knot of hoses still looks like a knot of hoses.
+   */
+  private drawJets(world: World): void {
+    const g = this.g;
+    for (const t of world.towers) {
+      if (!t.jetOn || t.aimAngle === null || t.jetReach <= 0) continue;
+      const dirX = Math.cos(t.aimAngle);
+      const dirY = Math.sin(t.aimAngle);
+      // Across the column, for the two edges of the wedge.
+      const perpX = -dirY;
+      const perpY = dirX;
+      // Starting clear of the character, so the water comes out of the nozzle
+      // rather than out of the middle of him.
+      const NOZZLE = 14;
+      const nx = t.x + dirX * NOZZLE;
+      const ny = t.y + dirY * NOZZLE;
+      const len = Math.max(0, t.jetReach - NOZZLE);
+      const fx = nx + dirX * len;
+      const fy = ny + dirY * len;
+
+      const grad = g.createLinearGradient(nx, ny, fx, fy);
+      grad.addColorStop(0, 'rgba(129,212,250,.62)');
+      grad.addColorStop(1, 'rgba(79,195,247,.06)');
+
+      g.save();
+      g.beginPath();
+      g.moveTo(nx + perpX * JET_HALF_NEAR, ny + perpY * JET_HALF_NEAR);
+      g.lineTo(fx + perpX * JET_HALF_FAR, fy + perpY * JET_HALF_FAR);
+      g.lineTo(fx - perpX * JET_HALF_FAR, fy - perpY * JET_HALF_FAR);
+      g.lineTo(nx - perpX * JET_HALF_NEAR, ny - perpY * JET_HALF_NEAR);
+      g.closePath();
+      g.fillStyle = grad;
+      g.fill();
+
+      // One bright line down the middle. Without it the wedge reads as a fan
+      // of spray; with it, as something under pressure.
+      g.strokeStyle = 'rgba(225,245,254,.5)';
+      g.lineWidth = 2;
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(nx, ny);
+      g.lineTo(nx + dirX * len * 0.8, ny + dirY * len * 0.8);
+      g.stroke();
+      g.lineCap = 'butt';
+
+      // Droplets, so the column is visibly travelling rather than painted on.
+      // Their positions come off `world.tick` and nothing else -- the same
+      // trick Barbara's tumbling bun uses -- so they hold still when the game
+      // is paused and move three times as fast at 3x, both of which are right.
+      g.fillStyle = 'rgba(225,245,254,.75)';
+      for (let i = 0; i < 6; i++) {
+        const along = ((world.tick * 0.035 + i / 6) % 1 + 1) % 1;
+        const half = JET_HALF_NEAR + (JET_HALF_FAR - JET_HALF_NEAR) * along;
+        const wobble = Math.sin(i * 7.3 + along * 9) * half * 0.6;
+        const dx = nx + dirX * len * along + perpX * wobble;
+        const dy = ny + dirY * len * along + perpY * wobble;
+        g.globalAlpha = (1 - along) * 0.8;
+        g.beginPath();
+        g.arc(dx, dy, 1 + 1.6 * along, 0, Math.PI * 2);
+        g.fill();
+      }
+      g.globalAlpha = 1;
+      g.restore();
+    }
+  }
+
   private drawProjectiles(world: World): void {
     const g = this.g;
     for (const p of world.projectiles) {
@@ -1008,22 +1083,6 @@ export class Renderer {
           g.stroke();
         }
         g.restore();
-      } else if (p.from === 'harold') {
-        // A jet rather than a pellet: a tapering streak along the direction of
-        // travel, so a wall of Harolds reads as water and not as confetti.
-        g.strokeStyle = color;
-        g.lineCap = 'round';
-        g.lineWidth = 4;
-        g.beginPath();
-        g.moveTo(p.x - 7, p.y - 3);
-        g.lineTo(p.x + 2, p.y + 1);
-        g.stroke();
-        g.lineWidth = 2;
-        g.beginPath();
-        g.moveTo(p.x + 2, p.y + 1);
-        g.lineTo(p.x + 8, p.y + 3);
-        g.stroke();
-        g.lineCap = 'butt';
       } else if (p.from === 'betty') {
         // A bowling ball: bigger than anything else in the air, and the three
         // finger holes are what say at a glance that it is heavy. They turn,

@@ -106,18 +106,50 @@ board outright, so the number wants a measurement rather than a nudge.
 
 **Hose Harold** goes the other way and sees less than Norah does. What he buys
 with that short sight is the only effect on the board that sends anyone
-*backwards*: some fraction of his hits knocks them off their feet and slides
-them back down the street. The pixels are not the point. What he is really
-selling is a second go for every defender standing behind him, which makes him
-worth almost nothing at the mouth of the street and a great deal at the far end
-of a long board -- a placement decision rather than a matchup.
+*backwards*: some fraction of his soakings knocks them off their feet and
+slides them back down the street. The pixels are not the point. What he is
+really selling is a second go for every defender standing behind him, which
+makes him worth almost nothing at the mouth of the street and a great deal at
+the far end of a long board -- a placement decision rather than a matchup.
 
-Two rails keep him from becoming a way to stop the street outright. The push is
-a *chance* rather than a certainty, so it cannot be relied on to hold anybody;
-and a troublemaker who has been knocked down gets a second of footing during
-which nothing can knock them down again, so a line of hoses pushes the street
-back once per second however much water is falling. Stacking Harolds therefore
-buys damage and a better chance of the *first* slip, never a longer push.
+He is also the only defender who does not throw anything. He holds a column of
+water on the street, and it is a real column: a wedge starting four pixels wide
+at the nozzle and spreading to twelve at the far end, swept along by the way he
+is looking and tested against where people are actually standing, every tick.
+Everybody in it gets wet. This was not always so -- he used to fire a homing
+pellet that was merely *drawn* as a streak of water, which is the mismatch
+between what a player watches and what the code does that this project has
+corrected once before, on Bowling Betty's ball. Because the column is a real
+shape rather than a lookup, what he is worth now depends on where the road runs
+through it: a Harold beside a straight sprays across the lane and catches
+whoever is abreast of his mark, and a Harold at a hairpin can cover both
+stretches at once.
+
+The water is on every tick, but it only *counts* on his cooldown rhythm, which
+for a jet means how fast the water does its work rather than how fast he
+reloads. The alternative -- spreading the damage across every tick -- is
+arithmetically dead, because armour subtracts from every hit: at a fifth of a
+point a tick the water would land on Duke visibly and forever without taking
+anything off him at all.
+
+Three rails keep him from becoming a way to stop the street outright. The slip
+is a *chance* rather than a certainty, so it cannot be relied on to hold
+anybody; a troublemaker who has been knocked down gets a second of footing
+during which nothing can knock them down again, so a line of hoses pushes the
+street back once per second however much water is falling; and the steady shove
+that **Full Mains** buys is capped at a fraction of the target's own walking
+speed and counted per tick rather than per hose. That last cap is what keeps
+the sentence "water slows you down, it never walks you backwards" true for
+everybody: a flat push big enough to matter against Scooter Sam would simply
+park Duke, and a street that stops arriving is the failure this game cares
+about most. Stacking Harolds therefore buys damage and a better chance of the
+*first* slip, never a longer push.
+
+That shove is also what makes Harold's fork a decision about the board rather
+than two ways of saying "more". Full Mains is pressure: small, constant, nobody
+falls over, and a crowd is held off the street while the water is on them --
+which wants a choke. Soapy Water is friction: rare, huge, they go down and
+slide ninety pixels back past everything behind him -- which wants length.
 
 ## Two of the eight defenders never deal damage
 

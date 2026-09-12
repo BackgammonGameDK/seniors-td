@@ -517,15 +517,25 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
     });
     return rows;
   }
-  rows.push({ label: 'Damage', value: def.damage > 0 ? `${def.damage} a hit` : 'none' });
+  // A jet does not hit anybody: it stands on them. The two rows say so in
+  // words rather than leaving "a hit" and "shots a second" to be read as a gun
+  // that happens to be blue.
+  const jet = def.mode === 'jet';
+  rows.push({
+    label: 'Damage',
+    value: def.damage > 0 ? `${def.damage} a soaking` : 'none',
+  });
   rows.push({ label: 'Reach', value: reach });
   rows.push({
-    label: 'Rate',
+    label: jet ? 'Soaks them' : 'Rate',
     value:
       rateMult > 1
         ? `${rate(cooldownAt(def.cooldown, rateMult))}, up from ${rate(def.cooldown)}`
         : rate(def.cooldown),
   });
+  if (jet) {
+    rows.push({ label: 'Catches', value: 'everyone standing in the water' });
+  }
   if (def.splash > 0) {
     rows.push({
       label: 'Area',
@@ -547,9 +557,20 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
   if ((def.slipChance ?? 0) > 0) {
     rows.push({
       label: 'Makes them slip',
-      value: `${Math.round((def.slipChance ?? 0) * 100)}% of hits`,
+      // "Hits" would be the wrong word on the row under "10 a soaking": the
+      // jet never hits anybody, and the panel should not use two names for the
+      // same thing two lines apart.
+      value: `${Math.round((def.slipChance ?? 0) * 100)}% of ${jet ? 'soakings' : 'hits'}`,
     });
     rows.push({ label: 'Sliding them back', value: `${def.slipPush} px` });
+  }
+  if ((def.jetPush ?? 0) > 0) {
+    // Per second rather than per tick: 0.35 px a tick is a number about the
+    // simulation, and 21 px a second is a number about the street.
+    rows.push({
+      label: 'Pushes them back',
+      value: `${Math.round((def.jetPush ?? 0) * 60)} px a second, while the water is on them`,
+    });
   }
   if ((def.pierce ?? 0) > 0) {
     // "Anyone in the way" rather than "behind the first": the shot hurts
@@ -879,42 +900,6 @@ export const SPRITE_FRONT = Math.PI / 2;
  */
 export function facingAngle(fromX: number, fromY: number, toX: number, toY: number): number {
   return Math.atan2(toY - fromY, toX - fromX) - SPRITE_FRONT;
-}
-
-/**
- * A step of `current` towards `desired`, taking whichever way round is
- * shorter.
- *
- * Without the wrap, a tower whose target crossed from just under `PI` to just
- * over `-PI` would spin almost the whole way round to travel a couple of
- * degrees. `rate` is the fraction of the remaining turn covered per frame, so
- * the turn starts quickly and settles.
- */
-export function easeAngle(current: number, desired: number, rate: number): number {
-  let diff = desired - current;
-  while (diff > Math.PI) diff -= Math.PI * 2;
-  while (diff < -Math.PI) diff += Math.PI * 2;
-  return current + diff * rate;
-}
-
-/**
- * `easeAngle` applied once per simulated tick rather than once per frame.
- *
- * `rate` is a fraction of the remaining turn, so the steps compound and the
- * turn cannot be done in one multiplication. A 120Hz display draws twice as
- * often for the same ticks and a monitor that skipped a frame draws less
- * often; going through the ticks means the swing takes the same simulated time
- * on all of them, and none at all on a frame the clock gave no ticks to.
- */
-export function easeAngleOver(
-  current: number,
-  desired: number,
-  rate: number,
-  ticks: number,
-): number {
-  let angle = current;
-  for (let i = 0; i < ticks; i++) angle = easeAngle(angle, desired, rate);
-  return angle;
 }
 
 // --- fading things, in ticks ----------------------------------------------
