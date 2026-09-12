@@ -24,15 +24,14 @@ import { parseArgs } from 'node:util';
 import { loadoutText, run, wholeNumberArg } from './harness-args.ts';
 import { BUILDS, buildNamed } from './sim/builds.ts';
 import { ECONOMY } from './sim/economy.ts';
-import { describePlacement, parseLoadout } from './sim/loadout.ts';
+import { applyPlacement, describePlacement, parseLoadout } from './sim/loadout.ts';
 import type { Placement } from './sim/loadout.ts';
-import { isBlockerCell, isBuildableCell } from './sim/path.ts';
 import { TOWERS } from './sim/towers.ts';
 import { UPGRADES } from './sim/upgrades.ts';
 import { ENEMY_IDS } from './sim/types.ts';
 import type { EnemyId } from './sim/types.ts';
 import { AUTHORED_ROUNDS } from './sim/waves.ts';
-import { continueEndless, createWorld, placeTower, purchaseUpgrade, startWave, step, towerAt } from './sim/world.ts';
+import { continueEndless, createWorld, startWave, step, towerAt } from './sim/world.ts';
 
 /** A round that cannot finish in four minutes is a stall, not a hard round. */
 const MAX_TICKS = 60 * 240;
@@ -97,33 +96,6 @@ function costOf(w: ReturnType<typeof createWorld>, p: Placement): number {
   return cost;
 }
 
-/** Carry out one entry. Every purchase inside it is already paid for. */
-function apply(w: ReturnType<typeof createWorld>, p: Placement): void {
-  let t = towerAt(w, p.col, p.row);
-  if (!t) {
-    const legal =
-      TOWERS[p.def].mode === 'blocker' ? isBlockerCell(p.col, p.row) : isBuildableCell(p.col, p.row);
-    if (!legal) throw new Error(`illegal placement ${describePlacement(p)} for ${p.def}`);
-    if (!placeTower(w, p.def, p.col, p.row)) {
-      throw new Error(`could not place ${describePlacement(p)}`);
-    }
-    t = w.towers[w.towers.length - 1]!;
-  } else if (t.def !== p.def) {
-    throw new Error(`plan puts ${p.def} on cell ${p.col},${p.row} already holding ${t.def}`);
-  }
-  while (t.upgradeA < p.upgradeA) {
-    if (!purchaseUpgrade(w, t.id, 'pathA')) throw new Error(`pathA refused for ${p.def}`);
-  }
-  while (t.upgradeB < p.upgradeB) {
-    if (!purchaseUpgrade(w, t.id, 'pathB')) throw new Error(`pathB refused for ${p.def}`);
-  }
-  if (p.capstone && !t.capstone) {
-    if (!purchaseUpgrade(w, t.id, p.capstone)) {
-      throw new Error(`capstone ${p.capstone} refused for ${p.def}`);
-    }
-  }
-}
-
 export function runCampaign(plan: Placement[], seed: number, endless = false): CampaignRun {
   const w = createWorld(seed);
   const rounds: RoundRecord[] = [];
@@ -138,7 +110,7 @@ export function runCampaign(plan: Placement[], seed: number, endless = false): C
       if (!entry) break;
       const price = costOf(w, entry);
       if (price > w.gold) break;
-      apply(w, entry);
+      applyPlacement(w, entry);
       goldSpent += price;
       bought.push(describePlacement(entry));
       next++;

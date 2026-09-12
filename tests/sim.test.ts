@@ -11,8 +11,8 @@ import {
 } from '../src/sim/path.ts';
 import { TOWERS } from '../src/sim/towers.ts';
 import { ENEMY_IDS, TOWER_IDS } from '../src/sim/types.ts';
-import type { Enemy, EnemyId, Tower, TowerId } from '../src/sim/types.ts';
-import { effectiveDef } from '../src/sim/upgrades.ts';
+import type { Enemy, EnemyId, Tower, TowerDef, TowerId } from '../src/sim/types.ts';
+import { UPGRADES, effectiveDef } from '../src/sim/upgrades.ts';
 import { AUTHORED_ROUNDS, waveAt, WAVES } from '../src/sim/waves.ts';
 import {
   applyHit,
@@ -710,6 +710,29 @@ describe('upgrades', () => {
     expect(effectiveDef(put(w, 'bill', buildCellNear(1500))).range).not.toBe(
       effectiveDef(plain).range,
     );
+  });
+
+  it('never lets two different sets of purchases share a fold', () => {
+    // Folds are kept in numbered slots worked out from the tiers and the
+    // capstone, so a miscounted slot would hand one set of purchases another's
+    // numbers -- and silently, since neighbouring folds often differ in a
+    // single stat. Every combination the three fields can hold, on every kind
+    // of tower, has to come back as a fold of its own, and as the same one twice.
+    const base = put(rich(), 'norah', buildCellNear(300));
+    for (const def of TOWER_IDS) {
+      const seen = new Set<TowerDef>();
+      for (const upgradeA of [0, 1, 2] as const) {
+        for (const upgradeB of [0, 1, 2] as const) {
+          for (const capstone of [null, ...UPGRADES[def].capstones.map((c) => c.id)]) {
+            const t: Tower = { ...base, def, upgradeA, upgradeB, capstone };
+            const fold = effectiveDef(t);
+            expect(effectiveDef({ ...t }), `${def} a${upgradeA}b${upgradeB} ${capstone}`).toBe(fold);
+            seen.add(fold);
+          }
+        }
+      }
+      expect(seen.size, def).toBe(27);
+    }
   });
 
   it('hands out a fold nothing can quietly edit for every other tower', () => {

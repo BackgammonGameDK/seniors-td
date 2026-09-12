@@ -1,4 +1,5 @@
 import { DEFAULT_PROJECTILE_SPEED, TOWERS } from './towers.ts';
+import { TOWER_IDS } from './types.ts';
 import type { CapstoneId, CapstoneIds, Tower, TowerDef, TowerId } from './types.ts';
 
 /**
@@ -214,14 +215,45 @@ const EXTRAS_DEFAULT = {
  * time. Memoising it took the balance sweep from 22.5s to 6.6s, which is
  * essentially the whole of `npm test`.
  *
+ * The memo then became the cost. It was keyed on a string built from those
+ * four things on every call, `norah:2:1:longYarn`, and building and hashing
+ * that string was 37% of a whole campaign's CPU profile. The key is now a slot
+ * number worked out from the same four, which is the same lookup without the
+ * string -- about six times faster, measured on its own.
+ *
  * The other half of that old comment -- that a cache is one more place an
  * upgrade could drift from what actually fired -- is answered by the key
  * rather than dismissed. A fold depends on exactly the tower kind and the
- * three things bought on it, and the key is exactly those four, so there is no
- * state an entry could be stale with respect to. At eight towers and three
- * possible values each it holds at most 216 entries.
+ * three things bought on it, and the slot is exactly those four, so there is
+ * no state an entry could be stale with respect to. That is also why the fold
+ * is not kept on the tower and cleared on a purchase instead: tests set
+ * `upgradeA` and `capstone` directly, and a fold stored on the tower would go
+ * on answering for what it used to have.
  */
-const folded = new Map<string, TowerDef>();
+const folded = {} as Record<TowerId, (TowerDef | undefined)[]>;
+for (const id of TOWER_IDS) folded[id] = [];
+
+/**
+ * Where a tower's fold lives in its kind's list.
+ *
+ * One slot for every combination of the tier on each path and the capstone,
+ * with no capstone counted as zero. The sizes are read from the tree rather
+ * than written down, so a third tier would widen the slots instead of letting
+ * two different sets of purchases share one. An id the tree does not know
+ * counts as no capstone, which is also what the fold makes of it.
+ */
+function foldSlot(t: Tower, tree: TowerUpgrades): number {
+  let capstone = 0;
+  if (t.capstone !== null) {
+    for (let i = 0; i < tree.capstones.length; i++) {
+      if (tree.capstones[i]!.id === t.capstone) {
+        capstone = i + 1;
+        break;
+      }
+    }
+  }
+  return (t.upgradeA * (tree.pathB.length + 1) + t.upgradeB) * (tree.capstones.length + 1) + capstone;
+}
 
 /**
  * A tower's stats with its bought tiers and capstone folded in.
@@ -234,11 +266,12 @@ const folded = new Map<string, TowerDef>();
  * true rather than leaving it as something to remember.
  */
 export function effectiveDef(t: Tower): TowerDef {
-  const key = `${t.def}:${t.upgradeA}:${t.upgradeB}:${t.capstone ?? ''}`;
-  const hit = folded.get(key);
+  const tree = UPGRADES[t.def];
+  const slots = folded[t.def];
+  const slot = foldSlot(t, tree);
+  const hit = slots[slot];
   if (hit !== undefined) return hit;
 
-  const tree = UPGRADES[t.def];
   let def: TowerDef = { ...EXTRAS_DEFAULT, ...TOWERS[t.def] };
   for (const tier of tree.pathA.slice(0, t.upgradeA)) def = { ...def, ...tier.stat };
   for (const tier of tree.pathB.slice(0, t.upgradeB)) def = { ...def, ...tier.stat };
@@ -248,6 +281,6 @@ export function effectiveDef(t: Tower): TowerDef {
   }
 
   const shared = Object.freeze(def);
-  folded.set(key, shared);
+  slots[slot] = shared;
   return shared;
 }
