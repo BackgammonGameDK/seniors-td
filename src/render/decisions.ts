@@ -771,6 +771,7 @@ export function enemyReadout(e: Pick<Enemy, 'def' | 'hp' | 'scale' | 'shield'>):
     );
   }
   if (d.stunImmune) lines.push('Cannot be stopped by shouting.');
+  if (d.pushImmune) lines.push('Too heavy to push back: water slides off it and soap does nothing.');
   if (d.slowResist > 0) {
     lines.push(`Rolls on: slowing works ${Math.round(d.slowResist * 100)}% less on her.`);
   }

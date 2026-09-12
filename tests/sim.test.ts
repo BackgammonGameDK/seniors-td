@@ -1396,41 +1396,75 @@ describe('the water jet', () => {
     expect(mark.slipCooldown).toBe(29);
   });
 
+  it('does not push the bus, and does not take its feet away either', () => {
+    const w = rich();
+    const t = put(w, 'harold', buildCellNear(400));
+    t.capstone = 'fullMains';
+    // Soapy Water's odds as well, so a slip would be all but certain if the
+    // bus could slip at all.
+    const bus = spawnEnemy(w, 'duke', 400);
+    step(w);
+    const hp = bus.hp;
+    const before = bus.dist;
+    for (let i = 0; i < 30; i++) step(w);
+    // It walks its own speed, every tick, with nothing taken off -- while the
+    // water is very much on it and hurting it.
+    expect(bus.dist - before).toBeCloseTo(ENEMIES.duke.speed * 30, 5);
+    expect(bus.hp).toBeLessThan(hp);
+  });
+
+  it('still pushes and slips the people walking beside the bus', () => {
+    const w = rich();
+    const t = put(w, 'harold', buildCellNear(400));
+    t.capstone = 'fullMains';
+    const bus = spawnEnemy(w, 'duke', 400);
+    const lad = spawnEnemy(w, 'sam', 400);
+    step(w);
+    const busBefore = bus.dist;
+    const ladBefore = lad.dist;
+    step(w);
+    expect(bus.dist - busBefore).toBeCloseTo(ENEMIES.duke.speed, 5);
+    expect(lad.dist - ladBefore).toBeLessThan(ENEMIES.sam.speed);
+  });
+
   it('never walks anybody backwards, however many hoses are on them', () => {
     const w = rich();
     for (const cell of around(400, 6)) {
       const t = put(w, 'harold', cell);
       t.capstone = 'fullMains';
     }
-    // The slowest thing on the street, which is where a flat push would have
-    // parked somebody and stopped the street arriving altogether.
-    const duke = spawnEnemy(w, 'duke', 400);
-    duke.slipCooldown = 10000;
-    let last = duke.dist;
+    // The slowest thing the water can actually move -- the bus is slower still
+    // but shrugs the push off entirely -- which is where a flat push would
+    // have parked somebody and stopped the street arriving altogether. Health
+    // enough to stand in six jets for two seconds, because what is being
+    // measured here is where he ends up and not how fast he died.
+    const mike = spawnEnemy(w, 'mike', 400);
+    mike.hp = 100000;
+    mike.slipCooldown = 10000;
+    let last = mike.dist;
     for (let i = 0; i < 120; i++) {
       step(w);
-      expect(duke.dist).toBeGreaterThan(last);
-      last = duke.dist;
+      expect(mike.dist).toBeGreaterThan(last);
+      last = mike.dist;
     }
   });
 
   it('caps the push per tick rather than per hose', () => {
-    /** How far one tick of water moves a Duke, given `count` hoses on him. */
+    /** How far one tick of water moves a Mike, given `count` hoses on him. */
     const movedBy = (count: number): number => {
       const w = rich(3);
       for (const cell of around(400, count)) {
         const t = put(w, 'harold', cell);
         t.capstone = 'fullMains';
       }
-      // Somebody who survives being soaked by all of them at once, so what is
-      // being compared is the push and not how fast he died.
-      const duke = spawnEnemy(w, 'duke', 400);
-      duke.slipCooldown = 10000;
+      const mike = spawnEnemy(w, 'mike', 400);
+      mike.hp = 100000;
+      mike.slipCooldown = 10000;
       step(w);
       expect(w.towers.filter((t) => t.jetOn)).toHaveLength(count);
-      const before = duke.dist;
+      const before = mike.dist;
       step(w);
-      return duke.dist - before;
+      return mike.dist - before;
     };
 
     // Three of them on the same person buy damage and a better chance of the
@@ -1438,7 +1472,7 @@ describe('the water jet', () => {
     expect(movedBy(3)).toBeCloseTo(movedBy(1), 5);
     // And the cap really is biting, rather than the two agreeing by accident
     // because neither pushed at all.
-    expect(movedBy(1)).toBeLessThan(ENEMIES.duke.speed);
+    expect(movedBy(1)).toBeLessThan(ENEMIES.mike.speed);
   });
 
   it('plays out the same way twice on one seed', () => {
