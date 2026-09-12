@@ -200,13 +200,15 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     // is the scale each grows to. Bill stays one enormous hit that clips a
     // second person; Betty grows into many modest hits down a queue.
     pierce: 1,
-    // The ball holds the heading it was thrown on and lets the street bend
-    // away from it, so this is how much garden it crosses after it stops
-    // aiming. Two hundred and twenty is most of the way across a corner, which
-    // is long enough to be a thing rolling rather than a thing stopping. What
-    // it is worth depends entirely on where Betty stands: a line that happens
-    // to run along the street is worth several bodies, and one thrown across
-    // it is worth the one it was aimed at.
+    // Her second range, and the one her upgrades are about. The ball holds the
+    // heading it was thrown on and lets the street bend away from it, so this
+    // is how much garden it crosses after it stops aiming. Two hundred and
+    // twenty is most of the way across a corner, which is long enough to be a
+    // thing rolling rather than a thing stopping. What it is worth depends
+    // entirely on where Betty stands: a line that happens to run along the
+    // street is worth several bodies, and one thrown across it is worth the
+    // one it was aimed at. The Line buys this and `pierce` together -- see the
+    // note on her tree in upgrades.ts for why neither is worth buying alone.
     rollOut: 220,
     // The ball loses its weight through a crowd. Without this a line shot
     // multiplies instead of adding -- six Betties behind a wall shoot the same

@@ -25,6 +25,7 @@ import {
   focusKey,
   panelKey,
   pathCard,
+  previewRing,
   previewStats,
   sentHomeRow,
   roundPreview,
@@ -277,6 +278,13 @@ export class Ui {
       return;
     }
     this.lastPanel = key;
+    // The panel is being built from nothing, so the stat block has to be
+    // written whatever it last held. Without this, `paintStats` sees the key
+    // of the tower that was open before and returns early, leaving whatever
+    // the body had in the meantime: inspect a Betty, tap a Sam, tap the Betty
+    // again, and her panel carries his portrait and his health under her name
+    // and her upgrades.
+    this.lastStats = '';
 
     if (!view) {
       this.inspect.hidden = true;
@@ -410,7 +418,8 @@ export class Ui {
         locked: false,
       });
       const tierLook = pathLook.tiers[tierIndex];
-      const card = this.upgradeButton(key, tierLook.name, tierLook.blurb, tier.cost, state, tier.stat.range);
+      const ring = previewRing(effectiveDef(t), tier.stat);
+      const card = this.upgradeButton(key, tierLook.name, tierLook.blurb, tier.cost, state, ring ?? undefined);
       return `<div class="upath"><h4>${pathLook.name}</h4>${card}</div>`;
     };
 
@@ -427,7 +436,8 @@ export class Ui {
             locked: capstoneLocked(t.upgradeA, t.upgradeB),
             otherCapstoneChosen: t.capstone !== null && t.capstone !== cap.id,
           });
-          return this.upgradeButton(cap.id, capLook.name, capLook.blurb, cap.cost, state, cap.stat.range);
+          const ring = previewRing(effectiveDef(t), cap.stat);
+          return this.upgradeButton(cap.id, capLook.name, capLook.blurb, cap.cost, state, ring ?? undefined);
         })
         .join('');
       html += `<div class="upath"><h4>Capstone</h4>${capCards}</div>`;
