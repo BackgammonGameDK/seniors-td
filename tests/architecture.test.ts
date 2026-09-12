@@ -17,6 +17,11 @@ import { describe, expect, it } from 'vitest';
 const SIM_DIR = new URL('../src/sim/', import.meta.url);
 const INDEX_HTML = new URL('../index.html', import.meta.url);
 
+/** Source with its comments removed, so a rule is broken by code and never by prose about it. */
+function stripComments(source: string): string {
+  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*/g, '');
+}
+
 /**
  * Every `src/sim` file, with its comments already stripped.
  *
@@ -25,15 +30,17 @@ const INDEX_HTML = new URL('../index.html', import.meta.url);
  * file that merely *mentioned* `window.` in a doc comment failed a rule it had
  * not broken. Every check now reads the same `code`, which also means an
  * import written inside a comment cannot trip the import ban.
+ *
+ * Subfolders are read too. The rule is about the simulation, not about one
+ * directory listing, and a `src/sim/something/` added later would otherwise
+ * sit outside every check below without anything saying so.
  */
 function simFiles(): { name: string; code: string }[] {
-  return readdirSync(SIM_DIR)
+  return readdirSync(SIM_DIR, { recursive: true, encoding: 'utf8' })
     .filter((f) => f.endsWith('.ts'))
     .map((name) => ({
       name,
-      code: readFileSync(new URL(name, SIM_DIR), 'utf8')
-        .replace(/\/\*[\s\S]*?\*\//g, '')
-        .replace(/\/\/.*/g, ''),
+      code: stripComments(readFileSync(new URL(name, SIM_DIR), 'utf8')),
     }));
 }
 
@@ -43,8 +50,12 @@ describe('the simulation stays pure', () => {
   });
 
   it('never imports from the renderer', () => {
+    // Every way a module can be pulled in. `from '...'` covers imports and
+    // re-exports; the two forms without a `from` -- a bare `import '...'` run
+    // for its side effects, and a dynamic `import('...')` -- used to walk
+    // straight past this check.
     for (const { name, code } of simFiles()) {
-      const imports = [...code.matchAll(/from\s+['"]([^'"]+)['"]/g)].map((m) => m[1]!);
+      const imports = [...code.matchAll(/\b(?:from|import)\s*\(?\s*['"]([^'"]+)['"]/g)].map((m) => m[1]!);
       const offending = imports.filter((i) => i.includes('render'));
       expect(offending, `src/sim/${name} imports ${offending.join(', ')}`).toEqual([]);
     }
@@ -62,7 +73,7 @@ describe('the simulation stays pure', () => {
     // with a fixed 60Hz timestep and no wall-clock time. A Date.now() here
     // would pass every other check in this repo and quietly make the browser
     // and `npm run sim` disagree about the same seed, which invalidates every
-    // number in BALANCE.md without anything going red.
+    // balance number this project reports without anything going red.
     for (const { name, code } of simFiles()) {
       expect(code, `src/sim/${name}`).not.toMatch(/\bDate\.now\b|\bperformance\.now\b|\bnew Date\b/);
     }
@@ -76,6 +87,28 @@ describe('the simulation stays pure', () => {
     for (const { name, code } of simFiles()) {
       expect(code, `src/sim/${name}`).not.toContain('Math.random');
     }
+  });
+});
+
+describe("the interface's decisions stay pure", () => {
+  /**
+   * CLAUDE.md sends interface logic to `src/render/decisions.ts` so that a test
+   * can reach it: every interface bug the previous project had lived in logic
+   * tangled with the DOM. That only holds while the file itself stays out of
+   * the DOM and off the wall clock -- time arrives as an argument, the way
+   * `elapsedMs` already does -- and until now nothing but discipline kept it
+   * there.
+   */
+  const code = stripComments(
+    readFileSync(new URL('../src/render/decisions.ts', import.meta.url), 'utf8'),
+  );
+
+  it('never touches the DOM', () => {
+    expect(code).not.toMatch(/\bdocument\.|\bwindow\.|\bnavigator\.|requestAnimationFrame/);
+  });
+
+  it('never reads the wall clock', () => {
+    expect(code).not.toMatch(/\bDate\.now\b|\bperformance\.now\b|\bnew Date\b/);
   });
 });
 

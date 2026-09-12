@@ -421,12 +421,12 @@ In free play (`--endless`, 10 runs) the boards that clear go on for 1.6
 
 ### Code
 
-- **`tests/architecture.test.ts` has blind spots.** Its import check matches
-  only `from '...'`, so `import('../render/x')` and `import '../render/x'`
-  would pass. It reads `src/sim/` without its subfolders, so a future
-  `src/sim/something/` would go unchecked. Nothing checks that
-  `src/render/decisions.ts` stays free of the DOM, which it is today. Every
-  rule in CLAUDE.md was checked by hand in this pass and holds.
+- ~~**`tests/architecture.test.ts` has blind spots.**~~ Done. Its import check
+  matched only `from '...'`, so `import('../render/x')` and
+  `import '../render/x'` would have passed, and it read `src/sim/` without its
+  subfolders. It now catches both forms, reads subfolders, and checks that
+  `src/render/decisions.ts` stays out of the DOM and off the wall clock. Each
+  new check was seen to fail against a planted violation.
 - **Unused code.** Nothing imports `src/sim/stats.ts`. `BUILD_NAMES`,
   `effectiveCooldown`, `TURN_RATE`, `laneCoverage`, `distanceToPath` and
   `isOnBoard` are exported but used only inside their own files.
