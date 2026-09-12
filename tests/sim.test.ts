@@ -1206,24 +1206,36 @@ describe('a shot that carries down a line', () => {
     expect(took(secondId)).toBeLessThan(took(firstId));
   });
 
-  it('keeps rolling when there is nobody left in front of it at all', () => {
+  it('keeps rolling with nobody left in front of it, for exactly the length it was thrown with', () => {
     const w = rich();
-    put(w, 'betty', buildCellNear(400));
+    const betty = put(w, 'betty', buildCellNear(400));
     const lone = spawnEnemy(w, 'sam', 400);
     const startHp = lone.hp;
 
     until(w, () => lone.hp < startHp);
-    const ball = w.projectiles[0];
-    expect(ball).toBeDefined();
-    const wasAt = { x: ball!.x, y: ball!.y };
+    until(w, () => w.projectiles[0]?.rolling === true);
 
-    // Well past the point where it has anybody left to knock down, and still
-    // going: the reach is what it has left, not a queue it failed to find.
-    for (let i = 0; i < 40; i++) step(w);
-    const still = w.projectiles[0];
-    expect(still).toBeDefined();
-    // 40 ticks of roll is 140 px of garden, in a straight line.
-    expect(Math.hypot(still!.x - wasAt.x, still!.y - wasAt.y)).toBeGreaterThan(100);
+    // Measured against `rollOut` rather than a fixed number of ticks, because
+    // the length is the thing her second path buys: a test that knew how far
+    // a baseline ball goes would have to be rewritten every time it moved,
+    // and would stop saying anything about what it was written to protect.
+    const roll = effectiveDef(betty).rollOut!;
+    const speed = effectiveDef(betty).projectileSpeed!;
+    const from = { x: w.projectiles[0]!.x, y: w.projectiles[0]!.y };
+    let last = from;
+    for (let i = 0; i < Math.ceil(roll / speed) + 2 && w.projectiles.length > 0; i++) {
+      last = { x: w.projectiles[0]!.x, y: w.projectiles[0]!.y };
+      step(w);
+    }
+
+    // Every pixel of it spent: the reach is what the ball has left, not a
+    // queue it failed to find. `from` is read a tick into the roll, so the
+    // ground it covers is the length less that first step.
+    const rolled = Math.hypot(last.x - from.x, last.y - from.y);
+    expect(rolled).toBeGreaterThan(roll - speed * 2);
+    expect(rolled).toBeLessThanOrEqual(roll);
+    // And then it is gone, rather than sitting where it stopped.
+    expect(w.projectiles).toHaveLength(0);
   });
 
   it('holds its heading instead of following the street round a corner', () => {
@@ -1233,12 +1245,17 @@ describe('a shot that carries down a line', () => {
     until(w, () => w.projectiles.length > 0 && w.projectiles[0]!.rolling);
 
     const p = w.projectiles[0]!;
+    const id = p.id;
     const from = { x: p.x, y: p.y };
     const heading = { x: p.dirX, y: p.dirY };
-    for (let i = 0; i < 30; i++) step(w);
+    // Bounded by the ball's own life rather than by a tick count: a short roll
+    // is spent and gone in well under a second.
+    const alive = () => w.projectiles.find((q) => q.id === id);
+    for (let i = 0; i < 12 && alive(); i++) step(w);
 
-    const now = w.projectiles[0]!;
+    const now = alive()!;
     const gone = Math.hypot(now.x - from.x, now.y - from.y);
+    expect(gone).toBeGreaterThan(0);
     // Every pixel of it in the direction it set off in: a ball that went round
     // corners was being steered, and looked it.
     expect(now.x).toBeCloseTo(from.x + heading.x * gone, 4);

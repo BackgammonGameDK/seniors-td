@@ -74,6 +74,12 @@ before: The Whole Lot promised six people's worth of ball and gave it 220 px
 of street to find them in. Road without bodies is a spent ball rolling
 politely past everybody it passes.
 
+The roll she comes with is short on purpose -- 90 px, about two cells, against
+200, 330 and 520 down the path. Enough to watch the ball carry on and clip
+somebody standing right behind the first, and nowhere near enough to sweep a
+queue. Sweeping a queue is what the path is for, and a path is only felt if
+the defender did not mostly have the thing already.
+
 **Hose Harold** goes the other way and sees less than Norah does. What he buys
 with that short sight is the only effect on the board that sends anyone
 *backwards*: some fraction of his hits knocks them off their feet and slides

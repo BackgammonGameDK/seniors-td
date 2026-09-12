@@ -202,14 +202,21 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     pierce: 1,
     // Her second range, and the one her upgrades are about. The ball holds the
     // heading it was thrown on and lets the street bend away from it, so this
-    // is how much garden it crosses after it stops aiming. Two hundred and
-    // twenty is most of the way across a corner, which is long enough to be a
-    // thing rolling rather than a thing stopping. What it is worth depends
-    // entirely on where Betty stands: a line that happens to run along the
-    // street is worth several bodies, and one thrown across it is worth the
-    // one it was aimed at. The Line buys this and `pierce` together -- see the
-    // note on her tree in upgrades.ts for why neither is worth buying alone.
-    rollOut: 220,
+    // is how much garden it crosses after it stops aiming.
+    //
+    // Deliberately short of a bought one. Ninety is about two cells, a bit
+    // over a third of a second at her ball's speed: enough to see the thing
+    // roll on and clip somebody standing right behind, and nowhere near
+    // enough to sweep a queue. Sweeping a queue is what The Line is for, and a
+    // path is only felt if the tower did not mostly have the thing already --
+    // at 220 the first tier was a fifth again of what she came with, and the
+    // roll she was bought for was one she already had. What either length is
+    // worth still depends entirely on where she stands: a line that happens to
+    // run along the street is worth several bodies, and one thrown across it
+    // is worth the one it was aimed at. The Line buys this and `pierce`
+    // together -- see the note on her tree in upgrades.ts for why neither is
+    // worth buying alone.
+    rollOut: 90,
     // The ball loses its weight through a crowd. Without this a line shot
     // multiplies instead of adding -- six Betties behind a wall shoot the same
     // queue, so each is worth the whole queue again, and the measured result
