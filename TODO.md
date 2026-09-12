@@ -340,6 +340,154 @@ opinion rather than another sweep.
   numbers have never been checked against what those two shapes are supposed
   to feel like.
 
+## From an analysis, September 2026
+
+A whole-project pass -- code, balance, security, speed, tests and documents --
+checked against measurements rather than read alone. Balance numbers are from
+`npm run campaign -- --all-builds` and `npm run sim -- --all-waves` at 20 runs
+on commit 7e2e7a3. The two things worth fixing straight away are in PR #85,
+which left every campaign result byte-identical; the rest is here.
+
+### Fixed in #85
+
+- ~~**`npm run sim` put upgrades on the wrong towers for any board saved with
+  `L`.**~~ Done. It placed each entry as a new tower without checking that it
+  took, then bought that entry's upgrades on whichever tower had been built
+  last. A saved board writes a cell once per purchase, so 5 of `corner`'s 13
+  towers, 3 of `binoculars`' 10 and 4 of `wall`'s 15 ended with the wrong
+  upgrades, and nothing said so. Both harnesses now call `applyPlacement` in
+  `src/sim/loadout.ts`. `npm run campaign` was never affected.
+- ~~**`effectiveDef` spent 37% of a campaign's CPU building its cache key.**~~
+  Done. The key is now a slot number instead of a string built on every call,
+  and `tests/balance.test.ts` went from 32.4s to 21.1s. The fold is
+  deliberately not stored on the tower: tests write the upgrade fields
+  directly, and a stored fold would go stale.
+
+### Balance questions
+
+1. **Coffee Clara is in every board that clears.** She is in 10 of the 11
+   boards. The one without her, `swarm` (only Norahs), clears 0%. All five
+   boards that clear at least half the time -- `bowling`, `mixed`, `corner`,
+   `binoculars` and `wall` -- include her, and `support`, the board built
+   around her, has cleared 0% since her buff was lowered. That drop was
+   accepted at the time (see the comment on the clearing-count assertion in
+   `tests/balance.test.ts`); what it leaves is that "towers that make their
+   neighbours better" now measures as something every board must have, not
+   as a way to win. Whether she is truly required is unmeasured, because no
+   mixed board without Clara has been run. The measurement to take is `mixed`
+   and `corner` with their Claras removed. (`wall` without its Claras dies at
+   round 20 -- see "What `wall` showed" above.)
+2. **Three defenders have almost no measured boards.** No played board uses
+   Hose Harold or Bowling Betty, and none has more than one Protest Pete.
+   Harold's only board, `slip`, clears 5%. Betty's only board, `bowling`,
+   clears 100%, so she at least has a winning shape. "Several viable builds"
+   is so far shown with Norah, Bill, Barbara and Clara in different amounts. A
+   board played around Harold and saved with `L` would answer it.
+3. **Pizza Paul has no quiet first round.** DESIGN.md ("Composition is the
+   difficulty dial") says each troublemaker first arrives in a round of its
+   own. Paul first appears in round 13, next to 13 Mikes and 6 Bens, and the
+   comment in `waves.ts` calls him "added pressure". A small data test -- each
+   troublemaker's first round holds few others -- would keep the rule.
+4. **`npm run sim -- --all-waves` says nothing after round 12.** Its default
+   board is four towers with no upgrades. It wins rounds 1-11, wins round 12
+   45% of the time, and loses every round from 13 to 17 and from 19 to 21.
+   Round 18 it wins, losing 8 points -- possibly a dip in the curve, though
+   `campaign` shows no losses gathering there. A stronger default, such as a
+   played board with its repeated cells collapsed, would make the back half
+   readable.
+5. **Generated boards that clear still take nothing until the end.** `bowling`
+   first loses points at round 19 and `mixed` at round 20, while the played
+   boards first lose at rounds 9-12. This is #2 above, still true.
+
+Where the boards stood (20 runs each):
+
+| Board | Clears | Average round reached | First points lost | Points left on a clear |
+|---|---|---|---|---|
+| swarm | 0% | 16.0 | 15 | -- |
+| slip | 5% | 19.1 | 9 | 15.0 |
+| bowling | 100% | 21 | 19 | 14.3 |
+| sniper | 35% | 19.7 | 14 | 6.0 |
+| area | 0% | 17.9 | 9 | -- |
+| control | 0% | 19.1 | 12 | -- |
+| support | 0% | 19.1 | 9 | -- |
+| mixed | 100% | 21 | 20 | 9.8 |
+| corner | 100% | 21 | 12 | 14.8 |
+| binoculars | 100% | 21 | 12 | 12.8 |
+| wall | 100% | 21 | 9 | 16.1 |
+
+In free play (`--endless`, 10 runs) the boards that clear go on for 1.6
+(`bowling`), 3.4 (`binoculars`), 3.7 (`corner`), 4.0 (`mixed`) and 7.0
+(`wall`) rounds past 21.
+
+### Code
+
+- **`tests/architecture.test.ts` has blind spots.** Its import check matches
+  only `from '...'`, so `import('../render/x')` and `import '../render/x'`
+  would pass. It reads `src/sim/` without its subfolders, so a future
+  `src/sim/something/` would go unchecked. Nothing checks that
+  `src/render/decisions.ts` stays free of the DOM, which it is today. Every
+  rule in CLAUDE.md was checked by hand in this pass and holds.
+- **Unused code.** Nothing imports `src/sim/stats.ts`. `BUILD_NAMES`,
+  `effectiveCooldown`, `TURN_RATE`, `laneCoverage`, `distanceToPath` and
+  `isOnBoard` are exported but used only inside their own files.
+- **`builds.ts` keeps display text in `src/sim/`.** Its `blurb` strings break
+  CLAUDE.md's rule of no blurbs in the simulation. Only the harness reads
+  them, so either the rule gets a stated exception or the strings move.
+- **A Walter knocked down and rebuilt records as one Walter.** The saved board
+  then has his cell twice, and a harness reads the second entry as the Walter
+  already standing there, so it neither pays for the rebuild nor makes it.
+  `recordingOf` only warns about towers that were sold. No played board is
+  affected: `wall`'s three Walters were never rebuilt.
+
+### Security
+
+A whole-tree review found nothing exploitable. Loadout parsing is a strict
+pattern with a list of known ids, the page only ever puts built-in text into
+its HTML and ships `script-src 'self'`, the workflows have minimal permissions
+and no `pull_request_target`, and `npm audit` reports nothing. Two things to
+harden, neither a vulnerability:
+
+- GitHub Actions are pinned by version tag rather than by commit SHA.
+- `.claude/settings.json` asks before `Bash(git push:*)`, but that is a prefix
+  match -- `git -C . push` or `gh api` would not ask. The approval rule for
+  pushing rests on habit more than the settings suggest.
+
+### Speed
+
+After #85 nothing stands out. The biggest shares of a campaign run are `step`
+(19%), `advanceAim` (9%), `effectiveDef` (8%) and `advanceAuras` (6%). The
+drawing loop already reuses the painted floor and does its ageing outside
+`draw`. The built site is 936 KB, mostly PNGs (the cinnamon roll alone is
+122 KB); the JavaScript is 64 KB, or 22 KB compressed. Converting the images
+to WebP would help a little.
+
+### Tests
+
+- **The balance test holds less than DESIGN.md promises.** DESIGN.md's
+  balance section says at least three boards clear; `tests/balance.test.ts`
+  asks for two, lowered when Clara's buff was. Five clear today, so nothing
+  fails, but the promise itself is unguarded. Either the test goes back to
+  three or the document says two.
+- `src/headless.ts` is still not imported by any test. Its placement now runs
+  through the tested `applyPlacement`; what is left is printing.
+
+### Documentation
+
+- CLAUDE.md's commands list says `--all-builds` plays "all seven boards";
+  there are eleven.
+- CLAUDE.md never mentions this file, though it holds the live balance
+  findings and DESIGN.md points here. Its "Where things live" table also
+  leaves out `src/main.ts`, `src/render/ui.ts`, `src/render/clock.ts`,
+  `src/render/sprites.ts` and `src/sim/rng.ts`.
+- The `window.street` comment in `src/main.ts` still suggests
+  `--loadout "<the string>"`, which CLAUDE.md warns against for shared boards.
+- `.claude/hooks/check-after-edit.sh` says "twenty-round campaigns"; there are
+  twenty-one rounds.
+- `tests/architecture.test.ts` mentions a BALANCE.md that does not exist.
+- Board numbers in DESIGN.md and in #2 above are snapshots from different
+  dates, and some no longer match: #2 has `wall` ending on 17.3 points, and it
+  now ends on 16.1. Nothing in the text marks them as snapshots.
+
 ## Ruled out, so nobody investigates it twice
 
 - **"Builds bank 400-1000 unspent coins, so the plans are too short."** They
