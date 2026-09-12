@@ -555,17 +555,30 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
     // "Anyone in the way" rather than "behind the first": the shot hurts
     // everybody along its line, on the way to whoever it was aimed at as well
     // as after, so where the line falls is the whole of what it is worth.
+    //
+    // A capstone can lift the count off its hinges altogether, and an
+    // unlimited one has to be worded rather than counted: `Infinity + 1` is
+    // `Infinity`, and a template renders that as the word, so the panel would
+    // read "Infinity in a line". The row is also what `previewStats` diffs, so
+    // hovering that capstone strikes the number through and puts the words
+    // beside it.
+    const bodies = (def.pierce ?? 0) + 1;
     rows.push({
       label: 'Knocks down',
-      value: `${(def.pierce ?? 0) + 1} in a line, whoever is in the way`,
+      value: Number.isFinite(bodies)
+        ? `${bodies} in a line, whoever is in the way`
+        : 'everyone in the way, however many there are',
     });
     if ((def.rollOut ?? 0) > 0) {
       rows.push({ label: 'Then keeps going', value: `${def.rollOut} px, in a straight line` });
     }
     if ((def.pierceFalloff ?? 1) < 1) {
+      // "Of the hit" rather than "of the one before". The reduction is one
+      // step off what the tower threw, so the fourth person down a line takes
+      // exactly what the second did -- see `strike` in world.ts.
       rows.push({
         label: 'Each one after the first takes',
-        value: `${Math.round((def.pierceFalloff ?? 1) * 100)}% of the one before`,
+        value: `${Math.round((def.pierceFalloff ?? 1) * 100)}% of the hit`,
       });
     }
   }

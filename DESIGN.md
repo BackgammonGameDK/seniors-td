@@ -54,8 +54,8 @@ None of them is *for* a particular troublemaker.
 Everything cheap saw about 95 px and everything that saw further cost 95
 coins, so there was a wide band of street -- and a wide band of the player's
 purse -- with nothing to spend it on. **Bowling Betty** is that purchase. She
-rolls a ball 155 px down the road and it carries on through whoever is queued
-up behind the first person it hits, so she is paid for a *queue* the way
+rolls a ball 135 px down the road and it carries on through whoever is
+standing behind the first person it hits, so she is paid for a *queue* the way
 Barbara is paid for a clump: worth little against one walker, worth a great
 deal against a line stopped at a blockade.
 
@@ -67,18 +67,42 @@ no longer steer -- the street is free to bend away from it. The board draws
 both, the inner one solid and the outer one faint, because the outer edge is
 the whole of what her placement is worth.
 
-Her second path, **The Line**, buys that second range, and buys one more body
-along with every step of it. The two halves are sold together because neither
-is worth anything alone. Bodies without road was the shape the path had
-before: The Whole Lot promised six people's worth of ball and gave it 220 px
-of street to find them in. Road without bodies is a spent ball rolling
-politely past everybody it passes.
+Her second path, **The Line**, buys that second range and nothing else. It
+buys no bodies at any tier, so **two people is what a Betty is worth** --
+the one she aimed at and one more -- however much road she has paid for. A
+longer line finds the second person further away rather than finding a third.
+The roll starts at 30 px, under a cell, against 70 and 110 down the path, so
+every step of it is most of what she had.
 
-The roll she comes with is short on purpose -- 90 px, about two cells, against
-200, 330 and 520 down the path. Enough to watch the ball carry on and clip
-somebody standing right behind the first, and nowhere near enough to sweep a
-queue. Sweeping a queue is what the path is for, and a path is only felt if
-the defender did not mostly have the thing already.
+The fork at the end is where that cap is decided, and the two ends of it are
+not versions of each other:
+
+- **Solid Ball** keeps the cap and removes the penalty behind it. Both people
+  take the whole hit instead of the second taking three tenths of it.
+- **The Whole Lot** keeps the penalty and removes the cap. The ball goes
+  through everybody it rolls into, each after the first at the lighter weight,
+  and what stops it is the road running out rather than a counter.
+
+One is two big hits and the other is many small ones. Which is better is a
+question about the board rather than about the numbers: Solid Ball's gain
+arrives on every single ball, and The Whole Lot's needs a queue standing in a
+line to collect, which is what a blockade is for.
+
+The penalty itself is one step rather than a slope -- the first person takes
+the whole hit and everybody after takes a fixed share of *that*, not of
+whoever was in front of them. It used to compound, which was fine while the
+ball stopped after two people and became nonsense the moment one capstone let
+it through everybody: at three tenths of the one before, the fourth person in
+a line took three percent of a hit, and "through the whole lot" would have
+been a thing to watch rather than a thing to buy.
+
+Her rate is what all of this is paid for with, and it is a knife edge. Solid
+Ball took one ball from 42 and 13 to 42 and 42, and the bowling board went
+from clearing the campaign on 12 points to clearing it on 22.5 of 25 -- a
+board that finishes untouched, which is the one outcome this project calls a
+failure. A cooldown of 80 brings it back to 15.4, where two of the played
+boards already sit. Seventy-six leaves it at 19.5 and eighty-four kills the
+board outright, so the number wants a measurement rather than a nudge.
 
 **Hose Harold** goes the other way and sees less than Norah does. What he buys
 with that short sight is the only effect on the board that sends anyone
