@@ -6,7 +6,7 @@
 #
 # Fast tests only, deliberately. The full suite takes about twenty seconds and
 # all but half a second of that is one file: tests/balance.test.ts plays whole
-# twenty-round campaigns against every named build, at module load. That is the
+# twenty-one-round campaigns against every named build, at module load. That is the
 # measurement this project's design rests on, but it answers a question about
 # balance, not about whether the edit just made compiles and behaves -- and a
 # twenty-second pause after every edit turns the hook into something to switch

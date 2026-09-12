@@ -473,17 +473,17 @@ to WebP would help a little.
 
 ### Documentation
 
-- CLAUDE.md's commands list says `--all-builds` plays "all seven boards";
-  there are eleven.
-- CLAUDE.md never mentions this file, though it holds the live balance
-  findings and DESIGN.md points here. Its "Where things live" table also
-  leaves out `src/main.ts`, `src/render/ui.ts`, `src/render/clock.ts`,
-  `src/render/sprites.ts` and `src/sim/rng.ts`.
-- The `window.street` comment in `src/main.ts` still suggests
-  `--loadout "<the string>"`, which CLAUDE.md warns against for shared boards.
-- `.claude/hooks/check-after-edit.sh` says "twenty-round campaigns"; there are
-  twenty-one rounds.
-- `tests/architecture.test.ts` mentions a BALANCE.md that does not exist.
+- ~~CLAUDE.md's commands list says `--all-builds` plays "all seven boards";
+  there are eleven.~~ Done.
+- ~~CLAUDE.md never mentions this file, and its "Where things live" table
+  leaves out five files.~~ Done: TODO.md is in the documents table, and
+  `src/main.ts`, `src/render/ui.ts`, `src/render/clock.ts`,
+  `src/render/sprites.ts` and `src/sim/rng.ts` have rows.
+- ~~The `window.street` comment in `src/main.ts` suggests
+  `--loadout "<the string>"`.~~ Done: it now suggests `--loadout-file`.
+- ~~`.claude/hooks/check-after-edit.sh` says "twenty-round campaigns".~~ Done.
+- ~~`tests/architecture.test.ts` mentions a BALANCE.md that does not
+  exist.~~ Done, with the architecture test's blind spots above.
 - Board numbers in DESIGN.md and in #2 above are snapshots from different
   dates, and some no longer match: #2 has `wall` ending on 17.3 points, and it
   now ends on 16.1. Nothing in the text marks them as snapshots.

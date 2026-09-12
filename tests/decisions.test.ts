@@ -910,7 +910,8 @@ describe('recording a played board', () => {
 
   it('produces a plan the campaign harness will actually spend on', () => {
     // The real consumer, not just the parser: `costOf` prices an entry and
-    // `apply` carries it out, and either can reject a plan the parser accepted.
+    // `applyPlacement` carries it out, and either can reject a plan the parser
+    // accepted.
     const w = createWorld(1);
     w.gold = 100000;
     placeTower(w, 'norah', 4, 4);

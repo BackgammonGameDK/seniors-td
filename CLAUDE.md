@@ -21,6 +21,7 @@ loadout grammar uses the ids, so `norah@5,4` is correct.
 | Document | What it holds |
 |---|---|
 | [DESIGN.md](DESIGN.md) | Why the mechanics are shaped this way, and the lessons carried in from the last project. |
+| [TODO.md](TODO.md) | Follow-up work: open balance questions with the measurements behind them, what was fixed, and what was ruled out. |
 
 ## The one architectural rule
 
@@ -45,6 +46,7 @@ hex colours, display names or blurbs in `src/sim/`.
 | `src/sim/waves.ts` | Twenty-one authored rounds, and `waveAt`, which grows the late ones into free play past the end. Composition is the difficulty dial. |
 | `src/sim/world.ts` | `step()`, placement, auras, status effects, damage, splitting, blockades. The only place damage is resolved. |
 | `src/sim/path.ts` | Board dimensions, the street, and which cells take a tower or a blockade. |
+| `src/sim/rng.ts` | The simulation's only source of randomness: one seeded generator, so the same seed replays the same run. |
 | `src/sim/upgrades.ts` | Two paths per defender and the final fork between them, plus `effectiveDef()` -- the only way to read a defender's bought stats. |
 | `src/sim/economy.ts` | Bounties, the round clear bonus, and what selling returns. |
 | `src/sim/builds.ts` | Eleven named boards the campaign harness plays: eight archetypes, plus `corner`, `binoculars` and `wall`, boards played by hand and kept verbatim. |
@@ -54,6 +56,10 @@ hex colours, display names or blurbs in `src/sim/`.
 | `src/shared/upgrades.ts` | The words and pictures for the upgrades. Presentational half of `src/sim/upgrades.ts`. |
 | `src/render/decisions.ts` | What the interface decides, without the interface. Pure and tested. |
 | `src/render/canvas.ts` | Drawing. Read-only over the sim. |
+| `src/render/ui.ts` | The page around the board: panels, buttons and upgrade cards. It decides nothing; it applies what `decisions.ts` decides. |
+| `src/render/clock.ts` | The fixed-timestep clock: how many 1/60 s ticks a frame is worth at the current speed. |
+| `src/render/sprites.ts` | The painted artwork, loaded once. Anything without a picture is drawn with its emoji from `display.ts`. |
+| `src/main.ts` | Wiring: the frame loop, pointer and keyboard input, and the `L` recording. What any of it means is decided in `decisions.ts`. |
 | `src/headless.ts` | One round in isolation, behind `npm run sim`. |
 | `src/campaign.ts` | Whole twenty-one-round runs on a real purse, behind `npm run campaign`. |
 
@@ -68,7 +74,7 @@ npm run sim -- --all-waves                   # difficulty for every round
 npm run sim -- --wave 7 --runs 60 --json     # machine-readable
 npm run sim -- --wave 12 --loadout "norah@4,2 bill@10,8"
 npm run sim -- --loadout-file loadout.txt    # a board saved from the game
-npm run campaign -- --all-builds             # all seven boards, twenty-one rounds
+npm run campaign -- --all-builds             # all eleven boards, twenty-one rounds
 npm run campaign -- --build sniper --runs 40 --json
 npm run campaign -- --build corner --endless        # how far free play carries a board
 ```
