@@ -523,7 +523,7 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
   const jet = def.mode === 'jet';
   rows.push({
     label: 'Damage',
-    value: def.damage > 0 ? `${def.damage} a soaking` : 'none',
+    value: def.damage > 0 ? `${def.damage} a ${jet ? 'soaking' : 'hit'}` : 'none',
   });
   rows.push({ label: 'Reach', value: reach });
   rows.push({
