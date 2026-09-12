@@ -295,6 +295,14 @@ describe('build cards', () => {
     expect(rows.some((r) => /slowFactor|slowTicks/.test(r.value))).toBe(false);
   });
 
+  it('leaves everyone but the jet hitting people', () => {
+    // "a soaking" arrived with Harold's jet and was briefly written on every
+    // tower's Damage row, so Norah's knitting needles read as water.
+    for (const id of ['norah', 'barbara', 'bill'] as const) {
+      expect(describeStats(TOWERS[id]).find((r) => r.label === 'Damage')?.value).toMatch(/a hit$/);
+    }
+  });
+
   it('describes the jet as water standing on people rather than as a gun', () => {
     const rows = describeStats(TOWERS.harold);
     // "a hit" and "shots a second" would read as a gun that happens to be
