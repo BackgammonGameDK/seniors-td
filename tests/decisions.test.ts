@@ -646,6 +646,17 @@ describe('the troublemaker read-out teaches the mechanic', () => {
   it('has nothing special to say about the plain ones', () => {
     expect(enemyReadout({ def: 'sam', hp: 22, scale: 1, shield: 0 }).lines).toHaveLength(1);
   });
+
+  it('says the bus cannot be pushed back, and says it of nobody else', () => {
+    // A player who has bought Full Mains and watched the water do nothing to a
+    // bus should be able to read why, rather than take it for a bug.
+    expect(enemyReadout({ def: 'duke', hp: 1000, scale: 1, shield: 0 }).lines.join(' ')).toMatch(
+      /Too heavy to push back/,
+    );
+    expect(enemyReadout({ def: 'mike', hp: 90, scale: 1, shield: 0 }).lines.join(' ')).not.toMatch(
+      /push back/,
+    );
+  });
 });
 
 describe('the one button that runs the game', () => {

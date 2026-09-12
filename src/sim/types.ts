@@ -231,6 +231,15 @@ export interface EnemyDef {
   leakCost: number;
   stunImmune: boolean;
   /**
+   * Cannot be moved backwards down the street: the jet's push slides off it
+   * and it never loses its footing on soapy water.
+   *
+   * A flag rather than a number, unlike `slowResist`, because there is nothing
+   * in between for a thing on wheels that weighs several tonnes. Water either
+   * moves you or it does not, and a bus it does not.
+   */
+  pushImmune: boolean;
+  /**
    * Fraction of an incoming slow ignored. 0 takes a slow in full, 1 shrugs it
    * off entirely.
    *

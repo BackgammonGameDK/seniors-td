@@ -145,6 +145,16 @@ park Duke, and a street that stops arriving is the failure this game cares
 about most. Stacking Harolds therefore buys damage and a better chance of the
 *first* slip, never a longer push.
 
+The bus is outside all of it. Duke is several tonnes on wheels, so the water
+soaks him and hurts him and moves him not at all: he takes neither the shove
+nor the slip, on the same flag, because a bus sliding backwards down the street
+or losing its footing on soap is a thing the player can watch happening and
+know is wrong. It sits beside his stun immunity and his slow resistance rather
+than being a fourth kind of exception. Harold is still worth putting on a bus
+-- a wide column of water on a slow, wide target is a lot of damage -- but the
+thing he is bought for, holding a crowd off the street, is not for sale against
+this one.
+
 That shove is also what makes Harold's fork a decision about the board rather
 than two ways of saying "more". Full Mains is pressure: small, constant, nobody
 falls over, and a crowd is held off the street while the water is on them --

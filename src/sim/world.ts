@@ -542,6 +542,8 @@ const MAX_SHOVE_FRAC = 0.4;
  * is wrong.
  */
 function shove(w: World, e: Enemy, push: number): void {
+  // Water moves people. It does not move a bus.
+  if (ENEMIES[e.def].pushImmune) return;
   const cap = ENEMIES[e.def].speed * MAX_SHOVE_FRAC;
   const want = Math.min(push, cap) - e.shovedThisTick;
   if (want <= 0) return;
@@ -900,7 +902,16 @@ export function applyHit(
   // costs ground once and then they walk whatever else lands on them.
   const slipChance = effect.slipChance ?? 0;
   const slipPush = effect.slipPush ?? 0;
-  if (slipChance > 0 && slipPush > 0 && e.slipCooldown === 0 && w.rng.next() < slipChance) {
+  // Losing your footing needs feet, so the same flag that stops the jet's push
+  // stops this: the two are one idea, and a bus obeying one and not the other
+  // would look like a bug rather than a rule.
+  if (
+    !d.pushImmune &&
+    slipChance > 0 &&
+    slipPush > 0 &&
+    e.slipCooldown === 0 &&
+    w.rng.next() < slipChance
+  ) {
     e.dist = Math.max(0, e.dist - slipPush);
     const p = pointAt(e.dist);
     e.x = p.x;

@@ -29,6 +29,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 2,
     leakCost: 1,
     stunImmune: false,
+    pushImmune: false,
     slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
@@ -51,6 +52,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     leakCost: 2,
     // The reason Pete cannot be the whole answer to a round.
     stunImmune: true,
+    pushImmune: false,
     slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
@@ -100,6 +102,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 5,
     leakCost: 2,
     stunImmune: false,
+    pushImmune: false,
     slowResist: 0,
     shieldAura: 2,
     disablesTowers: false,
@@ -121,6 +124,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 5,
     leakCost: 1,
     stunImmune: false,
+    pushImmune: false,
     slowResist: 0,
     shieldAura: 0,
     disablesTowers: true,
@@ -142,6 +146,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 4,
     leakCost: 1,
     stunImmune: false,
+    pushImmune: false,
     slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
@@ -165,6 +170,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     // Stun and a blockade both still stop her, so the speed is a cost to a
     // board that leans on slows rather than a tower she is immune to.
     stunImmune: false,
+    pushImmune: false,
     slowResist: 0.75,
     shieldAura: 0,
     disablesTowers: false,
@@ -188,6 +194,11 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     // Matches Mike's precedent, and also stops a stun-lock from trivially
     // neutering the drop mechanic below.
     stunImmune: true,
+    // Several tonnes on wheels. A hose can soak a bus and a hose can hurt it,
+    // but water does not slide it backwards down the street and soap does not
+    // take its feet away, because it has none. Harold's push and his slip both
+    // stop here.
+    pushImmune: true,
     // A bus does not slow down for a shout, a glaze, or a bystander standing
     // in the road -- full slow resistance and a blockade walked straight
     // through are the same idea as the stun immunity above.
@@ -212,6 +223,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 1,
     leakCost: 1,
     stunImmune: false,
+    pushImmune: false,
     slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
@@ -233,6 +245,7 @@ export const ENEMIES: Record<EnemyId, EnemyDef> = {
     bounty: 5,
     leakCost: 2,
     stunImmune: false,
+    pushImmune: false,
     slowResist: 0,
     shieldAura: 0,
     disablesTowers: false,
