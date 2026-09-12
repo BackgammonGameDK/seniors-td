@@ -974,6 +974,20 @@ function effectOf(p: Projectile): HitEffect {
  * `hitIds` is why it cannot knock the same person down twice -- it travels at
  * 3.5 and they walk at 1.9, so without a memory it would hit the same person
  * for several ticks running.
+ *
+ * `bodiesLeft` can be `Infinity`, which is how Betty's The Whole Lot lets a
+ * ball through everybody it touches. Nothing here needs to know: the guards
+ * below simply never fire, and what stops the ball is the road running out in
+ * `advanceCarry`.
+ *
+ * The weight it loses is one step rather than a slope. The first person it
+ * ever touches takes the whole hit and everybody after takes `pierceFalloff`
+ * of that same hit -- not of whoever was in front of them. `p.damage` is
+ * therefore read and never written: it stays the hit the tower threw, and the
+ * projectile's own `hitIds` is what says whether this is the first. Written
+ * this way round because the compounding version had to mutate the shot to
+ * remember where it was, and a shot that goes through everybody compounds
+ * itself into nothing by the fourth person.
  */
 function strike(w: World, p: Projectile): void {
   if (p.bodiesLeft === 0) return;
@@ -985,10 +999,10 @@ function strike(w: World, p: Projectile): void {
   );
   for (const e of struck) {
     if (p.bodiesLeft === 0) break;
-    applyHit(w, e, p.damage, effect, p.sourceId);
+    const dealt = p.hitIds.length === 0 ? p.damage : Math.round(p.damage * p.pierceFalloff);
+    applyHit(w, e, dealt, effect, p.sourceId);
     p.hitIds.push(e.id);
     p.bodiesLeft--;
-    p.damage = Math.round(p.damage * p.pierceFalloff);
   }
 }
 

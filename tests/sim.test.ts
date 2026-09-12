@@ -11,7 +11,7 @@ import {
 } from '../src/sim/path.ts';
 import { TOWERS } from '../src/sim/towers.ts';
 import { ENEMY_IDS, TOWER_IDS } from '../src/sim/types.ts';
-import type { Enemy, EnemyId, TowerId } from '../src/sim/types.ts';
+import type { Enemy, EnemyId, Tower, TowerId } from '../src/sim/types.ts';
 import { effectiveDef } from '../src/sim/upgrades.ts';
 import { AUTHORED_ROUNDS, waveAt, WAVES } from '../src/sim/waves.ts';
 import {
@@ -1248,12 +1248,18 @@ describe('a shot that carries down a line', () => {
     const id = p.id;
     const from = { x: p.x, y: p.y };
     const heading = { x: p.dirX, y: p.dirY };
-    // Bounded by the ball's own life rather than by a tick count: a short roll
-    // is spent and gone in well under a second.
+    // Bounded by the ball's own life rather than by a tick count: a baseline
+    // roll is under a cell, so it is spent and gone in a handful of ticks and
+    // the last place it was seen is all there is to look at.
     const alive = () => w.projectiles.find((q) => q.id === id);
-    for (let i = 0; i < 12 && alive(); i++) step(w);
+    let now = from;
+    for (let i = 0; i < 12; i++) {
+      step(w);
+      const still = alive();
+      if (!still) break;
+      now = { x: still.x, y: still.y };
+    }
 
-    const now = alive()!;
     const gone = Math.hypot(now.x - from.x, now.y - from.y);
     expect(gone).toBeGreaterThan(0);
     // Every pixel of it in the direction it set off in: a ball that went round
@@ -1262,18 +1268,20 @@ describe('a shot that carries down a line', () => {
     expect(now.y).toBeCloseTo(from.y + heading.y * gone, 4);
   });
 
-  it('rolls the further for having bought the line, and gets the bodies to spend on it', () => {
-    // Betty's second range. The path buys road and bodies together, so the
-    // test asserts both: a ball with more people in it than street to find
-    // them in was the shape The Line had before this, and it is worth nothing.
+  it('buys road down The Line, and never another body', () => {
+    // The rule the whole shape rests on. The Line is ground and nothing else,
+    // so a longer line finds the second person further away rather than
+    // finding a third -- two is what a Betty is worth until a capstone says
+    // otherwise.
     const w = rich();
     const betty = put(w, 'betty', buildCellNear(400));
     const plain = effectiveDef(betty);
 
     expect(purchaseUpgrade(w, betty.id, 'pathB')).toBe(true);
+    expect(purchaseUpgrade(w, betty.id, 'pathB')).toBe(true);
     const bought = effectiveDef(betty);
     expect(bought.rollOut!).toBeGreaterThan(plain.rollOut!);
-    expect(bought.pierce!).toBeGreaterThan(plain.pierce!);
+    expect(bought.pierce).toBe(plain.pierce);
 
     // And the ball is actually thrown with it, rather than the number sitting
     // unread in the table: `rollLeft` is the street it has once it stops
@@ -1281,6 +1289,125 @@ describe('a shot that carries down a line', () => {
     spawnEnemy(w, 'sam', 400);
     until(w, () => w.projectiles.length > 0);
     expect(w.projectiles[0]!.rollLeft).toBe(bought.rollOut);
+  });
+
+  /** Six of them, slow and tough enough to still be standing after a ball. */
+  function toughQueue(w: World): Enemy[] {
+    const column: Enemy[] = [];
+    for (let i = 0; i < 6; i++) column.push(spawnEnemy(w, 'mike', 355 + i * 18));
+    return column;
+  }
+
+  /** Everything the plan lets her buy, in the order the sim insists on. */
+  function maxOut(w: World, betty: Tower, capstone: 'solidBall' | 'theWholeLot'): void {
+    for (const path of ['pathA', 'pathA', 'pathB', 'pathB'] as const) {
+      expect(purchaseUpgrade(w, betty.id, path)).toBe(true);
+    }
+    expect(purchaseUpgrade(w, betty.id, capstone)).toBe(true);
+  }
+
+  /** The most people any one ball got through over `ticks`. */
+  function longestLine(w: World, ticks: number): number {
+    let most = 0;
+    for (let i = 0; i < ticks; i++) {
+      step(w);
+      for (const p of w.projectiles) most = Math.max(most, p.hitIds.length);
+    }
+    return most;
+  }
+
+  it('stops at two however much road she has bought', () => {
+    const w = rich();
+    const betty = put(w, 'betty', buildCellNear(400));
+    expect(purchaseUpgrade(w, betty.id, 'pathB')).toBe(true);
+    expect(purchaseUpgrade(w, betty.id, 'pathB')).toBe(true);
+    toughQueue(w);
+
+    // Exactly two: reached, and never beaten. A cap nothing ever reaches would
+    // pass this test while saying nothing.
+    expect(longestLine(w, 300)).toBe(2);
+  });
+
+  it('goes through everybody once The Whole Lot is bought', () => {
+    const w = rich();
+    const betty = put(w, 'betty', buildCellNear(400));
+    maxOut(w, betty, 'theWholeLot');
+    expect(effectiveDef(betty).pierce).toBe(Infinity);
+    toughQueue(w);
+
+    // Past the two everyone else is held to. What stops it now is the road
+    // running out, which is why she can buy road at all.
+    expect(longestLine(w, 300)).toBeGreaterThan(2);
+  });
+
+  /**
+   * What each ball costs the people it rolls into, one entry per ball.
+   *
+   * Recorded a tick at a time and closed off when the board goes clear of
+   * projectiles, so every loss in an entry belongs to that one ball -- her
+   * next is 72 ticks away, well past the end of the last one. Attributing by
+   * comparing health against a snapshot taken at the start instead would
+   * quietly add the second ball's work to the first's, and the first ball is
+   * not always the one that finds a queue: who is standing where is the
+   * street's business, so the test has to go looking for the ball it wants.
+   */
+  function ballCosts(w: World, column: Enemy[], limit = 400): number[][] {
+    const balls: number[][] = [];
+    let cost: number[] = [];
+    let inFlight = false;
+    for (let i = 0; i < limit; i++) {
+      const before = new Map(column.map((e) => [e.id, e.hp]));
+      step(w);
+      for (const e of column) {
+        const lost = before.get(e.id)! - e.hp;
+        if (lost > 0) cost.push(lost);
+      }
+      if (w.projectiles.length > 0) {
+        inFlight = true;
+      } else if (inFlight) {
+        balls.push(cost);
+        cost = [];
+        inFlight = false;
+      }
+    }
+    return balls;
+  }
+
+  it('takes the same bite out of everyone after the first, rather than fading down the line', () => {
+    const w = rich();
+    const betty = put(w, 'betty', buildCellNear(400));
+    maxOut(w, betty, 'theWholeLot');
+    const column = toughQueue(w);
+
+    const d = effectiveDef(betty);
+    const armour = ENEMIES.mike.armour;
+    const whole = d.damage - armour;
+    const lighter = Math.round(d.damage * d.pierceFalloff!) - armour;
+    expect(lighter).toBeLessThan(whole);
+
+    const cost = ballCosts(w, column).find((c) => c.length >= 3);
+    expect(cost, 'no ball found three people in a line').toBeDefined();
+    // One step off the hit, not a slope down the line: exactly one person pays
+    // the whole thing and everybody else pays the same lighter figure as each
+    // other. Compounding was fine while the ball stopped after two people, and
+    // made the third worth three percent of a hit the moment it did not.
+    expect(cost!.filter((c) => c === whole)).toHaveLength(1);
+    expect(cost!.filter((c) => c === lighter)).toHaveLength(cost!.length - 1);
+  });
+
+  it('sends the whole hit through the second one once the ball is solid, and still stops at two', () => {
+    const w = rich();
+    const betty = put(w, 'betty', buildCellNear(400));
+    maxOut(w, betty, 'solidBall');
+    const d = effectiveDef(betty);
+    expect(d.pierceFalloff).toBe(1);
+    const column = toughQueue(w);
+
+    // The other side of the fork: two people, and no lighter hit among them.
+    const cost = ballCosts(w, column).find((c) => c.length >= 2);
+    expect(cost, 'no ball reached a second person').toBeDefined();
+    expect(cost).toHaveLength(2);
+    expect(cost!.every((c) => c === d.damage - ENEMIES.mike.armour)).toBe(true);
   });
 
   it('cannot knock the same person down twice on one roll', () => {

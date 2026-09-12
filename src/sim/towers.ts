@@ -169,21 +169,36 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     mode: 'projectile',
     cost: 75,
     damage: 18,
-    // The empty ground: Barbara saw 105 and Bill saw 225, with nothing between.
-    range: 155,
+    // The empty ground: Barbara saw 105 and Bill saw 225, with nothing
+    // between. A hundred and thirty-five narrows that band rather than closing
+    // it -- she is still the only one who sees between them -- and it is as
+    // far in as she can come while the gap remains the reason she exists. What
+    // she gives up in throw she is meant to take back in where the ball goes
+    // afterwards, which is the only thing her second path buys.
+    range: 135,
     // Slow, and measured into being so. A ball that rolls through a queue
     // multiplies its damage by however long the queue is, so the rate is the
-    // only place that multiplication can be paid for.
+    // only place that multiplication can be paid for -- and it is where the
+    // capstone fork was paid for. Solid Ball sends the whole hit through both
+    // people, which took one ball from 42 and 13 to 42 and 42, and at 72 the
+    // bowling board finished the campaign with 22.5 of 25 points in hand. That
+    // is the one thing this project calls a failure outright: a board that
+    // finishes untouched makes every other board a mistake rather than a
+    // choice. Eighty brings it to 15.4, which is where `corner` and `wall`
+    // already sit.
     //
-    // It was 84 while the ball arrived instantly, because at 72 she cleared
-    // the campaign with 21.7 of 25 points still in hand -- the one thing this
-    // project calls a failure outright, since a board that finishes untouched
-    // makes every other board a mistake rather than a choice. Giving the ball
-    // its real travel time took that back out again: the same 72 now finishes
-    // the campaign on 11 points from 78% of seeds, which is where 84 sat
-    // before. The rate did not change its mind; the ball started taking a
-    // second to get there.
-    cooldown: 72,
+    // Handle this number carefully, because the board falls off a cliff just
+    // past it: 76 clears on 19.5 points, 80 on 15.4, and 84 clears only 37% of
+    // seeds on 8.3. The two obvious alternatives were measured and are not
+    // levers at all -- `pierceFalloff` moved the result by about a point
+    // across the whole range 0.15 to 0.3, because what carries the board is
+    // Solid Ball rather than the extra bodies, and a dearer capstone mostly
+    // delays the rest of the plan behind it.
+    //
+    // (It was 84 once before, while the ball arrived instantly and 72 cleared
+    // the campaign untouched. Giving the ball its real travel time took that
+    // back out again. The rate has been the answer both times.)
+    cooldown: 80,
     splash: 0,
     slowTicks: 0,
     slowFactor: 0,
@@ -195,38 +210,41 @@ export const TOWERS: Record<TowerId, TowerDef> = {
     // arrived before the eye found it, and a ball nobody watches travel is a
     // ball nobody sees go through anyone.
     projectileSpeed: 3.5,
-    // The ball keeps rolling. One body behind the first at baseline, which is
-    // deliberately no more than Bill's Piercing Shot buys him -- what differs
-    // is the scale each grows to. Bill stays one enormous hit that clips a
-    // second person; Betty grows into many modest hits down a queue.
+    // One body behind the first, and nothing she buys moves it except one
+    // capstone. Two people is what a Betty is worth all the way up: The Line
+    // buys her ground, not bodies, so a longer line finds the second person
+    // further away rather than finding a third. The Whole Lot is the single
+    // purchase that lifts the cap, and lifting it is the whole of what it is
+    // for -- see upgrades.ts.
     pierce: 1,
-    // Her second range, and the one her upgrades are about. The ball holds the
+    // Her second range, and the only thing The Line buys. The ball holds the
     // heading it was thrown on and lets the street bend away from it, so this
     // is how much garden it crosses after it stops aiming.
     //
-    // Deliberately short of a bought one. Ninety is about two cells, a bit
-    // over a third of a second at her ball's speed: enough to see the thing
-    // roll on and clip somebody standing right behind, and nowhere near
-    // enough to sweep a queue. Sweeping a queue is what The Line is for, and a
-    // path is only felt if the tower did not mostly have the thing already --
-    // at 220 the first tier was a fifth again of what she came with, and the
-    // roll she was bought for was one she already had. What either length is
-    // worth still depends entirely on where she stands: a line that happens to
-    // run along the street is worth several bodies, and one thrown across it
-    // is worth the one it was aimed at. The Line buys this and `pierce`
-    // together -- see the note on her tree in upgrades.ts for why neither is
-    // worth buying alone.
-    rollOut: 90,
-    // The ball loses its weight through a crowd. Without this a line shot
-    // multiplies instead of adding -- six Betties behind a wall shoot the same
-    // queue, so each is worth the whole queue again, and the measured result
-    // was a campaign cleared without losing a single point.
+    // Thirty is under a cell: a ball that carries just past the person it hit
+    // and stops. That is deliberate, because a path is only felt if the tower
+    // did not mostly have the thing already -- at 220 the first tier was a
+    // fifth again of what she came with, and the roll she was bought for was
+    // one she already had. From here every step of The Line is most of what
+    // she has. What either length is worth still depends entirely on where she
+    // stands: a line that happens to run along the street is worth the person
+    // standing behind, and one thrown across it is worth only the one it was
+    // aimed at.
+    rollOut: 30,
+    // The ball loses its weight the moment it has been through somebody. One
+    // step rather than a slope: the first person takes the whole hit and
+    // everybody after takes three tenths of it, not three tenths of whoever
+    // was in front of them. Compounding was right while the ball stopped after
+    // two people and wrong the moment one capstone let it through everybody --
+    // at three tenths of the one before, the fourth person in a line took
+    // three percent of a hit, so "through the whole lot" would have been a
+    // thing to watch rather than a thing to buy.
     //
-    // It was 0.55 while the carry was a lookup that mostly found nobody. Now
-    // that the ball is dangerous along the whole of its line it finds somebody
-    // almost every time -- 22 of 24 balls knocked down two people on round 14,
-    // against 1 of 12 on round 1, where the street is nearly empty -- so what
-    // it carries has to be worth less.
+    // Without a reduction at all a line shot multiplies instead of adding --
+    // six Betties behind a wall shoot the same queue, so each is worth the
+    // whole queue again, and the measured result was a campaign cleared
+    // without losing a single point. Removing it is therefore a purchase, and
+    // Solid Ball is the one that sells it: two people, both taking everything.
     pierceFalloff: 0.3,
   },
 };

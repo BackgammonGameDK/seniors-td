@@ -56,7 +56,7 @@ import {
   waveLabel,
 } from '../src/render/decisions.ts';
 import type { StatRow } from '../src/render/decisions.ts';
-import { UPGRADES } from '../src/sim/upgrades.ts';
+import { effectiveDef, UPGRADES } from '../src/sim/upgrades.ts';
 import { cooldownAt } from '../src/sim/world.ts';
 import type { Stats, Tower } from '../src/sim/types.ts';
 
@@ -318,6 +318,36 @@ describe('build cards', () => {
       `${Math.round(TOWERS.norah.range * 1.15)} px`,
     );
     expect(reachOf(describeStats(TOWERS.norah))).toBe(`${TOWERS.norah.range} px`);
+  });
+});
+
+describe('the line a carrying shot knocks down, in words', () => {
+  const knocksDown = (def: typeof TOWERS.betty) =>
+    describeStats(def).find((r) => r.label === 'Knocks down')?.value;
+
+  it('counts them while there is a number to count', () => {
+    expect(knocksDown(TOWERS.betty)).toContain(`${TOWERS.betty.pierce! + 1} in a line`);
+  });
+
+  it('words an unlimited line instead of printing one', () => {
+    // `Infinity + 1` is `Infinity`, and a template renders that as the word,
+    // so the panel read "Infinity in a line, whoever is in the way". Nothing
+    // asserted on this row at all until The Whole Lot came along.
+    const value = knocksDown({ ...TOWERS.betty, pierce: Infinity })!;
+    expect(value).not.toContain('Infinity');
+    expect(value).toMatch(/everyone/);
+  });
+
+  it('never prints a raw Infinity in any row of any tower, however it is upgraded', () => {
+    for (const id of TOWER_IDS) {
+      for (const cap of UPGRADES[id].capstones) {
+        const t = tower({ def: id, upgradeA: 2, upgradeB: 2, capstone: cap.id });
+        const rows = describeStats(effectiveDef(t));
+        for (const row of rows) {
+          expect(`${row.label} ${row.value}`, `${id} / ${cap.id}`).not.toContain('Infinity');
+        }
+      }
+    }
   });
 });
 

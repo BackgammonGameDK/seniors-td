@@ -143,38 +143,43 @@ export const UPGRADES: { [T in TowerId]: TowerUpgrades<T> } = {
     ],
   },
   betty: {
-    // Both paths multiply, which is why neither goes as far as it looks like
-    // it should: damage is paid once per body the ball passes through, so
-    // weight and line are the same number wearing two hats. The Whole Lot was
-    // six and is four for that reason -- at six, a maxed Betty behind a wall
-    // was dealing more than three Deadeye Bills at once.
+    // Weight is hers all the way up; The Line is ground and nothing else. The
+    // two used to be the same number wearing two hats -- damage is paid once
+    // per body, so a tier that bought a body bought damage -- and the fork at
+    // the end was two ways of saying "more". Splitting them is what makes the
+    // fork a decision: everything before it is how far the ball goes, and the
+    // capstone decides what the line is worth when it gets there.
     pathA: [
       { cost: 30, stat: { damage: 22 } },
       { cost: 50, stat: { damage: 27 } },
     ],
-    // Betty is the one tower with two ranges, and this is the second of them:
-    // `range` is how far she can throw, `rollOut` how much street the ball has
-    // once it stops aiming. The path buys both halves of the same sentence --
-    // one more body, and the road to find them on -- because buying either
-    // alone buys nothing. Bodies without road is a ball that runs out of
-    // street before it has spent them, which is what The Whole Lot was: six
-    // people's worth of ball with 220px to find them in. Road without bodies
-    // is a spent ball rolling politely past everyone.
-    //
-    // Roughly a doubling a step, from a baseline that is deliberately much
-    // shorter than any of them (90). An even ramp was chosen over a big first
-    // tier and small ones after it -- 200/330/520 against 300/400/560 -- on
-    // 120 seeds apiece, where the two were the same board to within a seed:
-    // 97% held on 12.6 lives against 98% on 12.5. Nothing was being measured
-    // between them, so the choice was made on what a purchase feels like, and
-    // three steps that each double are three purchases that each show.
+    // Distance only. No tier here moves `pierce`, so two people is what a
+    // Betty is worth however much road she buys: a longer line finds the
+    // second one further away rather than finding a third. Seventy and a
+    // hundred and ten against a baseline of thirty, so each step is most of
+    // what she had -- and the capstones deliberately leave the length alone,
+    // which makes the second tier her longest line.
     pathB: [
-      { cost: 30, stat: { pierce: 2, rollOut: 200 } },
-      { cost: 50, stat: { pierce: 3, rollOut: 330 } },
+      { cost: 30, stat: { rollOut: 70 } },
+      { cost: 50, stat: { rollOut: 110 } },
     ],
+    // The fork, and the only place the two-person cap is ever discussed.
+    //
+    // Solid Ball keeps the cap and removes the penalty behind it: two people,
+    // both taking the whole hit. The Whole Lot keeps the penalty and removes
+    // the cap: everybody the ball touches, each one after the first at three
+    // tenths. One is two big hits, the other is many small ones, and neither
+    // is a larger version of the other -- which is the point, since what they
+    // replaced was 42 damage against five bodies, both of which read as "more
+    // damage" to anybody adding it up.
+    //
+    // Which one wins is a question about the board rather than about the
+    // numbers. Solid Ball's gain is certain and arrives on every single ball;
+    // The Whole Lot's needs a queue standing in a line to collect, which is
+    // what a blockade is for.
     capstones: [
-      { id: 'solidBall', cost: 145, stat: { damage: 42 } },
-      { id: 'theWholeLot', cost: 135, stat: { pierce: 5, rollOut: 520 } },
+      { id: 'solidBall', cost: 145, stat: { damage: 42, pierceFalloff: 1 } },
+      { id: 'theWholeLot', cost: 135, stat: { pierce: Infinity } },
     ],
   },
 };
