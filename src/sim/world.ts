@@ -263,6 +263,9 @@ export function placeTower(w: World, def: TowerId, col: number, row: number): bo
     revivesUsed: 0,
     reviveAt: null,
     targetId: null,
+    aimAngle: null,
+    jetOn: false,
+    jetReach: 0,
     sentHome: 0,
   });
   return true;
@@ -409,6 +412,7 @@ export function spawnEnemy(w: World, def: EnemyId, dist: number, scale = 1): Ene
     dropCooldown: d.dropInterval,
     regenCd: d.regenDelayTicks,
     slipCooldown: 0,
+    shovedThisTick: 0,
     speedMult: 1,
     shield: 0,
     blockedBy: null,
@@ -433,6 +437,122 @@ function within(ax: number, ay: number, bx: number, by: number, r: number): bool
   const dx = ax - bx;
   const dy = ay - by;
   return dx * dx + dy * dy <= r * r;
+}
+
+/**
+ * How much of the turn towards a new mark a defender covers each tick.
+ *
+ * This used to live in the renderer, where it was free to be cosmetic. It is
+ * not cosmetic any more: Harold's water lands where he is looking, so the
+ * column that is drawn and the column that soaks people have to be the same
+ * column, and there can only be one heading for them to share. Exported for
+ * `src/render/`, which turns the characters by it.
+ */
+export const TURN_RATE = 0.2;
+
+/**
+ * One tick of a turn from `current` towards `desired`, both in radians.
+ *
+ * Takes the short way round, so a defender swinging past due west turns
+ * through a few degrees rather than most of a circle.
+ */
+export function easeAngle(current: number, desired: number, rate: number): number {
+  let diff = desired - current;
+  while (diff > Math.PI) diff -= Math.PI * 2;
+  while (diff < -Math.PI) diff += Math.PI * 2;
+  return current + diff * rate;
+}
+
+/**
+ * Half-widths of a jet's column, at the nozzle and at the far end.
+ *
+ * A hose spreads, so the water is a wedge rather than a stripe -- and the
+ * spread is what decides whether a jet soaks a queue or picks one person out
+ * of it, which makes these two numbers the first dial to turn if Harold comes
+ * back from the harness too strong or too weak.
+ *
+ * Exported because `src/render/` draws the same wedge from the same two
+ * numbers. A renderer with its own idea of the width would be drawing a column
+ * that is not the one doing the soaking, which is the whole reason the heading
+ * moved into the simulation in the first place.
+ */
+export const JET_HALF_NEAR = 4;
+export const JET_HALF_FAR = 12;
+
+/**
+ * Is this point standing in the water?
+ *
+ * The first thing in the simulation that is not a circle. The column starts at
+ * the nozzle, runs `reach` pixels along (`dirX`,`dirY`) -- a unit vector -- and
+ * widens on the way.
+ *
+ * `path.ts` has a general point-to-segment distance already, and this does not
+ * call it, on purpose: how far along the column a point sits is the same
+ * number that says how wide the column is there, so a function that returned
+ * only the distance would throw that away and make us find it again. Done by
+ * hand it costs one dot product and no square root, which is the same bargain
+ * `within` takes.
+ */
+export function underJet(
+  px: number,
+  py: number,
+  nx: number,
+  ny: number,
+  dirX: number,
+  dirY: number,
+  reach: number,
+): boolean {
+  const along = (px - nx) * dirX + (py - ny) * dirY;
+  if (along < 0 || along > reach) return false;
+  const t = reach === 0 ? 0 : along / reach;
+  const half = JET_HALF_NEAR + (JET_HALF_FAR - JET_HALF_NEAR) * t;
+  const offX = px - (nx + dirX * along);
+  const offY = py - (ny + dirY * along);
+  if (offX * offX + offY * offY > half * half) return false;
+  // The spread has to be taken back out of the end, or the far corners of the
+  // wedge would sit at `hypot(reach, JET_HALF_FAR)` -- about a pixel past the
+  // ring drawn around him, on the diagonal. The ring is a promise about what he
+  // can touch, so the water ends in a curve rather than square across.
+  return within(px, py, nx, ny, reach);
+}
+
+/**
+ * The most of anyone's own walk the water may take off them in a tick.
+ *
+ * The rail under the shove, and it is written as a fraction of their speed
+ * rather than as a number of pixels so that one sentence stays true for
+ * everybody: water slows you down, it never walks you backwards. A flat push
+ * big enough to matter against Sam would simply park Duke, who covers 0.55 px
+ * a tick, and a street that stops arriving is the failure this game cares
+ * about most.
+ */
+const MAX_SHOVE_FRAC = 0.4;
+
+/**
+ * Ground taken off a troublemaker by the water standing on them.
+ *
+ * Capped per tick rather than per hose -- `shovedThisTick` is what makes a
+ * second Harold on the same person buy damage and a better chance of the slip
+ * instead of a longer push. That is the bargain `SLIP_COOLDOWN_TICKS` strikes
+ * on the other half of the same defender, arriving here for the same reason.
+ *
+ * The cap is read off the enemy's own definition rather than off `speedMult`,
+ * so a stunned or slowed troublemaker is still shoved: water that stopped
+ * working on somebody standing still would be the one thing a player can see
+ * is wrong.
+ */
+function shove(w: World, e: Enemy, push: number): void {
+  const cap = ENEMIES[e.def].speed * MAX_SHOVE_FRAC;
+  const want = Math.min(push, cap) - e.shovedThisTick;
+  if (want <= 0) return;
+  e.shovedThisTick += want;
+  e.dist = Math.max(0, e.dist - want);
+  const p = pointAt(e.dist);
+  e.x = p.x;
+  e.y = p.y;
+  // Sliding back can only take them away from whatever they had walked up to,
+  // same as a slip does.
+  e.blockedBy = null;
 }
 
 /**
@@ -526,6 +646,11 @@ function advanceEffects(w: World): void {
     }
     if (e.stunTicks > 0) e.stunTicks--;
     if (e.slipCooldown > 0) e.slipCooldown--;
+    // Cleared here rather than after the hoses have had their turn, for the
+    // same reason `speedMult` is settled in one place: the cap on how far
+    // water may push somebody is a fact about the tick, so the tick is what
+    // resets it.
+    e.shovedThisTick = 0;
     // Only counts while nobody is shouting, so fatigue eases off during a lull
     // rather than during the stun it is already shortening.
     if (e.stunTicks === 0 && e.stunFatigue > 0) {
@@ -855,28 +980,95 @@ const ROLL_CONTACT = 12;
 /** How far off the garden a rolling shot may get before it is gone. */
 const OFF_BOARD = 30;
 
+/**
+ * Who everybody is looking at, and which way round that leaves them.
+ *
+ * A separate pass from `fireTowers`, and it has to be: the firing loop gives up
+ * early on a tower that is asleep or reloading, and a jet whose water was only
+ * decided on the ticks it happened to fire would be a column that strobed on
+ * and off thirty-four times a second. Aiming is something a defender does
+ * continuously; shooting is something they do now and then.
+ *
+ * `jetOn` and `jetReach` are cleared at the top of every iteration and derived
+ * again from scratch, the same discipline `advanceAuras` follows, so a jet
+ * cannot leak or outlive whatever turned it on.
+ *
+ * The held mark is only dropped once it is dead or out of range, so the common
+ * case costs a lookup rather than a sweep. Note that this makes a jet *hold*
+ * its mark, where a projectile tower re-picks the furthest-along one on every
+ * shot: a column that twitched between people every half second would be
+ * unreadable. It also means the water lags behind a sweep, soaking everyone
+ * between the old mark and the new one on the way past. That is the point of
+ * it, not a fault in it.
+ */
+function advanceAim(w: World): void {
+  for (const t of w.towers) {
+    t.jetOn = false;
+    t.jetReach = 0;
+    const d = effectiveDef(t);
+    // A pulse tower shouts at everyone at once, so it has nobody to face, and
+    // support and blocker towers never look at anything at all.
+    if (d.mode === 'support' || d.mode === 'blocker' || d.mode === 'pulse') continue;
+
+    const range = d.range * t.rangeMult;
+    const held = t.targetId === null ? undefined : w.enemies.find((e) => e.id === t.targetId);
+    const keep = held !== undefined && held.alive && within(held.x, held.y, t.x, t.y, range);
+    const target = keep ? held : findTarget(w, t, range);
+    t.targetId = target?.id ?? null;
+
+    if (target !== null && target !== undefined) {
+      const want = Math.atan2(target.y - t.y, target.x - t.x);
+      // A defender who has never had anybody to look at snaps round to their
+      // first one rather than sweeping over from an invented heading.
+      t.aimAngle = t.aimAngle === null ? want : easeAngle(t.aimAngle, want, TURN_RATE);
+      // Tina turns the water off along with everything else, and a defender
+      // with nobody in range is not spraying the empty street.
+      if (d.mode === 'jet' && !t.disabled) {
+        t.jetOn = true;
+        t.jetReach = range;
+      }
+    }
+  }
+}
+
 function fireTowers(w: World): void {
   for (const t of w.towers) {
     const d = effectiveDef(t);
     if (d.mode === 'support' || d.mode === 'blocker') continue;
 
-    // Who this tower is aimed at, kept current even while it is on cooldown or
-    // asleep -- the renderer turns the character to face this, and a tower
-    // that snapped back to upright between shots would look broken. A pulse
-    // tower shouts at everyone at once, so it has no one to face.
-    //
-    // Nothing here changes what gets shot: the shot still comes from
-    // `findTarget` below. The held target is only dropped once it is dead or
-    // out of range, so the common case costs a lookup rather than a sweep.
-    if (d.mode !== 'pulse') {
-      const facingRange = d.range * t.rangeMult;
-      const held = t.targetId === null ? undefined : w.enemies.find((e) => e.id === t.targetId);
-      const keep = held !== undefined && held.alive && within(held.x, held.y, t.x, t.y, facingRange);
-      if (!keep) t.targetId = findTarget(w, t, facingRange)?.id ?? null;
-    }
     // A disabled tower does nothing at all, cooldown included, so Tina costs
     // real shots rather than merely delaying them.
     if (t.disabled) continue;
+
+    // Above the cooldown gate, because the water is on every tick whether or
+    // not this is a tick it counts for. `advanceAim` has already decided where
+    // it points and how far it goes.
+    if (d.mode === 'jet') {
+      if (!t.jetOn || t.aimAngle === null) continue;
+      const bite = t.cooldown === 0;
+      if (!bite) t.cooldown--;
+      const dirX = Math.cos(t.aimAngle);
+      const dirY = Math.sin(t.aimAngle);
+      const push = d.jetPush ?? 0;
+      let soaked = false;
+      // No snapshot here, unlike a splash: anything a kill creates goes into
+      // `pendingSpawns` and is not flushed until the end of the tick, so
+      // `w.enemies` cannot grow underneath this loop.
+      for (const e of w.enemies) {
+        if (!e.alive) continue;
+        if (!underJet(e.x, e.y, t.x, t.y, dirX, dirY, t.jetReach)) continue;
+        soaked = true;
+        // `d` goes in whole as the effect, exactly as the pulse branch does,
+        // so slip, slow and stun ride the water with no new plumbing.
+        if (bite) applyHit(w, e, d.damage, d, t.id);
+        if (push > 0 && e.alive) shove(w, e, push);
+      }
+      // Only a bite that found somebody starts the clock again, the same way a
+      // shout nobody heard costs Pete nothing -- so a jet sweeping onto a fresh
+      // crowd counts on the tick the first of them steps into the water.
+      if (bite && soaked) t.cooldown = effectiveCooldown(t);
+      continue;
+    }
     if (t.cooldown > 0) {
       t.cooldown--;
       continue;
@@ -1102,6 +1294,7 @@ export function step(w: World): void {
   advanceBlockers(w);
   advanceEnemies(w);
   advanceDrops(w);
+  advanceAim(w);
   fireTowers(w);
   advanceProjectiles(w);
   flushSpawns(w);

@@ -62,7 +62,8 @@ export const TOWER_LOOK: Record<TowerId, TowerLook> = {
   },
   harold: {
     name: 'Hose Harold',
-    blurb: 'Sprays water close by. Some of them slip and slide back down the street.',
+    blurb:
+      'Holds a jet of water on the street. Everyone standing in it gets wet, and some of them slip and slide back down it.',
     color: '#4fc3f7',
     glyph: '💦',
   },

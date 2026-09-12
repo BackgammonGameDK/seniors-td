@@ -105,7 +105,17 @@ export type TowerMode =
   /** Never fires. Buffs towers near it. */
   | 'support'
   /** Never fires. Stands on the lane and is attacked. */
-  | 'blocker';
+  | 'blocker'
+  /**
+   * Holds a column of water on the street in front of itself, continuously.
+   *
+   * The column is a real thing with a length and a width, tested against where
+   * people are actually standing every tick, so what it soaks falls out of
+   * where it is pointing rather than out of a target lookup. It sweeps as the
+   * defender turns, which means the heading has to be simulation state: see
+   * `Tower.aimAngle`.
+   */
+  | 'jet';
 
 export interface TowerDef {
   id: TowerId;
@@ -195,6 +205,17 @@ export interface TowerDef {
   slipChance?: number;
   /** Pixels back along the lane a slip sends them. 0 moves nobody. */
   slipPush?: number;
+  /**
+   * Pixels of ground the water takes off anyone standing in it, every tick.
+   * 0 shoves nobody, which is everybody except a Harold on Full Mains.
+   *
+   * Small and constant rather than occasional and large, which is what makes
+   * it a different thing from `slipPush`: pressure holds a crowd off the
+   * street while the water is on them, where a slip takes one person down and
+   * rewinds them. `shove` in `world.ts` caps it against the target's own walk
+   * so that no number of hoses can ever walk anybody backwards.
+   */
+  jetPush?: number;
 }
 
 export interface EnemyDef {
@@ -329,6 +350,17 @@ export interface Enemy {
    * `applyHit` and `advanceEffects` and nowhere else.
    */
   slipCooldown: number;
+  /**
+   * Pixels of ground water has already taken off this troublemaker this tick.
+   *
+   * Reset in `advanceEffects` and added to by `shove`, so the cap on how much
+   * a jet may push is per tick rather than per hose. A second Harold on the
+   * same person therefore buys damage and a better chance of the slip, never a
+   * longer push -- the same bargain `slipCooldown` strikes, and for the same
+   * reason: a street that stops arriving is the failure this game cares about
+   * most.
+   */
+  shovedThisTick: number;
   /** Derived from the two above every tick. Never written directly. */
   speedMult: number;
   /** Derived from nearby shield carriers every tick. Never written directly. */
@@ -374,17 +406,46 @@ export interface Tower {
   reviveAt: number | null;
   /**
    * Id of the enemy this tower is currently aimed at, or null when it has none
-   * in range. Written by `fireTowers` every tick, including ticks where the
+   * in range. Written by `advanceAim` every tick, including ticks where the
    * tower is on cooldown or disabled, and held until the enemy dies or leaves
-   * range.
+   * range. A projectile tower's own shot refreshes it afterwards, so it keeps
+   * up with whoever was actually fired at.
    *
-   * Purely cosmetic: it exists so `src/render/` can turn the character to face
-   * what it is shooting without re-running the targeting logic itself. This
-   * game has no aim mechanic, and nothing in the simulation reads this field.
-   * Always null for support, blocker and pulse towers, which have no single
-   * enemy to face.
+   * It exists so `src/render/` can turn the character to face what it is
+   * shooting without re-running the targeting logic itself. Always null for
+   * support, blocker and pulse towers, which have no single enemy to face.
    */
   targetId: number | null;
+  /**
+   * The way this defender is looking, in radians, or null before they have
+   * ever had anyone to look at.
+   *
+   * Eased one step a tick towards the held target by `advanceAim`, which is
+   * the only thing that may write it. This used to be the renderer's own
+   * business and is not any more: a jet's water lands where the defender is
+   * looking, so the column that is drawn and the column that soaks people have
+   * to be the same column, and there can only be one heading for them to
+   * share. Carried for every tower rather than only for jets, because two
+   * facings with one of them load-bearing is exactly the kind of drift that
+   * goes unnoticed until it is wrong.
+   *
+   * Null rather than zero so a freshly placed defender snaps round to their
+   * first target instead of sweeping over from an invented heading, and so
+   * that the sprite's own idea of which way is forward stays in the renderer.
+   */
+  aimAngle: number | null;
+  /**
+   * Whether this defender's water is on. Derived every tick from whether they
+   * are a jet, awake, and have somebody in range -- never accumulated.
+   */
+  jetOn: boolean;
+  /**
+   * How far the water carries this tick, buffs folded in. Derived every tick.
+   *
+   * Stored rather than recomputed by the renderer so that the reach the
+   * simulation soaked with is the reach that gets drawn.
+   */
+  jetReach: number;
   /**
    * How many troublemakers this tower has finished off since it was placed.
    * Counts the hit that took an enemy to zero, so a splash that clears four

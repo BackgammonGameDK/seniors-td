@@ -138,7 +138,12 @@ export const UPGRADES: { [T in TowerId]: TowerUpgrades<T> } = {
       { cost: 50, stat: { slipChance: 0.45 } },
     ],
     capstones: [
-      { id: 'fullMains', cost: 140, stat: { damage: 28, cooldown: 24 } },
+      // Pressure, as the thing pressure actually does. The damage comes down
+      // from 28 to pay for the shove: what this buys is the water holding a
+      // crowd off the street while it is on them, not another five points a
+      // soaking. Soapy Water stays the other shape entirely -- rare, huge, and
+      // one person rewound rather than everybody leant on.
+      { id: 'fullMains', cost: 140, stat: { damage: 24, cooldown: 24, jetPush: 0.35 } },
       { id: 'soapyWater', cost: 130, stat: { slipChance: 0.75, slipPush: 90 } },
     ],
   },
@@ -196,6 +201,7 @@ const EXTRAS_DEFAULT = {
   rangeBuffBonus: 0,
   slipChance: 0,
   slipPush: 0,
+  jetPush: 0,
 } satisfies Partial<TowerDef>;
 
 /**
