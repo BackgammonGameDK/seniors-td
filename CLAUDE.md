@@ -48,7 +48,7 @@ hex colours, display names or blurbs in `src/sim/`.
 | `src/sim/upgrades.ts` | Two paths per defender and the final fork between them, plus `effectiveDef()` -- the only way to read a defender's bought stats. |
 | `src/sim/economy.ts` | Bounties, the round clear bonus, and what selling returns. |
 | `src/sim/builds.ts` | Eleven named boards the campaign harness plays: eight archetypes, plus `corner`, `binoculars` and `wall`, boards played by hand and kept verbatim. |
-| `src/sim/loadout.ts` | The `towerId@col,row` grammar the harnesses parse. |
+| `src/sim/loadout.ts` | The `towerId@col,row` grammar the harnesses parse, and `applyPlacement`, the one way either harness turns an entry into towers. |
 | `src/harness-args.ts` | Where a harness gets its board from: `--loadout`, or `--loadout-file`. |
 | `src/shared/display.ts` | Names, colours, radii, emoji. Both layers may read it. |
 | `src/shared/upgrades.ts` | The words and pictures for the upgrades. Presentational half of `src/sim/upgrades.ts`. |

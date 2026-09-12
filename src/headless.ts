@@ -17,14 +17,13 @@
 import { parseArgs } from 'node:util';
 import { loadoutText, run, wholeNumberArg } from './harness-args.ts';
 import { ECONOMY } from './sim/economy.ts';
-import { describePlacement, parseLoadout } from './sim/loadout.ts';
+import { applyPlacement, describePlacement, parseLoadout } from './sim/loadout.ts';
 import type { Placement } from './sim/loadout.ts';
-import { isBlockerCell, isBuildableCell, nearestCell } from './sim/path.ts';
-import { TOWERS } from './sim/towers.ts';
+import { nearestCell } from './sim/path.ts';
 import { ENEMY_IDS } from './sim/types.ts';
 import type { EnemyId } from './sim/types.ts';
 import { WAVES } from './sim/waves.ts';
-import { createWorld, placeTower, purchaseUpgrade, startWave, step } from './sim/world.ts';
+import { createWorld, startWave, step } from './sim/world.ts';
 
 /** Rounds cannot run forever: a stalled sim must fail loudly, not hang. */
 const MAX_TICKS = 60 * 240;
@@ -73,16 +72,7 @@ function runWave(waveIndex: number, plan: Placement[], seed: number) {
   const w = createWorld(seed);
   w.gold = 1e9;
   w.waveIndex = waveIndex;
-  for (const p of plan) {
-    const ok =
-      TOWERS[p.def].mode === 'blocker' ? isBlockerCell(p.col, p.row) : isBuildableCell(p.col, p.row);
-    if (!ok) throw new Error(`illegal placement ${describePlacement(p)} for ${p.def}`);
-    placeTower(w, p.def, p.col, p.row);
-    const t = w.towers[w.towers.length - 1]!;
-    for (let i = 0; i < p.upgradeA; i++) purchaseUpgrade(w, t.id, 'pathA');
-    for (let i = 0; i < p.upgradeB; i++) purchaseUpgrade(w, t.id, 'pathB');
-    if (p.capstone) purchaseUpgrade(w, t.id, p.capstone);
-  }
+  for (const p of plan) applyPlacement(w, p);
   w.gold = 0;
   w.lives = ECONOMY.startLives;
   startWave(w);

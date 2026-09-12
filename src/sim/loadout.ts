@@ -1,6 +1,10 @@
+import { isBlockerCell, isBuildableCell } from './path.ts';
+import { TOWERS } from './towers.ts';
 import { TOWER_IDS } from './types.ts';
-import type { CapstoneId, TowerId } from './types.ts';
+import type { CapstoneId, Tower, TowerId } from './types.ts';
 import { UPGRADES } from './upgrades.ts';
+import { placeTower, purchaseUpgrade, towerAt } from './world.ts';
+import type { World } from './world.ts';
 
 /**
  * The loadout grammar shared by every harness.
@@ -85,4 +89,52 @@ export function describePlacement(p: Placement): string {
     p.capstone ? `:${p.capstone}` : '',
   ].join('');
   return bits ? `${base}+${bits}` : base;
+}
+
+/**
+ * Carries out one entry on a world, and returns the tower it describes.
+ *
+ * An entry is the state of its cell, not a purchase: `norah@3,4+a1` means a
+ * Norah on 3,4 with one tier of path A, whether or not she is already
+ * standing there. A cell written twice is therefore one tower written down
+ * twice -- which is exactly what a board saved with `L` looks like, one entry
+ * per purchase, each carrying everything bought on that cell so far.
+ *
+ * Both harnesses call this rather than keeping a loop each. They used to, and
+ * `npm run sim` read a repeated cell as a second tower that failed to place,
+ * then handed its upgrades to whichever tower had been built last: 5 of
+ * `corner`'s 13 towers, 3 of `binoculars`' 10 and 4 of `wall`'s 15 ended with
+ * the wrong upgrades, and nothing said so. That is the drift the header warns
+ * about, in what an entry means rather than in how it is spelled.
+ *
+ * Every purchase must already be affordable -- the campaign prices an entry
+ * before carrying it out, and `npm run sim` hands the world a bottomless
+ * purse. Anything refused throws, because a plan that cannot be carried out is
+ * not the plan being measured.
+ */
+export function applyPlacement(w: World, p: Placement): Tower {
+  let t = towerAt(w, p.col, p.row);
+  if (!t) {
+    const legal =
+      TOWERS[p.def].mode === 'blocker' ? isBlockerCell(p.col, p.row) : isBuildableCell(p.col, p.row);
+    if (!legal) throw new Error(`illegal placement ${describePlacement(p)} for ${p.def}`);
+    if (!placeTower(w, p.def, p.col, p.row)) {
+      throw new Error(`could not place ${describePlacement(p)}`);
+    }
+    t = w.towers[w.towers.length - 1]!;
+  } else if (t.def !== p.def) {
+    throw new Error(`plan puts ${p.def} on cell ${p.col},${p.row} already holding ${t.def}`);
+  }
+  while (t.upgradeA < p.upgradeA) {
+    if (!purchaseUpgrade(w, t.id, 'pathA')) throw new Error(`pathA refused for ${p.def}`);
+  }
+  while (t.upgradeB < p.upgradeB) {
+    if (!purchaseUpgrade(w, t.id, 'pathB')) throw new Error(`pathB refused for ${p.def}`);
+  }
+  if (p.capstone && !t.capstone) {
+    if (!purchaseUpgrade(w, t.id, p.capstone)) {
+      throw new Error(`capstone ${p.capstone} refused for ${p.def}`);
+    }
+  }
+  return t;
 }
