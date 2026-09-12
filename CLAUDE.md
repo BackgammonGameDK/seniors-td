@@ -164,6 +164,26 @@ typecheck and the *full* suite on every pull request.
 and publishes to GitHub Pages, so a commit that fails either one cannot reach
 the public page. Both have been verified to fail when violated.
 
+## Cost
+
+Every turn re-sends the whole conversation, so the cheap move is a shorter
+conversation, not a cleverer prompt.
+
+- **One session per task.** Finish it, then start a new one. A long session
+  re-bills its early turns on every later turn.
+- **Check the game in the browser early, or in its own session.** A browser
+  pass at the end of a long session is the most expensive thing here: every
+  fumbling step is billed against the full context. A *hidden* Browser pane
+  freezes the animation, so front the tab before screenshotting, and prefer
+  `read_page` to a screenshot for text and structure.
+- **Delegate noise, not thinking.** The full suite and `npm run campaign`
+  belong in the `qa` agent (haiku), whose output then never enters this
+  context. Searching thirty-odd files does not -- grep is cheaper than an
+  agent that starts cold.
+- **Trim shell output where it is produced.** `npm test 2>&1 | tail -20`,
+  `npm run campaign -- --json | jq`. Anything read once is re-read every turn
+  afterwards.
+
 ## Git
 
 - Substantial work gets a feature branch and a pull request. Nothing lands on
