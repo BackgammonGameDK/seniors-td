@@ -4,9 +4,9 @@ import { parseLoadout } from '../src/sim/loadout.ts';
 import type { Placement } from '../src/sim/loadout.ts';
 import { ENEMIES } from '../src/sim/enemies.ts';
 import { TOWERS } from '../src/sim/towers.ts';
-import { createWorld, placeTower, purchaseUpgrade } from '../src/sim/world.ts';
+import { createWorld, placeTower, purchaseUpgrade, spawnEnemy } from '../src/sim/world.ts';
 import { TOWER_IDS } from '../src/sim/types.ts';
-import { AUTHORED_ROUNDS } from '../src/sim/waves.ts';
+import { AUTHORED_ROUNDS, waveAt } from '../src/sim/waves.ts';
 import {
   ABSORB_HINT_MS,
   absorbHintLeft,
@@ -18,6 +18,7 @@ import {
   armTower,
   boardAction,
   capstoneLocked,
+  carryReach,
   cardState,
   describeStats,
   easeAngle,
@@ -26,6 +27,7 @@ import {
   hintText,
   hoveredStat,
   upgradeChoiceOf,
+  previewRing,
   previewStats,
   endOverlay,
   enemyReadout,
@@ -316,6 +318,40 @@ describe('build cards', () => {
       `${Math.round(TOWERS.norah.range * 1.15)} px`,
     );
     expect(reachOf(describeStats(TOWERS.norah))).toBe(`${TOWERS.norah.range} px`);
+  });
+});
+
+describe('the second range, on the one tower that has two', () => {
+  it('is the throw plus the roll, for the ring the board draws outside the first', () => {
+    expect(carryReach(TOWERS.betty)).toBe(TOWERS.betty.range + TOWERS.betty.rollOut!);
+  });
+
+  it('widens with a neighbour, since a further throw is a further ball', () => {
+    expect(carryReach(TOWERS.betty, 1.15)).toBeGreaterThan(carryReach(TOWERS.betty)!);
+  });
+
+  it('is nothing at all for everyone who does not roll', () => {
+    expect(carryReach(TOWERS.norah)).toBeNull();
+    expect(carryReach(TOWERS.barbara)).toBeNull();
+    expect(carryReach(TOWERS.walter)).toBeNull();
+  });
+
+  it('previews a reach tier as the reach it buys', () => {
+    const tier = UPGRADES.norah.pathB[0];
+    expect(previewRing(TOWERS.norah, tier.stat)).toBe(tier.stat.range);
+  });
+
+  it('previews a roll tier as where the ball ends up, since the throw does not move', () => {
+    // Betty's whole second path. Without this the hovered card drew her
+    // unchanged throw circle, which reads as an upgrade that does nothing.
+    const tier = UPGRADES.betty.pathB[0];
+    expect(tier.stat.range).toBeUndefined();
+    expect(previewRing(TOWERS.betty, tier.stat)).toBe(TOWERS.betty.range + tier.stat.rollOut!);
+    expect(previewRing(TOWERS.betty, tier.stat)!).toBeGreaterThan(carryReach(TOWERS.betty)!);
+  });
+
+  it('previews nothing for a card that moves neither', () => {
+    expect(previewRing(TOWERS.betty, UPGRADES.betty.pathA[0].stat)).toBeNull();
   });
 });
 
@@ -860,32 +896,52 @@ describe('a tapped troublemaker stays on screen after the frame it was tapped in
 });
 
 describe('inspecting a troublemaker from the round preview, before it has spawned', () => {
-  it('reads at full health, unshielded, unscaled', () => {
-    expect(enemyTypeView('mike')).toEqual({
+  it('reads at full health and unshielded', () => {
+    expect(enemyTypeView('mike', 0)).toEqual({
       kind: 'enemyType',
       enemy: { def: 'mike', hp: ENEMIES.mike.hp, scale: 1, shield: 0 },
     });
   });
 
+  it('reads at the health the round it belongs to will give it', () => {
+    const round = 5;
+    const { scale } = waveAt(round);
+    expect(scale).toBeGreaterThan(1);
+    const view = enemyTypeView('mike', round);
+    expect(view).toEqual({
+      kind: 'enemyType',
+      enemy: { def: 'mike', hp: Math.round(ENEMIES.mike.hp * scale), scale, shield: 0 },
+    });
+  });
+
+  it('agrees to the number with the one that walks on, so the preview and the board never disagree', () => {
+    const round = 1;
+    const w = createWorld(4);
+    w.waveIndex = round;
+    const walked = spawnEnemy(w, 'sam', 0, waveAt(round).scale);
+    const previewed = enemyTypeView('sam', round);
+    expect(previewed?.kind === 'enemyType' ? previewed.enemy.hp : null).toBe(walked.hp);
+  });
+
   it('draws no selection ring, since nothing has walked on yet', () => {
-    expect(focusMark(enemyTypeView('mike'))).toBeNull();
+    expect(focusMark(enemyTypeView('mike', 0))).toBeNull();
   });
 
   it('keeps the same key frame after frame, so the panel does not rebuild while parked open', () => {
-    expect(focusKey(enemyTypeView('mike'))).toBe(focusKey(enemyTypeView('mike')));
+    expect(focusKey(enemyTypeView('mike', 0))).toBe(focusKey(enemyTypeView('mike', 0)));
   });
 
   it('tells two previewed types apart', () => {
-    expect(focusKey(enemyTypeView('mike'))).not.toBe(focusKey(enemyTypeView('gang')));
+    expect(focusKey(enemyTypeView('mike', 0))).not.toBe(focusKey(enemyTypeView('gang', 0)));
   });
 
   it('never collides with a live troublemaker of the same kind', () => {
     const walking = { id: 7, def: 'mike', hp: 90, scale: 1, shield: 0, x: 200, y: 140 } as const;
-    expect(focusKey(enemyTypeView('mike'))).not.toBe(focusKey({ kind: 'enemy', enemy: walking }));
+    expect(focusKey(enemyTypeView('mike', 0))).not.toBe(focusKey({ kind: 'enemy', enemy: walking }));
   });
 
   it('never collides with a defender panel', () => {
-    expect(focusKey(enemyTypeView('mike'))).not.toBe(
+    expect(focusKey(enemyTypeView('mike', 0))).not.toBe(
       focusKey({ kind: 'tower', tower: tower({ id: 7 }) }),
     );
   });

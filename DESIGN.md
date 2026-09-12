@@ -59,6 +59,21 @@ up behind the first person it hits, so she is paid for a *queue* the way
 Barbara is paid for a clump: worth little against one walker, worth a great
 deal against a line stopped at a blockade.
 
+She is also the one defender with **two ranges**, and they are two different
+kinds of thing. The first is how far she can throw: a circle, and she picks
+her target inside it. The second is how far the ball keeps rolling once it
+stops aiming, which is not a circle at all but a single straight line she can
+no longer steer -- the street is free to bend away from it. The board draws
+both, the inner one solid and the outer one faint, because the outer edge is
+the whole of what her placement is worth.
+
+Her second path, **The Line**, buys that second range, and buys one more body
+along with every step of it. The two halves are sold together because neither
+is worth anything alone. Bodies without road was the shape the path had
+before: The Whole Lot promised six people's worth of ball and gave it 220 px
+of street to find them in. Road without bodies is a spent ball rolling
+politely past everybody it passes.
+
 **Hose Harold** goes the other way and sees less than Norah does. What he buys
 with that short sight is the only effect on the board that sends anyone
 *backwards*: some fraction of his hits knocks them off their feet and slides

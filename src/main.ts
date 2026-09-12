@@ -80,7 +80,7 @@ function viewOf(): FocusView {
     const t = world.towers.find((x) => x.id === f.id);
     return t ? { kind: 'tower', tower: t } : null;
   }
-  if (f.kind === 'enemyType') return enemyTypeView(f.id);
+  if (f.kind === 'enemyType') return enemyTypeView(f.id, world.waveIndex);
   const e = world.enemies.find((x) => x.id === f.id && x.alive);
   return e ? { kind: 'enemy', enemy: e } : null;
 }

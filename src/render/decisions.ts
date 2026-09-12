@@ -15,7 +15,7 @@
 import { ENEMIES } from '../sim/enemies.ts';
 import { describePlacement } from '../sim/loadout.ts';
 import type { Placement } from '../sim/loadout.ts';
-import { TOWERS } from '../sim/towers.ts';
+import { DEFAULT_ROLL_OUT, TOWERS } from '../sim/towers.ts';
 import { TOWER_IDS } from '../sim/types.ts';
 import type {
   Enemy,
@@ -172,13 +172,21 @@ export type FocusView =
 
 /**
  * The view for a troublemaker type that hasn't spawned yet -- what the round
- * preview opens the panel on. Built from `ENEMIES` alone, since nothing
- * `enemyReadout` reads is per-instance until the thing actually walks on:
- * full health, no shield, no scale-up.
+ * preview opens the panel on.
+ *
+ * Full health and no shield, since neither is per-instance until the thing
+ * walks on. The round's `scale` is not optional in the same way: it is the
+ * whole of how a round grows, so a preview built without it reads 22 for a
+ * Sam the player is about to tap on the board and find at 23. Rounded the way
+ * `spawnEnemy` rounds, so the two cannot disagree by a fraction either.
  */
-export function enemyTypeView(id: EnemyId): FocusView {
+export function enemyTypeView(id: EnemyId, waveIndex: number): FocusView {
   const d = ENEMIES[id];
-  return { kind: 'enemyType', enemy: { def: id, hp: d.hp, scale: 1, shield: 0 } };
+  const { scale } = waveAt(waveIndex);
+  return {
+    kind: 'enemyType',
+    enemy: { def: id, hp: Math.round(d.hp * scale), scale, shield: 0 },
+  };
 }
 
 /**
@@ -562,6 +570,39 @@ export function describeStats(def: TowerDef, buffs: Buffs = {}): StatRow[] {
     }
   }
   return rows;
+}
+
+/**
+ * How far a shot that carries reaches altogether: the throw, and then the roll
+ * it has left once it stops aiming.
+ *
+ * Null for everyone who does not roll, which is everybody but Betty and a Bill
+ * who bought Piercing Shot. Deliberately not folded into `range`: the throw is
+ * a circle she picks a target inside, the roll is a straight line she cannot
+ * steer once it is going, so this is the outer edge of what one ball could
+ * touch rather than a range in the ordinary sense. The board draws it as a
+ * second, fainter ring for exactly that reason.
+ */
+export function carryReach(def: TowerDef, rangeMult = 1): number | null {
+  if ((def.pierce ?? 0) <= 0 || def.splash > 0) return null;
+  const roll = def.rollOut ?? DEFAULT_ROLL_OUT;
+  if (roll <= 0) return null;
+  return Math.round(def.range * rangeMult + roll);
+}
+
+/**
+ * The circle the board should preview while an upgrade card is under the
+ * pointer, or null for a card that moves neither range.
+ *
+ * A tier that buys reach is its own answer. A tier that buys roll -- which is
+ * Betty's whole second path -- is answered by where the ball would end up
+ * instead, since her `range` does not move and a preview that drew the
+ * unchanged throw circle would say the upgrade does nothing.
+ */
+export function previewRing(def: TowerDef, stat: Partial<TowerDef>): number | null {
+  if (stat.range !== undefined) return stat.range;
+  if (stat.rollOut === undefined) return null;
+  return carryReach({ ...def, ...stat });
 }
 
 /**

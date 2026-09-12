@@ -185,13 +185,13 @@ export const UPGRADE_LOOK: { [T in TowerId]: TowerUpgradeLook<T> } = {
     pathB: {
       name: 'The Line',
       tiers: [
-        { name: 'Straighter Roll', blurb: 'Carries on through one more behind the first.' },
-        { name: 'Flat Road', blurb: 'Carries on through one more again.' },
+        { name: 'Straighter Roll', blurb: 'The ball rolls further on, and through one more of them.' },
+        { name: 'Flat Road', blurb: 'It rolls further again, and through one more again.' },
       ],
     },
     capstones: {
-      solidBall: { name: 'Solid Ball', blurb: 'Hits much harder, but rolls through no more of them.' },
-      theWholeLot: { name: 'The Whole Lot', blurb: 'Rolls all the way through four of them standing in a line.' },
+      solidBall: { name: 'Solid Ball', blurb: 'Hits much harder, but the ball rolls no further and through no more of them.' },
+      theWholeLot: { name: 'The Whole Lot', blurb: 'The ball rolls right across the street, through six of them standing in a line.' },
     },
   },
 };

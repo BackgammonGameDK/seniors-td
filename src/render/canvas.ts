@@ -8,7 +8,7 @@
 import { ENEMIES } from '../sim/enemies.ts';
 import { BOARD, cellCentre, PATH_POINTS } from '../sim/path.ts';
 import { TOWERS } from '../sim/towers.ts';
-import type { Enemy, SimEvent, Tower, TowerId } from '../sim/types.ts';
+import type { Enemy, SimEvent, Tower, TowerDef, TowerId } from '../sim/types.ts';
 import { effectiveDef } from '../sim/upgrades.ts';
 import { canPlace } from '../sim/world.ts';
 import type { World } from '../sim/world.ts';
@@ -18,6 +18,7 @@ import {
   easeAngleOver,
   staleKeys,
   facingAngle,
+  carryReach,
   focusMark,
   hudReadouts,
   roundReadout,
@@ -691,6 +692,33 @@ export class Renderer {
     g.setLineDash([6, 6]);
     g.stroke();
     g.setLineDash([]);
+    this.drawCarryReach(t, d);
+  }
+
+  /**
+   * Betty's second range: how far the ball could still be going after the
+   * throw. Unfilled and fainter than the throw circle, because it is not a
+   * circle she can pick a target inside -- the ball only ever travels one line
+   * out of it, and which line depends on who she aimed at. Drawn all the same,
+   * since where that outer edge falls is the whole of what her placement is
+   * worth, and nothing else on screen says it.
+   */
+  private drawCarryReach(t: Tower, d: TowerDef): void {
+    const reach = carryReach(d, t.rangeMult);
+    if (reach === null) return;
+    const g = this.g;
+    g.beginPath();
+    g.arc(t.x, t.y, reach, 0, Math.PI * 2);
+    // Fainter than the throw circle, but not by much: a one-pixel line at
+    // half alpha disappeared into the grass texture outright when it was
+    // looked at on the board, which is the only place it exists to be read.
+    g.strokeStyle = PALETTE.rangeLine;
+    g.globalAlpha = 0.7;
+    g.lineWidth = 2;
+    g.setLineDash([3, 9]);
+    g.stroke();
+    g.setLineDash([]);
+    g.globalAlpha = 1;
   }
 
   /**

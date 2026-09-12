@@ -152,13 +152,21 @@ export const UPGRADES: { [T in TowerId]: TowerUpgrades<T> } = {
       { cost: 30, stat: { damage: 22 } },
       { cost: 50, stat: { damage: 27 } },
     ],
+    // Betty is the one tower with two ranges, and this is the second of them:
+    // `range` is how far she can throw, `rollOut` how much street the ball has
+    // once it stops aiming. The path buys both halves of the same sentence --
+    // one more body, and the road to find them on -- because buying either
+    // alone buys nothing. Bodies without road is a ball that runs out of
+    // street before it has spent them, which is what The Whole Lot was: six
+    // people's worth of ball with 220px to find them in. Road without bodies
+    // is a spent ball rolling politely past everyone.
     pathB: [
-      { cost: 30, stat: { pierce: 2 } },
-      { cost: 50, stat: { pierce: 3 } },
+      { cost: 30, stat: { pierce: 2, rollOut: 300 } },
+      { cost: 50, stat: { pierce: 3, rollOut: 400 } },
     ],
     capstones: [
       { id: 'solidBall', cost: 145, stat: { damage: 42 } },
-      { id: 'theWholeLot', cost: 135, stat: { pierce: 5 } },
+      { id: 'theWholeLot', cost: 135, stat: { pierce: 5, rollOut: 560 } },
     ],
   },
 };

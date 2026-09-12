@@ -1245,6 +1245,27 @@ describe('a shot that carries down a line', () => {
     expect(now.y).toBeCloseTo(from.y + heading.y * gone, 4);
   });
 
+  it('rolls the further for having bought the line, and gets the bodies to spend on it', () => {
+    // Betty's second range. The path buys road and bodies together, so the
+    // test asserts both: a ball with more people in it than street to find
+    // them in was the shape The Line had before this, and it is worth nothing.
+    const w = rich();
+    const betty = put(w, 'betty', buildCellNear(400));
+    const plain = effectiveDef(betty);
+
+    expect(purchaseUpgrade(w, betty.id, 'pathB')).toBe(true);
+    const bought = effectiveDef(betty);
+    expect(bought.rollOut!).toBeGreaterThan(plain.rollOut!);
+    expect(bought.pierce!).toBeGreaterThan(plain.pierce!);
+
+    // And the ball is actually thrown with it, rather than the number sitting
+    // unread in the table: `rollLeft` is the street it has once it stops
+    // aiming, and it is set from `rollOut` the moment the shot leaves her.
+    spawnEnemy(w, 'sam', 400);
+    until(w, () => w.projectiles.length > 0);
+    expect(w.projectiles[0]!.rollLeft).toBe(bought.rollOut);
+  });
+
   it('cannot knock the same person down twice on one roll', () => {
     const w = rich();
     put(w, 'betty', buildCellNear(400));
