@@ -888,6 +888,26 @@ describe('recording a played board', () => {
     expect(recordingOf([at(4, 4)], 2).warning).toContain('2 towers were sent home');
   });
 
+  it('says so when a tower was built twice on one cell', () => {
+    // A garden wall knocked down and put back writes its cell's bare entry
+    // twice, and a harness reads both as the one tower standing there -- so
+    // the plan can spend less than was played. Upgrades on one cell are not a
+    // rebuild: every purchase writes at least one tier.
+    const upgraded = [at(4, 4), at(4, 4, { upgradeA: 1 }), at(4, 4, { upgradeA: 2 })];
+    expect(recordingOf(upgraded, 0).warning).toBeNull();
+    expect(recordingOf([at(4, 4), at(5, 4)], 0).warning).toBeNull();
+
+    const rebuilt = [at(4, 4, { def: 'walter' }), at(4, 4, { def: 'walter' })];
+    expect(recordingOf(rebuilt, 0).warning).toContain('1 tower was built again');
+    expect(recordingOf([...rebuilt, at(4, 4, { def: 'walter' })], 0).warning).toContain(
+      '2 towers were built again',
+    );
+
+    const both = recordingOf(rebuilt, 1).warning;
+    expect(both).toContain('1 tower was sent home');
+    expect(both).toContain('1 tower was built again');
+  });
+
   it('produces a plan the campaign harness will actually spend on', () => {
     // The real consumer, not just the parser: `costOf` prices an entry and
     // `apply` carries it out, and either can reject a plan the parser accepted.

@@ -433,10 +433,11 @@ In free play (`--endless`, 10 runs) the boards that clear go on for 1.6
 - **`builds.ts` keeps display text in `src/sim/`.** Its `blurb` strings break
   CLAUDE.md's rule of no blurbs in the simulation. Only the harness reads
   them, so either the rule gets a stated exception or the strings move.
-- **A Walter knocked down and rebuilt records as one Walter.** The saved board
-  then has his cell twice, and a harness reads the second entry as the Walter
-  already standing there, so it neither pays for the rebuild nor makes it.
-  `recordingOf` only warns about towers that were sold. No played board is
+- ~~**A Walter knocked down and rebuilt records as one Walter.**~~ Done, as a
+  warning rather than a fix, since the grammar cannot say "rebuilt". The saved
+  board has his cell twice, and a harness reads the second entry as the Walter
+  already standing there. `recordingOf` now counts a second placement on a
+  cell and says so in the box, as it already did for sells. No played board is
   affected: `wall`'s three Walters were never rebuilt.
 
 ### Security

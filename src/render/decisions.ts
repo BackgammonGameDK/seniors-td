@@ -1022,15 +1022,46 @@ export interface Recording {
  * recording like that is wrong in a way that would be invisible once it was
  * pasted into `builds.ts`, so it says so about itself rather than being
  * quietly confident.
+ *
+ * A tower built again on a cell it had left -- a garden wall knocked down and
+ * put back -- is the same problem from the other side, and needs no counter:
+ * a purchase always writes at least one tier, so an entry with none is a
+ * placement, and a second placement on one cell is a rebuild. A harness reads
+ * every entry on a cell as the one tower standing there, so it can skip paying
+ * for the second.
  */
 export function recordingOf(steps: Placement[], sold: number): Recording {
+  const warnings: string[] = [];
+  if (sold > 0) {
+    warnings.push(
+      `${sold} tower${sold === 1 ? ' was' : 's were'} sent home during this run, and a ` +
+        `loadout cannot say that -- this plan buys them and never sells them, so it is ` +
+        `not what was played. Record again without selling.`,
+    );
+  }
+  const rebuilt = rebuildsIn(steps);
+  if (rebuilt > 0) {
+    warnings.push(
+      `${rebuilt} tower${rebuilt === 1 ? ' was' : 's were'} built again on a cell where one ` +
+        `had already stood -- a garden wall knocked down and put back, say. A harness reads ` +
+        `every entry on that cell as one tower, so it may never pay for the second one.`,
+    );
+  }
   return {
     loadout: steps.map(describePlacement).join(' '),
-    warning:
-      sold === 0
-        ? null
-        : `${sold} tower${sold === 1 ? ' was' : 's were'} sent home during this run, and a ` +
-          `loadout cannot say that -- this plan buys them and never sells them, so it is ` +
-          `not what was played. Record again without selling.`,
+    warning: warnings.length === 0 ? null : warnings.join(' '),
   };
+}
+
+/** How many placements land on a cell that had already been placed on. */
+function rebuildsIn(steps: Placement[]): number {
+  const placed = new Set<string>();
+  let rebuilt = 0;
+  for (const s of steps) {
+    if (s.upgradeA !== 0 || s.upgradeB !== 0 || s.capstone !== null) continue;
+    const cell = `${s.col},${s.row}`;
+    if (placed.has(cell)) rebuilt++;
+    else placed.add(cell);
+  }
+  return rebuilt;
 }
