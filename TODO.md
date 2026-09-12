@@ -464,11 +464,10 @@ to WebP would help a little.
 
 ### Tests
 
-- **The balance test holds less than DESIGN.md promises.** DESIGN.md's
-  balance section says at least three boards clear; `tests/balance.test.ts`
-  asks for two, lowered when Clara's buff was. Five clear today, so nothing
-  fails, but the promise itself is unguarded. Either the test goes back to
-  three or the document says two.
+- ~~**The balance test holds less than DESIGN.md promises.**~~ Done. DESIGN.md
+  says at least three boards clear, and `tests/balance.test.ts` had asked for
+  two since Clara's buff was lowered. It asks for three again: five boards
+  clear at its eight seeds, all at 100%.
 - `src/headless.ts` is still not imported by any test. Its placement now runs
   through the tested `applyPlacement`; what is left is printing.
 
