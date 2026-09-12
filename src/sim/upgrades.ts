@@ -160,13 +160,21 @@ export const UPGRADES: { [T in TowerId]: TowerUpgrades<T> } = {
     // street before it has spent them, which is what The Whole Lot was: six
     // people's worth of ball with 220px to find them in. Road without bodies
     // is a spent ball rolling politely past everyone.
+    //
+    // Roughly a doubling a step, from a baseline that is deliberately much
+    // shorter than any of them (90). An even ramp was chosen over a big first
+    // tier and small ones after it -- 200/330/520 against 300/400/560 -- on
+    // 120 seeds apiece, where the two were the same board to within a seed:
+    // 97% held on 12.6 lives against 98% on 12.5. Nothing was being measured
+    // between them, so the choice was made on what a purchase feels like, and
+    // three steps that each double are three purchases that each show.
     pathB: [
-      { cost: 30, stat: { pierce: 2, rollOut: 300 } },
-      { cost: 50, stat: { pierce: 3, rollOut: 400 } },
+      { cost: 30, stat: { pierce: 2, rollOut: 200 } },
+      { cost: 50, stat: { pierce: 3, rollOut: 330 } },
     ],
     capstones: [
       { id: 'solidBall', cost: 145, stat: { damage: 42 } },
-      { id: 'theWholeLot', cost: 135, stat: { pierce: 5, rollOut: 560 } },
+      { id: 'theWholeLot', cost: 135, stat: { pierce: 5, rollOut: 520 } },
     ],
   },
 };
