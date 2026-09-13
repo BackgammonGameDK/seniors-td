@@ -421,22 +421,23 @@ In free play (`--endless`, 10 runs) the boards that clear go on for 1.6
 
 ### Code
 
-- **`tests/architecture.test.ts` has blind spots.** Its import check matches
-  only `from '...'`, so `import('../render/x')` and `import '../render/x'`
-  would pass. It reads `src/sim/` without its subfolders, so a future
-  `src/sim/something/` would go unchecked. Nothing checks that
-  `src/render/decisions.ts` stays free of the DOM, which it is today. Every
-  rule in CLAUDE.md was checked by hand in this pass and holds.
+- ~~**`tests/architecture.test.ts` has blind spots.**~~ Done. Its import check
+  matched only `from '...'`, so `import('../render/x')` and
+  `import '../render/x'` would have passed, and it read `src/sim/` without its
+  subfolders. It now catches both forms, reads subfolders, and checks that
+  `src/render/decisions.ts` stays out of the DOM and off the wall clock. Each
+  new check was seen to fail against a planted violation.
 - **Unused code.** Nothing imports `src/sim/stats.ts`. `BUILD_NAMES`,
   `effectiveCooldown`, `TURN_RATE`, `laneCoverage`, `distanceToPath` and
   `isOnBoard` are exported but used only inside their own files.
 - **`builds.ts` keeps display text in `src/sim/`.** Its `blurb` strings break
   CLAUDE.md's rule of no blurbs in the simulation. Only the harness reads
   them, so either the rule gets a stated exception or the strings move.
-- **A Walter knocked down and rebuilt records as one Walter.** The saved board
-  then has his cell twice, and a harness reads the second entry as the Walter
-  already standing there, so it neither pays for the rebuild nor makes it.
-  `recordingOf` only warns about towers that were sold. No played board is
+- ~~**A Walter knocked down and rebuilt records as one Walter.**~~ Done, as a
+  warning rather than a fix, since the grammar cannot say "rebuilt". The saved
+  board has his cell twice, and a harness reads the second entry as the Walter
+  already standing there. `recordingOf` now counts a second placement on a
+  cell and says so in the box, as it already did for sells. No played board is
   affected: `wall`'s three Walters were never rebuilt.
 
 ### Security
@@ -463,27 +464,26 @@ to WebP would help a little.
 
 ### Tests
 
-- **The balance test holds less than DESIGN.md promises.** DESIGN.md's
-  balance section says at least three boards clear; `tests/balance.test.ts`
-  asks for two, lowered when Clara's buff was. Five clear today, so nothing
-  fails, but the promise itself is unguarded. Either the test goes back to
-  three or the document says two.
+- ~~**The balance test holds less than DESIGN.md promises.**~~ Done. DESIGN.md
+  says at least three boards clear, and `tests/balance.test.ts` had asked for
+  two since Clara's buff was lowered. It asks for three again: five boards
+  clear at its eight seeds, all at 100%.
 - `src/headless.ts` is still not imported by any test. Its placement now runs
   through the tested `applyPlacement`; what is left is printing.
 
 ### Documentation
 
-- CLAUDE.md's commands list says `--all-builds` plays "all seven boards";
-  there are eleven.
-- CLAUDE.md never mentions this file, though it holds the live balance
-  findings and DESIGN.md points here. Its "Where things live" table also
-  leaves out `src/main.ts`, `src/render/ui.ts`, `src/render/clock.ts`,
-  `src/render/sprites.ts` and `src/sim/rng.ts`.
-- The `window.street` comment in `src/main.ts` still suggests
-  `--loadout "<the string>"`, which CLAUDE.md warns against for shared boards.
-- `.claude/hooks/check-after-edit.sh` says "twenty-round campaigns"; there are
-  twenty-one rounds.
-- `tests/architecture.test.ts` mentions a BALANCE.md that does not exist.
+- ~~CLAUDE.md's commands list says `--all-builds` plays "all seven boards";
+  there are eleven.~~ Done.
+- ~~CLAUDE.md never mentions this file, and its "Where things live" table
+  leaves out five files.~~ Done: TODO.md is in the documents table, and
+  `src/main.ts`, `src/render/ui.ts`, `src/render/clock.ts`,
+  `src/render/sprites.ts` and `src/sim/rng.ts` have rows.
+- ~~The `window.street` comment in `src/main.ts` suggests
+  `--loadout "<the string>"`.~~ Done: it now suggests `--loadout-file`.
+- ~~`.claude/hooks/check-after-edit.sh` says "twenty-round campaigns".~~ Done.
+- ~~`tests/architecture.test.ts` mentions a BALANCE.md that does not
+  exist.~~ Done, with the architecture test's blind spots above.
 - Board numbers in DESIGN.md and in #2 above are snapshots from different
   dates, and some no longer match: #2 has `wall` ending on 17.3 points, and it
   now ends on 16.1. Nothing in the text marks them as snapshots.

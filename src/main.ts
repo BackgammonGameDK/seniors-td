@@ -347,9 +347,11 @@ Object.defineProperty(window, 'street', {
     /**
      * The board you just played, written as a loadout.
      *
-     * Paste `loadout` into `src/sim/builds.ts`, or straight at a harness:
+     * Paste `loadout` into `src/sim/builds.ts`, or save it to a file and point
+     * a harness at the file -- CLAUDE.md says why a file rather than a quoted
+     * string:
      *
-     *   npm run campaign -- --loadout "<the string>" --runs 20
+     *   npm run campaign -- --loadout-file loadout.txt --runs 20
      *
      * Check `warning` first. It is null when the recording can be trusted.
      */

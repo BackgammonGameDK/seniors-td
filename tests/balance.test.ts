@@ -96,13 +96,17 @@ describe('the shape of a campaign', () => {
     // The whole reason this project measures anything. One build clearing is
     // not a balanced game, it is a solved one.
     //
-    // Was 3 until Coffee Clara's fire-rate buff was nerfed (base 1.35 -> 1.25,
-    // path tiers -> 1.35/1.45, Double Espresso -> 1.6): the `support` build
-    // (four stacked Claras, src/sim/builds.ts) was carried entirely by that
-    // buff and dropped from a 95% clear rate to 0%, which was accepted rather
-    // than reworking the build around a weaker Clara.
+    // Was lowered to 2 when Coffee Clara's fire-rate buff was nerfed (base
+    // 1.35 -> 1.25, path tiers -> 1.35/1.45, Double Espresso -> 1.6): the
+    // `support` build (four stacked Claras, src/sim/builds.ts) was carried
+    // entirely by that buff and dropped from a 95% clear rate to 0%, which was
+    // accepted rather than reworking the build around a weaker Clara.
+    //
+    // Back at 3, which is what DESIGN.md promises, once five boards cleared
+    // again at these seeds (September 2026): bowling, mixed, corner,
+    // binoculars and wall, all at 100%.
     const clearing = results.filter((r) => r.clearRate >= 0.5);
-    expect(clearing.length, `builds clearing at least half the time: ${clearing.map((r) => r.name).join(', ')}`).toBeGreaterThanOrEqual(2);
+    expect(clearing.length, `builds clearing at least half the time: ${clearing.map((r) => r.name).join(', ')}`).toBeGreaterThanOrEqual(3);
   });
 
   it('does not let any single build run away with it', () => {
