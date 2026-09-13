@@ -345,8 +345,36 @@ opinion rather than another sweep.
 A whole-project pass -- code, balance, security, speed, tests and documents --
 checked against measurements rather than read alone. Balance numbers are from
 `npm run campaign -- --all-builds` and `npm run sim -- --all-waves` at 20 runs
-on commit 7e2e7a3. The two things worth fixing straight away are in PR #85,
-which left every campaign result byte-identical; the rest is here.
+on commit 7e2e7a3. Fixed since, and struck through below: the two things worth
+fixing straight away, in #85, which left every campaign result byte-identical;
+and four more in #87 -- the architecture test's blind spots, the warning for a
+rebuilt tower, the balance test's clearing count and the stale documentation.
+
+### Still open
+
+Roughly by how much they matter; the details are in the subsections below.
+
+1. **Coffee Clara is in every board that clears** (balance question 1). The
+   next step is a measurement, not a change: `mixed` and `corner` with their
+   Claras removed. What to do about the result is the owner's call.
+2. **Hose Harold, Bowling Betty and Protest Pete are barely measured**
+   (balance question 2). It needs a board played around Harold and saved with
+   `L`.
+3. **Pizza Paul has no quiet first round** (balance question 3). Fixing it
+   changes the rounds, so it is a balance decision rather than a cleanup.
+4. **`npm run sim -- --all-waves` says nothing after round 12** (balance
+   question 4). A stronger default board would change what the harness
+   reports, so that is the owner's call too; until then, give it a played
+   board with `--loadout-file`.
+5. **Generated boards that clear still lose nothing until round 19 or 20**
+   (balance question 5, and #2 above).
+6. **Small cleanups:** the unused code, and the `blurb` strings in `src/sim/`
+   (see Code).
+7. **Hardening, not vulnerabilities:** GitHub Actions pinned by tag rather than
+   commit SHA, and the prefix match in `.claude/settings.json` (see Security).
+8. **Low value, recorded so nobody rediscovers them:** images as WebP (see
+   Speed), dating the snapshot numbers in DESIGN.md and #2 (see
+   Documentation), and `src/headless.ts` having no test of its own (see Tests).
 
 ### Fixed in #85
 

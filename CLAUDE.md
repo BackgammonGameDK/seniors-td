@@ -32,8 +32,10 @@ one seeded RNG, no wall-clock time. Breaking this breaks headless playtesting,
 which is what makes every balance claim a measurement instead of an opinion.
 
 `tests/architecture.test.ts` enforces it by reading the source -- no import
-from `src/render`, no DOM, no `Math.random()`, no wall clock. It has been
-verified to fail when violated.
+from `src/render` in any form or subfolder, no DOM, no `Math.random()`, no
+wall clock. It holds `src/render/decisions.ts` to the same DOM and wall-clock
+bans, since interface logic lives there so that a test can reach it. It has
+been verified to fail when violated.
 
 Presentational data lives in `src/shared/`, which both layers may import. No
 hex colours, display names or blurbs in `src/sim/`.
@@ -124,7 +126,9 @@ The two harnesses answer different questions and neither substitutes for the
 other.
 
 `npm run sim` places towers free and refreshes lives each round, so it measures
-one round's pressure in isolation.
+one round's pressure in isolation. Its default board is four towers with no
+upgrades, which loses nearly every round after the twelfth, so for the back
+half of the game give it a real board with `--loadout-file`.
 
 `npm run campaign` plays whole twenty-one-round runs on a real purse, so it measures
 what a player could actually afford by the time a round arrived. **This is the
@@ -188,7 +192,10 @@ conversation, not a cleverer prompt.
 - **Delegate noise, not thinking.** The full suite and `npm run campaign`
   belong in the `qa` agent (haiku), whose output then never enters this
   context. Searching thirty-odd files does not -- grep is cheaper than an
-  agent that starts cold.
+  agent that starts cold. A run that only has to report a few numbers is
+  cheaper still as a background command that writes its output to a file in
+  the scratchpad and prints a single summary line: only that line enters the
+  context, and no agent starts cold.
 - **Trim shell output where it is produced.** `npm test 2>&1 | tail -20`,
   `npm run campaign -- --json | jq`. Anything read once is re-read every turn
   afterwards.
@@ -198,4 +205,7 @@ conversation, not a cleverer prompt.
 - Substantial work gets a feature branch and a pull request. Nothing lands on
   `main` directly.
 - **Push and merge need the owner's explicit approval, every time.**
+- GitHub auto-merge is switched off for this repository, so the auto-merge
+  tool is refused. When the owner asks for auto-merge, wait for the PR's CI
+  check to pass and merge only then.
 - Commits are coherent and their messages say the intent.
