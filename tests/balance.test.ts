@@ -59,9 +59,12 @@ describe('the boards a person played', () => {
   });
 
   it('is not finished untouched', () => {
+    // Was 0.72 (18 of 25). Raised to 0.9 (22.5) by the owner's decision when a
+    // carrying shot whose mark was killed first began rolling its full line:
+    // `corner` went from 14.8 to 22.2 and `bowling` from 14.3 to 19.25.
     for (const r of reference) {
       expect(r.avgLivesOnClear, `${r.name} lives left on a clear`).toBeLessThanOrEqual(
-        ECONOMY.startLives * 0.72,
+        ECONOMY.startLives * 0.9,
       );
     }
   });
@@ -114,8 +117,9 @@ describe('the shape of a campaign', () => {
     // makes every other build a mistake rather than a choice.
     for (const r of results) {
       if (r.clearRate === 0) continue;
+      // 0.9 rather than 0.72 -- see 'is not finished untouched' above.
       expect(r.avgLivesOnClear, `${r.name} lives left on a clear`).toBeLessThanOrEqual(
-        ECONOMY.startLives * 0.72,
+        ECONOMY.startLives * 0.9,
       );
     }
   });
