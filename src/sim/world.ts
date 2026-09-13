@@ -1133,6 +1133,8 @@ function fireTowers(w: World): void {
         dirX: aim.x,
         dirY: aim.y,
         rollLeft: carries ? (d.rollOut ?? DEFAULT_ROLL_OUT) : 0,
+        markX: target.x,
+        markY: target.y,
         hitIds: [],
         from: t.def,
         sourceId: t.id,
@@ -1226,8 +1228,17 @@ function advanceCarry(w: World, p: Projectile): boolean {
   if (!p.rolling) {
     const target = w.enemies.find((e) => e.id === p.targetId && e.alive);
     if (!target) {
+      // Gone. If somebody else got them before the ball did, it holds its
+      // heading as always and the ground it still had to cover to reach them
+      // is added to the roll, so it goes as far as a ball that landed would
+      // have. A ball that knocked its own mark down has already arrived.
       p.rolling = true;
+      if (!p.hitIds.includes(p.targetId)) {
+        p.rollLeft += Math.hypot(p.markX - p.x, p.markY - p.y);
+      }
     } else {
+      p.markX = target.x;
+      p.markY = target.y;
       const dx = target.x - p.x;
       const dy = target.y - p.y;
       const dist = Math.hypot(dx, dy);

@@ -1594,6 +1594,37 @@ describe('a shot that carries down a line', () => {
     expect(w.projectiles).toHaveLength(0);
   });
 
+  it('still covers the ground to its mark when somebody else knocks the mark down first', () => {
+    const w = rich();
+    const betty = put(w, 'betty', buildCellNear(400));
+    const lone = spawnEnemy(w, 'sam', 400);
+    until(w, () => w.projectiles.length > 0);
+
+    const p = w.projectiles[0]!;
+    const roll = effectiveDef(betty).rollOut!;
+    const speed = effectiveDef(betty).projectileSpeed!;
+    const mark = { x: lone.x, y: lone.y };
+    const toMark = Math.hypot(mark.x - p.x, mark.y - p.y);
+    expect(toMark).toBeGreaterThan(speed * 2);
+
+    // Another tower's kill, as far as the ball can tell.
+    lone.alive = false;
+    step(w);
+
+    // The ground to the mark on top of the roll, less the one step just taken.
+    expect(p.rolling).toBe(true);
+    expect(p.rollLeft).toBeCloseTo(roll + toMark - speed, 5);
+
+    let last = { x: p.x, y: p.y };
+    while (w.projectiles.includes(p)) {
+      last = { x: p.x, y: p.y };
+      step(w);
+    }
+    // So it ends past where the mark stood, as far out as a ball that landed.
+    const reach = (q: { x: number; y: number }) => Math.hypot(q.x - betty.x, q.y - betty.y);
+    expect(reach(last)).toBeGreaterThan(reach(mark));
+  });
+
   it('holds its heading instead of following the street round a corner', () => {
     const w = rich();
     put(w, 'betty', buildCellNear(400));

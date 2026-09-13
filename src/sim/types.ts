@@ -505,6 +505,15 @@ export interface Projectile {
   dirY: number;
   /** Pixels of roll left after it stopped aiming. Zero on a shot that cannot carry. */
   rollLeft: number;
+  /**
+   * Where its mark was last seen, kept current while it is still aiming.
+   *
+   * A mark knocked down by somebody else before the ball gets there leaves the
+   * ball with the ground up to this spot still to cover, on top of its roll --
+   * so a kill does not shorten the line the player was shown.
+   */
+  markX: number;
+  markY: number;
   /** Everyone already knocked down by this one, so a roll cannot hit twice. */
   hitIds: number[];
   /** What each further body in the line keeps of the hit. See `TowerDef`. */
