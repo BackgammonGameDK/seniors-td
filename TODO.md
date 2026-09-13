@@ -247,7 +247,8 @@ Two things it did not fix, both worth knowing:
 
 - **`wall` ends on 17.3 against a threshold of 18.** The assertion passes on a
   thin margin and seed noise could flip it. If it does, the answer is another
-  played board or a harder look at the knot, not a bigger number.
+  played board or a harder look at the knot, not a bigger number. (The
+  threshold has since been raised to 22.5 -- see "Fixed in #90".)
 - **Rounds 16 to 21 still cost `wall` nothing.** The change taxes it once, at
   round 15. The back half of the game still asks the one question a splash
   knot has already answered.
@@ -392,6 +393,32 @@ Roughly by how much they matter; the details are in the subsections below.
   deliberately not stored on the tower: tests write the upgrade fields
   directly, and a stored fold would go stale.
 
+### Fixed in #90
+
+- ~~**Betty's ball stopped short when its mark was knocked down first.**~~
+  Done. A carrying shot whose mark another tower killed started its roll where
+  it was, so it fell short of the "Then keeps going" reach and missed anybody
+  further along the line. It now remembers where the mark was last seen and
+  adds that distance to its roll; a ball that knocked its own mark down gets
+  nothing extra. Bill's Piercing Shot flies the same way and gained the same.
+- **The lives-left-on-a-clear limit was raised from 18 to 22.5 of 25** (0.72
+  to 0.9 of `startLives`, both assertions in `tests/balance.test.ts`), by the
+  owner's decision, because the fix lifted two boards past it. Points left on
+  a clear, all eleven boards, 20 seeds:
+
+  | Board | Before | After |
+  |---|---|---|
+  | `corner` (played) | 14.8 | 22.2 |
+  | `bowling` | 14.3 | 17.7 (19.25 at the test's seeds) |
+  | `mixed` | 9.8 | 14.8 |
+  | `binoculars` | 12.8 | 15.2 |
+  | `sniper` | 35% clear, 6.0 | 85% clear, 9.9 |
+
+  `wall`, `slip`, `swarm`, `area`, `control` and `support` did not move.
+  `corner` now sits 0.3 under the new limit, so anything that makes it a
+  little stronger will fail the test again. The limit no longer says much
+  about "finished untouched": a clear on 22 of 25 passes.
+
 ### Balance questions
 
 1. **Coffee Clara is in every board that clears.** She is in 10 of the 11
@@ -409,7 +436,8 @@ Roughly by how much they matter; the details are in the subsections below.
    **Measured, September 2026:** `mixed` and `corner` with every Clara entry
    removed, and with each Clara swapped for a Norah on the same cell and path
    tiers (no capstone). 20 seeds each, the campaign's fixed seeds, so the rows
-   compare directly.
+   compare directly. Taken before #90, which made a carrying shot stronger;
+   the "as is" rows for `mixed` and `corner` now leave 14.8 and 22.2.
 
    | Board | Clears | Avg round reached | First round losing points | Points left on a clear | Plan bought |
    |---|---|---|---|---|---|
