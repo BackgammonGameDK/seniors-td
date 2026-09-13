@@ -354,9 +354,10 @@ rebuilt tower, the balance test's clearing count and the stale documentation.
 
 Roughly by how much they matter; the details are in the subsections below.
 
-1. **Coffee Clara is in every board that clears** (balance question 1). The
-   next step is a measurement, not a change: `mixed` and `corner` with their
-   Claras removed. What to do about the result is the owner's call.
+1. **Coffee Clara is in every board that clears** (balance question 1).
+   Measured: `mixed` and `corner` go from 100% to 0% without her, and a Norah
+   on her cells does no better. On the boards that exist she is required.
+   What to do about that is the owner's call.
 2. **Hose Harold, Bowling Betty and Protest Pete are barely measured**
    (balance question 2). It needs a board played around Harold and saved with
    `L`.
@@ -402,9 +403,31 @@ Roughly by how much they matter; the details are in the subsections below.
    `tests/balance.test.ts`); what it leaves is that "towers that make their
    neighbours better" now measures as something every board must have, not
    as a way to win. Whether she is truly required is unmeasured, because no
-   mixed board without Clara has been run. The measurement to take is `mixed`
-   and `corner` with their Claras removed. (`wall` without its Claras dies at
+   mixed board without Clara had been run. (`wall` without its Claras dies at
    round 20 -- see "What `wall` showed" above.)
+
+   **Measured, September 2026:** `mixed` and `corner` with every Clara entry
+   removed, and with each Clara swapped for a Norah on the same cell and path
+   tiers (no capstone). 20 seeds each, the campaign's fixed seeds, so the rows
+   compare directly.
+
+   | Board | Clears | Avg round reached | First round losing points | Points left on a clear | Plan bought |
+   |---|---|---|---|---|---|
+   | `mixed` as is | 100% | 21 | 20 | 9.8 | 71.6 / 78 |
+   | `mixed` without Clara | 0% | 19 | 19 | -- | 60 / 66 |
+   | `mixed`, Norah for Clara | 0% | 19 | 20 | -- | 68 / 78 |
+   | `corner` as is | 100% | 21 | 12 | 14.8 | 63 / 63 |
+   | `corner` without Clara | 0% | 18.5 | 12 | -- | 51.5 / 57 |
+   | `corner`, Norah for Clara | 0% | 18.9 | 11 | -- | 58.1 / 63 |
+
+   Both boards go from clearing every seed to clearing none, and a Norah on
+   the same cell does no better than an empty one, so it is not that the cell
+   needs some tower: on these boards Clara's rate buff is what carries rounds
+   19 and 20. `corner`, played by hand, loses points from round 12 either way
+   but falls much faster without her. Removing Clara also frees her coins, so
+   the "without Clara" rows buy the rest of the plan sooner, and still lose.
+   This measures two boards built with her; a board designed without her from
+   the start is still unmeasured. What to do about it is the owner's call.
 2. **Three defenders have almost no measured boards.** No played board uses
    Hose Harold or Bowling Betty, and none has more than one Protest Pete.
    Harold's only board, `slip`, clears 5%. Betty's only board, `bowling`,
